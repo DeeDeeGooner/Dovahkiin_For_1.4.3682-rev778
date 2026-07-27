@@ -1,5 +1,65 @@
 # CHANGELOG
 
+## Fix — Drain Vitality now actually transfers, and the Thu'um bar is a real gradient (2026-07-28)
+
+Two defects from playtest. Both were mine; both reports were exactly right.
+
+### Drain Vitality drained stamina into nothing
+
+Reported: casting it on two pawns left the caster's stamina regenerating at the same rate as
+before. Correct, and there were **two independent reasons**, which is why it looked like total
+silence rather than a partial effect:
+
+1. **The transfer did not exist.** Only *health* was given back to the caster; drained stamina
+   and mana were simply removed from the victim and discarded. A drain that destroys rather than
+   transfers is not a drain, and the original spec's "drains stamina, then stamina and mana"
+   plainly implied the caster receives it.
+2. **Both victims were classless** — the user noted this themselves and it is the decisive
+   detail. `COMPAT.md §5`: `TM_Stamina` exists only on a pawn carrying `TM_MightUserHD`. A
+   classless pawn has **no stamina bar at all**, so there was nothing to take and nothing to
+   hand over. Even a correct implementation would have shown zero on that test.
+
+**Fixed.** `TryDrain` now returns **how much was actually taken** rather than a bool — which
+matters, because a nearly-empty bar yields less than asked and an absent bar yields nothing. New
+`TryGive` hands exactly that figure to the caster, capped at their own maximum. So the caster
+gains precisely what the victim lost, never a flat amount conjured from nowhere.
+
+**Rest and Joy are deliberately NOT transferred.** They are the vanilla stand-ins used when a
+victim has no magic class; refilling the caster's sleep meter by shouting at people would be an
+exploit rather than a drain.
+
+**Precondition worth knowing:** the caster only gains stamina if the *caster* has a stamina bar,
+i.e. carries an RWoM might class. A classless Dovahkiin draining a classless victim correctly
+does nothing on that axis, and the vanilla Rest/Joy drain plus the health drain still apply.
+
+Tuned by `casterNeedGainFraction` (default 1.0) in `Hediffs_Dovahkiin.xml`.
+
+### The Thu'um bar was split the wrong way, and was not a gradient
+
+Reported: *"you split it down the middle horizontally and not vertically + it's not gradient,
+it's literally just orange on one half and purple on the other."* Both true.
+
+The previous attempt drew two **flat** colours as **stacked halves** — a horizontal seam,
+top/bottom, with a hard edge. What was wanted is a vertical seam, left/right, with the two
+colours fading into each other.
+
+**Now a real horizontal gradient**, from a single cached 128×1 texture: deep violet on the left
+through to ember orange on the right. The blend is smoothstepped across the middle 40% so each
+colour still owns roughly half the bar — a "50/50 gradient" rather than a straight linear ramp,
+which would read as mud through the centre.
+
+The strip is anchored to the **full** bar width and clipped by fill via `texCoords`, not squashed
+into the filled part. That is what keeps the colour meaningful: a given x is always the same
+shade, a full bar reaches the ember end, and a nearly-spent one shows only violet — so the bar
+visibly cools as it empties, which was the original intent all along.
+
+Third attempt at this bar. All three are documented in the method comment so the next session
+does not re-tread them.
+
+Builds clean, 0 warnings; all XML parses. **Awaiting playtest.**
+
+---
+
 ## PLAYTEST PASS — Phases 2d, 2e and 2f all signed off (2026-07-28)
 
 User confirmed every shout in those three phases works. **11 of 14 core shouts are now built

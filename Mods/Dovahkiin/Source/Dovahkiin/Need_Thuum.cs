@@ -98,59 +98,75 @@ namespace Dovahkiin
         // Custom bar colour: ember orange when full, fading to a cold violet when spent.
         // ------------------------------------------------------------------
 
-        private const int GradientSteps = 24;
-        private static Texture2D[] gradientCache;
-
         private static readonly Color FullColor = new Color(0.95f, 0.55f, 0.15f); // ember orange
         private static readonly Color EmptyColor = new Color(0.42f, 0.22f, 0.62f); // deep violet
 
         /// <summary>
-        /// Textures are cached in fixed steps and generated once. Creating a texture per frame
-        /// would leak GPU memory steadily - this is drawn every time the Needs tab is open.
+        /// One cached gradient strip, built once and reused for every draw.
         ///
-        /// 50/50 SPLIT, not a continuous blend. The bar was a single colour lerped across the
-        /// whole range, so at any moment it was one flat shade and the "gradient" was only
-        /// visible by watching it drain over time. It is now drawn in two halves - violet
-        /// underneath, ember on top - which reads as a gradient at a glance, standing still.
-        /// The lerp is kept but compressed into each half, so the seam is not a hard edge.
+        /// A texture MUST NOT be created per frame here - this redraws continuously whenever the
+        /// Needs tab is open, and a new Texture2D each time leaks GPU memory steadily.
         /// </summary>
-        private static Texture2D BarTextureFor(float pct)
+        private static Texture2D gradientTex;
+
+        private const int GradientWidth = 128;
+
+        /// <summary>
+        /// The bar runs violet on the LEFT to ember on the RIGHT, blending through the middle.
+        ///
+        /// Two earlier attempts were wrong and both are worth recording:
+        ///   1. A single colour lerped by fill level. At any given moment the bar was one flat
+        ///      shade, so the "gradient" only existed if you watched it drain over time.
+        ///   2. Two stacked halves - which split the bar the wrong way (a horizontal seam,
+        ///      top/bottom) and used two FLAT colours with a hard edge between them. What was
+        ///      wanted is a vertical seam, left/right, with the colours fading into each other.
+        ///
+        /// Hence a real horizontal gradient. The blend is concentrated in the middle 40% so each
+        /// colour still owns roughly half the bar - a "50/50 gradient" rather than a straight
+        /// linear ramp, which would read as mud in the centre.
+        /// </summary>
+        private static Texture2D GradientTexture()
         {
-            if (gradientCache == null)
+            if (gradientTex != null)
             {
-                gradientCache = new Texture2D[GradientSteps + 1];
+                return gradientTex;
             }
-            int step = Mathf.Clamp(Mathf.RoundToInt(pct * GradientSteps), 0, GradientSteps);
-            if (gradientCache[step] == null)
+            gradientTex = new Texture2D(GradientWidth, 1, TextureFormat.RGBA32, false);
+            gradientTex.wrapMode = TextureWrapMode.Clamp;
+            gradientTex.filterMode = FilterMode.Bilinear;
+            for (int i = 0; i < GradientWidth; i++)
             {
-                Color c = Color.Lerp(EmptyColor, FullColor, (float)step / GradientSteps);
-                gradientCache[step] = SolidColorMaterials.NewSolidColorTexture(c);
+                float t = i / (float)(GradientWidth - 1);
+                // Smoothstep across 0.30..0.70, so the outer thirds stay close to pure.
+                float f = Mathf.Clamp01((t - 0.30f) / 0.40f);
+                f = f * f * (3f - 2f * f);
+                gradientTex.SetPixel(i, 0, Color.Lerp(EmptyColor, FullColor, f));
             }
-            return gradientCache[step];
+            gradientTex.Apply();
+            return gradientTex;
         }
 
         /// <summary>
-        /// Draw the filled portion as two stacked halves rather than one flat colour.
-        /// Lower half violet-leaning, upper half ember-leaning, each still shaded slightly by
-        /// how full the bar is so it keeps the "cools as it empties" behaviour.
+        /// Draw the filled portion of the bar using the gradient strip.
+        ///
+        /// The gradient is anchored to the FULL bar width and then clipped to however much is
+        /// filled, rather than being squashed into the filled part. That is what makes the
+        /// colour mean something: a full bar reaches the ember end, and a nearly-spent one shows
+        /// only the violet, so the bar visibly cools as it empties.
         /// </summary>
-        private static void DrawSplitBar(Rect barRect, float pct)
+        private static void DrawThuumBar(Rect barRect, float pct)
         {
             Widgets.DrawBoxSolid(barRect, new Color(0.09f, 0.09f, 0.11f));
 
-            float filledWidth = barRect.width * Mathf.Clamp01(pct);
-            if (filledWidth <= 0f)
+            pct = Mathf.Clamp01(pct);
+            if (pct <= 0f)
             {
                 return;
             }
-            float half = barRect.height * 0.5f;
-            Color lower = Color.Lerp(EmptyColor, FullColor, Mathf.Clamp01(pct) * 0.35f);
-            Color upper = Color.Lerp(EmptyColor, FullColor, 0.55f + Mathf.Clamp01(pct) * 0.45f);
-
-            Widgets.DrawBoxSolid(
-                new Rect(barRect.x, barRect.y + half, filledWidth, barRect.height - half), lower);
-            Widgets.DrawBoxSolid(
-                new Rect(barRect.x, barRect.y, filledWidth, half), upper);
+            Rect filled = new Rect(barRect.x, barRect.y, barRect.width * pct, barRect.height);
+            // texCoords takes only the left `pct` of the strip, so x maps to the same colour
+            // regardless of how full the bar is.
+            GUI.DrawTextureWithTexCoords(filled, GradientTexture(), new Rect(0f, 0f, pct, 1f));
         }
 
         public override void DrawOnGUI(Rect rect, int maxThresholdMarkers = int.MaxValue,
@@ -186,8 +202,7 @@ namespace Dovahkiin
 
             Rect barRect = new Rect(rect.x + margin, rect.y + rect.height / 2f,
                 rect.width - margin * 2f, rect.height / 2f - margin);
-            float pct = CurLevelPercentage;
-            DrawSplitBar(barRect, pct);
+            DrawThuumBar(barRect, CurLevelPercentage);
         }
     }
 }

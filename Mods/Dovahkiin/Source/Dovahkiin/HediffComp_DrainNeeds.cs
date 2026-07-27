@@ -84,6 +84,12 @@ namespace Dovahkiin
         /// </summary>
         public float casterHealFraction = 1f;
 
+        /// <summary>
+        /// Fraction of the drained stamina and mana handed to the caster. 1.0 means the caster
+        /// gains exactly what the victim lost. Only ever transfers what was actually taken.
+        /// </summary>
+        public float casterNeedGainFraction = 1f;
+
         public DamageDef healthDamageDef;
 
         public FleckDef glowFleck;
@@ -128,25 +134,67 @@ namespace Dovahkiin
         }
 
         /// <summary>
-        /// Drop a need by a fraction of its full bar. Returns false when the pawn does not have
-        /// that need at all, which is the normal case for TM_ needs without the magic mod, and
-        /// also for an ordinary colonist who simply has no magic class.
+        /// Drop a need and report HOW MUCH WAS ACTUALLY TAKEN, which is not always the amount
+        /// asked for - a bar already near empty yields less, and a pawn without that need at all
+        /// yields nothing.
+        ///
+        /// Returning the real figure is what makes the transfer to the caster honest: the caster
+        /// gains exactly what the victim lost, never a flat amount conjured out of nothing.
+        ///
+        /// Zero is a perfectly normal result. It means either the magic mod is absent, or - far
+        /// more common - the victim is an ordinary pawn with no magic class and therefore has
+        /// no stamina or mana bar at all. See COMPAT.md section 5.
         /// </summary>
-        private static bool TryDrain(Pawn pawn, NeedDef def, float amount)
+        private static float TryDrain(Pawn pawn, NeedDef def, float amount)
         {
-            if (def == null || amount <= 0f || pawn.needs == null)
+            if (def == null || amount <= 0f || pawn == null || pawn.needs == null)
             {
-                return false;
+                return 0f;
             }
             Need need = pawn.needs.TryGetNeed(def);
             if (need == null)
             {
-                return false;
+                return 0f;
             }
             // CurLevel is vanilla Need API. Nothing here touches a TorannMagic type, so this
             // compiles and runs identically with the magic mod absent.
-            need.CurLevel = Mathf.Max(0f, need.CurLevel - amount);
-            return true;
+            float before = need.CurLevel;
+            need.CurLevel = Mathf.Max(0f, before - amount);
+            return before - need.CurLevel;
+        }
+
+        /// <summary>
+        /// Hand a drained need back to the caster, capped at their own maximum.
+        ///
+        /// Silently does nothing when the caster lacks that need - a Dovahkiin with no
+        /// RimWorld-of-Magic class has no stamina bar to refill, which is expected, not a fault.
+        /// </summary>
+        private static void TryGive(Pawn pawn, NeedDef def, float amount)
+        {
+            if (def == null || amount <= 0f || pawn == null || pawn.needs == null)
+            {
+                return;
+            }
+            Need need = pawn.needs.TryGetNeed(def);
+            if (need == null)
+            {
+                return;
+            }
+            need.CurLevel = Mathf.Min(need.MaxLevel, need.CurLevel + amount);
+        }
+
+        /// <summary>Whoever cast the shout. Null is normal - dead, gone, or a pre-feature save.</summary>
+        private Pawn Caster
+        {
+            get
+            {
+                Hediff_VitalityDrained drain = parent as Hediff_VitalityDrained;
+                if (drain == null || drain.drainedBy == null || drain.drainedBy.Dead)
+                {
+                    return null;
+                }
+                return drain.drainedBy;
+            }
         }
 
         public override void CompPostTick(ref float severityAdjustment)
@@ -179,19 +227,43 @@ namespace Dovahkiin
             ResolveMagicDefs();
             float severity = Mathf.Max(1f, parent.Severity);
 
+            // A drain TRANSFERS. Whatever is taken off the victim is handed to the caster, up to
+            // their own maximum - it is not destroyed, and it is not conjured either. Playtest
+            // found the caster's stamina unchanged after draining two victims, which was correct
+            // for two separate reasons: the transfer did not exist yet, AND both victims were
+            // classless, so they had no stamina bar and there was nothing to take.
+            Pawn caster = Caster;
+
             // --- Level 1 and up: stamina, or its vanilla stand-in ---------------------------
-            bool drainedStamina = TryDrain(pawn, staminaDef,
-                Props.staminaDrainPerInterval * severity);
+            float gotStamina = TryDrain(pawn, staminaDef, Props.staminaDrainPerInterval * severity);
 
             // Rest always drains: it is the vanilla reading of "physical fatigue", and it is
             // what makes this shout do something visible on a pawn with no magic class at all.
             TryDrain(pawn, NeedDefOf.Rest, Props.restDrainPerInterval * severity);
 
             // --- Level 2 and up: magicka, or mental fatigue ---------------------------------
+            float gotMana = 0f;
             if (severity >= Props.manaDrainMinSeverity)
             {
-                TryDrain(pawn, manaDef, Props.manaDrainPerInterval * severity);
+                gotMana = TryDrain(pawn, manaDef, Props.manaDrainPerInterval * severity);
                 TryDrain(pawn, NeedDefOf.Joy, Props.joyDrainPerInterval * severity);
+            }
+
+            // --- Hand the stolen vitality to the caster -------------------------------------
+            // Deliberately NOT Rest or Joy: those are the vanilla stand-ins for a victim with no
+            // magic class, and refilling the caster's sleep meter by shouting at people would be
+            // an exploit rather than a drain.
+            if (caster != null)
+            {
+                TryGive(caster, staminaDef, gotStamina * Props.casterNeedGainFraction);
+                TryGive(caster, manaDef, gotMana * Props.casterNeedGainFraction);
+                if (gotStamina > 0f || gotMana > 0f)
+                {
+                    DovahkiinMod.VerboseLog(string.Format(
+                        "Drain Vitality transferred stamina {0:F3}, mana {1:F3} to {2}",
+                        gotStamina * Props.casterNeedGainFraction,
+                        gotMana * Props.casterNeedGainFraction, caster.LabelShortCap));
+                }
             }
 
             // --- Health drain, and the life it gives back -----------------------------------
@@ -219,11 +291,6 @@ namespace Dovahkiin
                 HealCaster(amount * Props.casterHealFraction);
             }
 
-            if (drainedStamina)
-            {
-                DovahkiinMod.VerboseLog("Drain Vitality drained RWoM stamina from "
-                    + pawn.LabelShortCap);
-            }
         }
 
         /// <summary>

@@ -488,6 +488,10 @@
         <healthDrainPerInterval>0.8</healthDrainPerInterval>
         <maxHealthApplications>10</maxHealthApplications>
         <casterHealFraction>1.0</casterHealFraction>
+        <!-- A drain transfers: stamina and mana taken off the victim are handed to the caster,
+             1.0 meaning exactly what was lost. Only what is ACTUALLY taken moves - a classless
+             victim has no stamina bar, so nothing is drained and nothing is given. -->
+        <casterNeedGainFraction>1.0</casterNeedGainFraction>
         <healthDamageDef>Dovahkiin_SoulWither</healthDamageDef>
         <glowFleck>Dovahkiin_Fleck_DrainGlow</glowFleck>
         <glowScale>1.1</glowScale>
