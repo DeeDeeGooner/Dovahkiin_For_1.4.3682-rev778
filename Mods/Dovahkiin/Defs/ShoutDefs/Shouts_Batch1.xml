@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 4.4a - batch one of the remaining eight shouts.
+
+  Frost Breath, Whirlwind Sprint, Marked for Death. All three reuse machinery proven by the
+  Phase 2a slice: the travelling wave with a payload, the PawnFlyer, and hediff application.
+
+  Still outstanding after this: Slow Time, Become Ethereal, Storm Call, Soul Tear, Dragon Aspect.
+-->
+<Defs>
+
+  <!-- ============ Frost Breath - Fo Krah Diin ============ -->
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Fo</defName>
+    <label>Fo</label>
+    <word>Fo</word>
+    <meaning>Frost</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Krah</defName>
+    <label>Krah</label>
+    <word>Krah</word>
+    <meaning>Cold</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Diin</defName>
+    <label>Diin</label>
+    <word>Diin</word>
+    <meaning>Freeze</meaning>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_FrostBreath</defName>
+    <label>Frost Breath</label>
+    <description>Your breath is winter itself. What it touches slows, stiffens, and stops.</description>
+    <words>
+      <li>Dovahkiin_Word_Fo</li>
+      <li>Dovahkiin_Word_Krah</li>
+      <li>Dovahkiin_Word_Diin</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_FrostBreath_1</li>
+      <li>Dovahkiin_Ability_FrostBreath_2</li>
+      <li>Dovahkiin_Ability_FrostBreath_3</li>
+    </abilitiesByLevel>
+    <thuumCostByLevel><li>6</li><li>10</li><li>15</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>900</li><li>1800</li><li>2800</li></cooldownTicksByLevel>
+    <!-- SPEC.md 4.5 / 4.6: one of the three dragons use, and one of the two draugr may know. -->
+    <availableToDragons>true</availableToDragons>
+    <availableToUndead>true</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
+  <!-- ============ Whirlwind Sprint - Wuld Nah Kest ============ -->
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Wuld</defName>
+    <label>Wuld</label>
+    <word>Wuld</word>
+    <meaning>Whirlwind</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Nah</defName>
+    <label>Nah</label>
+    <word>Nah</word>
+    <meaning>Fury</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Kest</defName>
+    <label>Kest</label>
+    <word>Kest</word>
+    <meaning>Tempest</meaning>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_WhirlwindSprint</defName>
+    <label>Whirlwind Sprint</label>
+    <description>Become the wind for a moment, and cross ground no runner could.</description>
+    <words>
+      <li>Dovahkiin_Word_Wuld</li>
+      <li>Dovahkiin_Word_Nah</li>
+      <li>Dovahkiin_Word_Kest</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_WhirlwindSprint_1</li>
+      <li>Dovahkiin_Ability_WhirlwindSprint_2</li>
+      <li>Dovahkiin_Ability_WhirlwindSprint_3</li>
+    </abilitiesByLevel>
+    <thuumCostByLevel><li>3</li><li>5</li><li>8</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>500</li><li>900</li><li>1400</li></cooldownTicksByLevel>
+    <availableToDragons>false</availableToDragons>
+    <availableToUndead>false</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
+  <!-- ============ Marked for Death - Krii Lun Aus ============ -->
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Krii</defName>
+    <label>Krii</label>
+    <word>Krii</word>
+    <meaning>Kill</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Lun</defName>
+    <label>Lun</label>
+    <word>Lun</word>
+    <meaning>Leech</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Aus</defName>
+    <label>Aus</label>
+    <word>Aus</word>
+    <meaning>Suffer</meaning>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_MarkedForDeath</defName>
+    <label>Marked for Death</label>
+    <description>Speak a name, and the world begins to let go of it. Armour rots, wounds deepen, and nothing heals quite right again.</description>
+    <words>
+      <li>Dovahkiin_Word_Krii</li>
+      <li>Dovahkiin_Word_Lun</li>
+      <li>Dovahkiin_Word_Aus</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_MarkedForDeath_1</li>
+      <li>Dovahkiin_Ability_MarkedForDeath_2</li>
+      <li>Dovahkiin_Ability_MarkedForDeath_3</li>
+    </abilitiesByLevel>
+    <thuumCostByLevel><li>5</li><li>8</li><li>12</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>800</li><li>1400</li><li>2200</li></cooldownTicksByLevel>
+    <availableToDragons>false</availableToDragons>
+    <availableToUndead>false</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
+</Defs>

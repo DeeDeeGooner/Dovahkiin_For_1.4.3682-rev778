@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 5.2 / OD-9 - the Thu'um, the mod's own shout resource.
+
+  Pattern copied from RimWorld of Magic's TM_Mana (see COMPAT.md 5), which is a proven 1.4
+  need-behind-a-hediff: onlyIfCausedByHediff here, <causesNeed> on the hediff. That makes the
+  bar appear on the Dovahkiin and on nobody else, with no patching.
+
+  The 0-1 bar is scaled by Need_Thuum.MaxLevel, which grows +thuumPerSoul forever.
+-->
+<Defs>
+
+  <NeedDef>
+    <defName>Dovahkiin_Need_Thuum</defName>
+    <needClass>Dovahkiin.Need_Thuum</needClass>
+    <label>thu'um</label>
+    <description>The breath and the voice, gathered. Shouting spends it; rest restores it. Every dragon soul absorbed deepens the well permanently.</description>
+    <onlyIfCausedByHediff>true</onlyIfCausedByHediff>
+    <showOnNeedList>true</showOnNeedList>
+    <minIntelligence>Humanlike</minIntelligence>
+    <baseLevel>1.0</baseLevel>
+    <listPriority>1326</listPriority>
+    <major>true</major>
+    <freezeWhileSleeping>false</freezeWhileSleeping>
+    <showForCaravanMembers>true</showForCaravanMembers>
+  </NeedDef>
+
+</Defs>

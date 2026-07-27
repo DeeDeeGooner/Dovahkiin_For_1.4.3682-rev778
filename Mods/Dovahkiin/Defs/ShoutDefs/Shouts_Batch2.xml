@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 4.4a - batch two: the two self-buff shouts.
+
+  Slow Time and Become Ethereal. Neither travels, neither damages, neither takes a target - so
+  neither uses Thing_ShoutWave at all. Both put a hediff on the caster and let it do the work.
+
+  Still outstanding after this: Storm Call, Soul Tear, Dragon Aspect - the three with real risk.
+  Dragonrend is quest-locked and belongs to Phase 6, not here.
+-->
+<Defs>
+
+  <!-- ============ Slow Time - Tiid Klo Ul ============ -->
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Tiid</defName>
+    <label>Tiid</label>
+    <word>Tiid</word>
+    <meaning>Time</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Klo</defName>
+    <label>Klo</label>
+    <word>Klo</word>
+    <meaning>Sand</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Ul</defName>
+    <label>Ul</label>
+    <word>Ul</word>
+    <meaning>Eternity</meaning>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_SlowTime</defName>
+    <label>Slow Time</label>
+    <description>Time bends around the Thu'um. To everyone else you have become impossibly quick.</description>
+    <words>
+      <li>Dovahkiin_Word_Tiid</li>
+      <li>Dovahkiin_Word_Klo</li>
+      <li>Dovahkiin_Word_Ul</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_SlowTime_1</li>
+      <li>Dovahkiin_Ability_SlowTime_2</li>
+      <li>Dovahkiin_Ability_SlowTime_3</li>
+    </abilitiesByLevel>
+    <thuumCostByLevel><li>6</li><li>10</li><li>16</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>1200</li><li>2200</li><li>3200</li></cooldownTicksByLevel>
+    <!-- SPEC.md 4.5 / 4.6: dragons and draugr get only Force, Fire and Frost. Never this. -->
+    <availableToDragons>false</availableToDragons>
+    <availableToUndead>false</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
+  <!-- ============ Become Ethereal - Feim Zii Gron ============ -->
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Feim</defName>
+    <label>Feim</label>
+    <word>Feim</word>
+    <meaning>Fade</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Zii</defName>
+    <label>Zii</label>
+    <word>Zii</word>
+    <meaning>Spirit</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Gron</defName>
+    <label>Gron</label>
+    <word>Gron</word>
+    <meaning>Bind</meaning>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_BecomeEthereal</defName>
+    <label>Become Ethereal</label>
+    <description>Step briefly out of the world. Nothing can harm you, and you can harm nothing.</description>
+    <words>
+      <li>Dovahkiin_Word_Feim</li>
+      <li>Dovahkiin_Word_Zii</li>
+      <li>Dovahkiin_Word_Gron</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_BecomeEthereal_1</li>
+      <li>Dovahkiin_Ability_BecomeEthereal_2</li>
+      <li>Dovahkiin_Ability_BecomeEthereal_3</li>
+    </abilitiesByLevel>
+    <thuumCostByLevel><li>5</li><li>9</li><li>14</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>1500</li><li>2600</li><li>3800</li></cooldownTicksByLevel>
+    <availableToDragons>false</availableToDragons>
+    <availableToUndead>false</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
+</Defs>

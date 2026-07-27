@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  All user-facing text lives here. CLAUDE.md forbids hardcoded strings in source.
+  Keys are prefixed Dovahkiin_ so they can never collide with another mod's.
+-->
+<LanguageData>
+
+  <Dovahkiin_Setting_VerboseLogging>Verbose logging</Dovahkiin_Setting_VerboseLogging>
+  <Dovahkiin_Setting_VerboseLogging_Desc>Write extra Dovahkiin diagnostics to the log. Leave this off unless you are chasing a bug - it is noisy and costs performance.</Dovahkiin_Setting_VerboseLogging_Desc>
+
+  <!-- SPEC.md 3.1 - the title. Deliberately not a RoyalTitleDef. -->
+  <Dovahkiin_Title>Dovahkiin</Dovahkiin_Title>
+  <Dovahkiin_Title_WorldEatersBane>Dovahkiin, World-Eater's Bane</Dovahkiin_Title_WorldEatersBane>
+
+  <!-- SPEC.md 4 - the Voice hediff tooltip. -->
+  <Dovahkiin_TheVoice_Tip>Unspent dragon souls: {SOULS}</Dovahkiin_TheVoice_Tip>
+  <Dovahkiin_Attunement_Tip>Dragon souls absorbed: {SOULS}</Dovahkiin_Attunement_Tip>
+
+  <!-- SPEC.md 5.2 / OD-9 - the Thu'um resource. -->
+  <Dovahkiin_Need_Thuum_Tip>Thu'um: {CUR} / {MAX}\n\nSpent by shouting, restored by rest. Each dragon soul absorbed deepens the well permanently.</Dovahkiin_Need_Thuum_Tip>
+
+  <!-- SPEC.md 4.1, 4.2 - why a shout cannot be used right now. -->
+  <Dovahkiin_Shout_Reason_NoVoice>This pawn does not have the Voice.</Dovahkiin_Shout_Reason_NoVoice>
+  <Dovahkiin_Shout_Reason_Recovering>The Thu'um is still gathering.</Dovahkiin_Shout_Reason_Recovering>
+  <Dovahkiin_Shout_Reason_NoThuum>Not enough thu'um ({COST} needed).</Dovahkiin_Shout_Reason_NoThuum>
+  <Dovahkiin_Shout_Reason_NoSouls>Not enough dragon souls ({COST} needed).</Dovahkiin_Shout_Reason_NoSouls>
+  <Dovahkiin_Shout_Reason_NeedWord>The word for level {LEVEL} has not been found yet.</Dovahkiin_Shout_Reason_NeedWord>
+  <Dovahkiin_Shout_Reason_Maxed>This shout is already fully mastered.</Dovahkiin_Shout_Reason_Maxed>
+
+</LanguageData>

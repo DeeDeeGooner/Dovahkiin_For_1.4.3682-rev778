@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 4.4a - Unrelenting Force throws targets, it does not teleport them.
+
+  PawnFlyer is the vanilla mechanism behind skip and jump: the pawn is lifted, arcs through the
+  air over real time, and lands. PawnFlyerBase lives in CORE (Data\Core\Defs\ThingDefs_Misc\
+  Ethereal_Various.xml) - only the PawnJumper subclass is DLC-gated - so this works on the
+  baseline environment with no DLC at all.
+
+  Fast and flat compared to a jump: this is being hit by a wall of sound, not leaping.
+-->
+<Defs>
+
+  <ThingDef ParentName="PawnFlyerBase">
+    <defName>Dovahkiin_ShoutFlyer</defName>
+    <label>thrown</label>
+    <!--
+      thingClass MUST be PawnJumper, not the base PawnFlyer.
+
+      PawnFlyer does not override DrawAt or DrawPos - only PawnJumper does. A raw PawnFlyer
+      therefore falls through to Thing.DrawAt, tries to draw its own graphic, finds none
+      (PawnFlyerBase has no graphicData), and renders RimWorld's missing-texture marker.
+      That is precisely the "red crossed square" seen in playtest while the pawn was in flight.
+      PawnJumper draws the carried pawn and its shadow correctly.
+
+      The PawnJumper *ThingDef* is DLC-gated, but the CLASS lives in Assembly-CSharp and is
+      always available - so this works on the baseline environment with no DLC.
+    -->
+    <thingClass>PawnJumper</thingClass>
+    <pawnFlyer>
+      <!--
+        Speed is matched to the shout wave's propagation (Thing_ShoutWave, 10 cells/second) so
+        the victim travels with the blast rather than ahead of or behind it.
+        Playtest 1 used speed 22, which crossed seven tiles in a third of a second and read as
+        a teleport.
+      -->
+      <flightDurationMin>0.45</flightDurationMin>
+      <flightSpeed>10</flightSpeed>
+    </pawnFlyer>
+  </ThingDef>
+
+  <!-- Carrier for the travelling shout cone. Ethereal: never drawn, never selectable,
+       never blocks anything. It ticks only while a shout is in flight, then vanishes. -->
+  <ThingDef ParentName="EtherealThingBase">
+    <defName>Dovahkiin_ShoutWave</defName>
+    <label>shout</label>
+    <thingClass>Dovahkiin.Thing_ShoutWave</thingClass>
+    <tickerType>Normal</tickerType>
+    <useHitPoints>false</useHitPoints>
+    <drawerType>None</drawerType>
+    <altitudeLayer>Skyfaller</altitudeLayer>
+  </ThingDef>
+
+</Defs>

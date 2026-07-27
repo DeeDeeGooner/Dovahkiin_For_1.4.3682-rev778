@@ -1,0 +1,419 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 4.4a - abilities for batch three: Drain Vitality, Dismay, Cyclone.
+
+  All three are ordinary targeted cone shouts inheriting Dovahkiin_ShoutBase, so none of them
+  hits the no-target trap that broke Clear Skies and batch two. They reuse the travelling wave
+  and differ only in data.
+
+  Icons are placeholders and are all ROYALTY, never Biotech. The baseline environment is
+  Core + Royalty + Ideology with Biotech optional at runtime, and a Biotech icon path shows the
+  missing-texture square on a legal baseline install. See ART_TODO.md.
+-->
+<Defs>
+
+  <!-- ================= Drain Vitality ================= -->
+  <!--
+    No direct damage at all. The entire effect is the Dovahkiin_VitalityDrained hediff, whose
+    severity IS the shout level, and HediffComp_DrainNeeds reads that severity to decide how
+    much of the victim to take:
+      1  stamina (RimWorld of Magic, if present) + Rest
+      2  adds magicka (if present) + Joy
+      3  adds health, capped at 12 applications
+    The magic mod is recommended, never required. See the hediff def and COMPAT.md section 5.
+  -->
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_DrainVitality_1</defName>
+    <label>gaan</label>
+    <description>Stamina. The strength goes out of their limbs.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_DrainVitality</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>12</range>
+      <warmupTime>1.0</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_DrainVitality</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>45</coneAngle>
+        <range>12</range>
+        <damageAmount>0</damageAmount>
+        <appliedHediff>Dovahkiin_VitalityDrained</appliedHediff>
+        <appliedHediffSeverity>1</appliedHediffSeverity>
+        <fleckDef>Dovahkiin_Fleck_DrainWave</fleckDef>
+        <tint>(0.38, 0.13, 0.62)</tint>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_DrainVitality_2</defName>
+    <label>gaan lah</label>
+    <description>Stamina, Magicka. Strength and power both begin to run out of them.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_DrainVitality</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>15</range>
+      <warmupTime>1.2</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_DrainVitality</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>55</coneAngle>
+        <range>15</range>
+        <damageAmount>0</damageAmount>
+        <appliedHediff>Dovahkiin_VitalityDrained</appliedHediff>
+        <appliedHediffSeverity>2</appliedHediffSeverity>
+        <fleckDef>Dovahkiin_Fleck_DrainWave</fleckDef>
+        <tint>(0.38, 0.13, 0.62)</tint>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_DrainVitality_3</defName>
+    <label>gaan lah haas</label>
+    <description>Stamina, Magicka, Health. Everything that keeps them standing is drawn out at once.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_DrainVitality</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>18</range>
+      <warmupTime>1.4</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_DrainVitality</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>65</coneAngle>
+        <range>18</range>
+        <damageAmount>0</damageAmount>
+        <appliedHediff>Dovahkiin_VitalityDrained</appliedHediff>
+        <appliedHediffSeverity>3</appliedHediffSeverity>
+        <fleckDef>Dovahkiin_Fleck_DrainWave</fleckDef>
+        <tint>(0.38, 0.13, 0.62)</tint>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <!-- ================= Dismay ================= -->
+  <!--
+    The fear is a real vanilla PanicFlee mental state applied by the wave as a CONTROL effect,
+    before any damage. RimWorld of Magic's own TM_FearWave uses its private TM_PanicFlee; this
+    uses vanilla's, so Dismay works identically with the magic mod absent.
+
+    mentalStateChance rises steeply with words: a single word rattles some of them, three words
+    rout everything that hears it.
+  -->
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_Dismay_1</defName>
+    <label>faas</label>
+    <description>Fear. Some of those who hear it lose their nerve.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_Dismay</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>12</range>
+      <warmupTime>0.9</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_Dismay</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>40</coneAngle>
+        <range>12</range>
+        <damageAmount>0</damageAmount>
+        <appliedHediff>Dovahkiin_Dismayed</appliedHediff>
+        <appliedHediffSeverity>1</appliedHediffSeverity>
+        <mentalState>PanicFlee</mentalState>
+        <mentalStateChance>0.35</mentalStateChance>
+        <fleckDef>Dovahkiin_Fleck_DismayWave</fleckDef>
+        <tint>(0.85, 0.15, 0.15)</tint>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_Dismay_2</defName>
+    <label>faas ru</label>
+    <description>Fear, Run. Most of them break and run.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_Dismay</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>16</range>
+      <warmupTime>1.1</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_Dismay</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>50</coneAngle>
+        <range>16</range>
+        <damageAmount>0</damageAmount>
+        <appliedHediff>Dovahkiin_Dismayed</appliedHediff>
+        <appliedHediffSeverity>2</appliedHediffSeverity>
+        <mentalState>PanicFlee</mentalState>
+        <mentalStateChance>0.60</mentalStateChance>
+        <fleckDef>Dovahkiin_Fleck_DismayWave</fleckDef>
+        <tint>(0.85, 0.15, 0.15)</tint>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_Dismay_3</defName>
+    <label>faas ru maar</label>
+    <description>Fear, Run, Terror. Nothing that hears it stands its ground.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_Dismay</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>20</range>
+      <warmupTime>1.3</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_Dismay</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>60</coneAngle>
+        <range>20</range>
+        <damageAmount>0</damageAmount>
+        <appliedHediff>Dovahkiin_Dismayed</appliedHediff>
+        <appliedHediffSeverity>3</appliedHediffSeverity>
+        <mentalState>PanicFlee</mentalState>
+        <mentalStateChance>0.90</mentalStateChance>
+        <fleckDef>Dovahkiin_Fleck_DismayWave</fleckDef>
+        <tint>(0.85, 0.15, 0.15)</tint>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <!-- ================= Cyclone ================= -->
+  <!--
+    Asked for: very slight blunt damage, less even than Unrelenting Force, traded against a much
+    longer stun, and a wave that is a turning swirl rather than a cone, in a grey so faint it is
+    barely visible.
+
+    Damage:  1 / 3 / 5 total, against Unrelenting Force's 3 / 7 / 12. Spread by the shared
+             core-over-extremities rule so a few bruises land where a wind would throw someone,
+             instead of crushing toes.
+    Stun:    Unrelenting Force plus half again. It stuns 0 / 180 / 300, so this is 270 / 450 at
+             levels 2 and 3. Level 1 gets 150 as a deliberate choice rather than zero: a level-1
+             Cyclone with no stun and 1 damage would do nothing at all, and the stun is the
+             entire point of the shout.
+    Shape:   vortexRadius makes the wave a compact rotating COLUMN that travels along the line
+             to the target - a tornado crossing the ground. The first build used a spiral arm
+             sweeping outward, which playtest correctly called nothing like the shout: a vortex
+             is LOCAL and moves, where a cone or spiral is a front that expands.
+    Parts:   damageInstances halved again on the second round, to 1 / 2 / 2. The total damage is
+             unchanged; it just lands on fewer body parts.
+    Opacity: alphaScale 0.45, because colour alone cannot make a front fainter - the wave's
+             alpha is computed per band, so it needs an explicit multiplier.
+  -->
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_Cyclone_1</defName>
+    <label>ven</label>
+    <description>Wind. A turning gust that knocks the sense out of what it catches.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_Cyclone</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>10</range>
+      <warmupTime>0.9</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_Cyclone</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>0</coneAngle>
+        <vortexRadius>1.2</vortexRadius>
+        <vortexSpinPerTick>26</vortexSpinPerTick>
+        <alphaScale>0.45</alphaScale>
+        <range>10</range>
+        <damageAmount>1</damageAmount>
+        <damageInstances>1</damageInstances>
+        <spreadDamage>true</spreadDamage>
+        <damageDef>Blunt</damageDef>
+        <stunTicks>150</stunTicks>
+        <waveCellsPerSecond>12</waveCellsPerSecond>
+        <fleckDef>Dovahkiin_Fleck_CycloneWave</fleckDef>
+        <tint>(0.70, 0.72, 0.76)</tint>
+        <fleckScale>1.7</fleckScale>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_Cyclone_2</defName>
+    <label>ven gaar</label>
+    <description>Wind, Unleash. The whirlwind holds them where they stand.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_Cyclone</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>14</range>
+      <warmupTime>1.1</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_Cyclone</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>0</coneAngle>
+        <vortexRadius>1.5</vortexRadius>
+        <vortexSpinPerTick>28</vortexSpinPerTick>
+        <alphaScale>0.45</alphaScale>
+        <range>14</range>
+        <damageAmount>3</damageAmount>
+        <damageInstances>2</damageInstances>
+        <spreadDamage>true</spreadDamage>
+        <damageDef>Blunt</damageDef>
+        <stunTicks>270</stunTicks>
+        <waveCellsPerSecond>12</waveCellsPerSecond>
+        <fleckDef>Dovahkiin_Fleck_CycloneWave</fleckDef>
+        <tint>(0.70, 0.72, 0.76)</tint>
+        <fleckScale>1.7</fleckScale>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_Cyclone_3</defName>
+    <label>ven gaar nos</label>
+    <description>Wind, Unleash, Strike. A whirlwind that takes hold of a whole line and does not let go.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_Cyclone</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>18</range>
+      <warmupTime>1.3</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_Cyclone</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>0</coneAngle>
+        <vortexRadius>1.8</vortexRadius>
+        <vortexSpinPerTick>30</vortexSpinPerTick>
+        <alphaScale>0.45</alphaScale>
+        <range>18</range>
+        <damageAmount>5</damageAmount>
+        <damageInstances>2</damageInstances>
+        <spreadDamage>true</spreadDamage>
+        <damageDef>Blunt</damageDef>
+        <stunTicks>450</stunTicks>
+        <waveCellsPerSecond>12</waveCellsPerSecond>
+        <fleckDef>Dovahkiin_Fleck_CycloneWave</fleckDef>
+        <tint>(0.70, 0.72, 0.76)</tint>
+        <fleckScale>1.7</fleckScale>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+</Defs>

@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 3.1 - four adulthood backstories, one per awakening cause.
+
+  Two things keep these off ordinary generated pawns:
+    - shuffleable = false
+    - a spawnCategory ("Dovahkiin_NeverSpawn") that no PawnKindDef or FactionDef references,
+      so the shuffled-backstory lists are never queried for it.
+  An EMPTY spawnCategories list is deliberately avoided - vanilla always has at least one entry
+  and an empty list risks a config error.
+
+  They are assigned only by DovahkiinUtility, which sets pawn.story.Adulthood directly.
+  The pawn always keeps its original childhood.
+
+  NOTE on skillGains: BackstoryDef.skillGains is a Dictionary<SkillDef,int> in 1.4, so it needs
+  the <li><key/><value/></li> form. The <SkillName>n</SkillName> shorthand works for
+  statOffsets (a List<StatModifier>) but NOT here.
+-->
+<Defs>
+
+  <BackstoryDef>
+    <defName>Dovahkiin_Backstory_AwakenedBySlaughter</defName>
+    <title>dragonslayer</title>
+    <titleShort>slayer</titleShort>
+    <slot>Adulthood</slot>
+    <shuffleable>false</shuffleable>
+    <spawnCategories>
+      <li>Dovahkiin_NeverSpawn</li>
+    </spawnCategories>
+    <baseDesc>The dragon fell, and something came out of it - not smoke, not blood. It went into [PAWN_nameDef], and the sky said a name [PAWN_pronoun] had never heard and somehow already knew.\n\n[PAWN_pronoun] has not been ordinary since, and never will be again.</baseDesc>
+    <skillGains>
+      <li><key>Melee</key><value>3</value></li>
+      <li><key>Shooting</key><value>2</value></li>
+      <li><key>Social</key><value>2</value></li>
+    </skillGains>
+  </BackstoryDef>
+
+  <BackstoryDef>
+    <defName>Dovahkiin_Backstory_DragonbloodHeir</defName>
+    <title>dragonblood heir</title>
+    <titleShort>heir</titleShort>
+    <slot>Adulthood</slot>
+    <shuffleable>false</shuffleable>
+    <spawnCategories>
+      <li>Dovahkiin_NeverSpawn</li>
+    </spawnCategories>
+    <baseDesc>[PAWN_nameDef] grew up being told the blood was in [PAWN_objective], and grew up not believing it. Children of great people usually don't.\n\nThen a dragon died within sight, and [PAWN_pronoun] was the one who felt it.</baseDesc>
+    <skillGains>
+      <li><key>Social</key><value>3</value></li>
+      <li><key>Intellectual</key><value>2</value></li>
+      <li><key>Melee</key><value>2</value></li>
+    </skillGains>
+  </BackstoryDef>
+
+  <BackstoryDef>
+    <defName>Dovahkiin_Backstory_TheStranger</defName>
+    <title>wandering Dragonborn</title>
+    <titleShort>wanderer</titleShort>
+    <slot>Adulthood</slot>
+    <shuffleable>false</shuffleable>
+    <spawnCategories>
+      <li>Dovahkiin_NeverSpawn</li>
+    </spawnCategories>
+    <baseDesc>[PAWN_nameDef] arrived hunted, half-dead and unwilling to explain why. The explanation came later, and it was worse than anyone guessed.\n\n[PAWN_pronoun] has been walking a long time, and something has been walking after [PAWN_objective].</baseDesc>
+    <skillGains>
+      <li><key>Melee</key><value>3</value></li>
+      <li><key>Social</key><value>2</value></li>
+      <li><key>Medicine</key><value>1</value></li>
+    </skillGains>
+  </BackstoryDef>
+
+  <BackstoryDef>
+    <defName>Dovahkiin_Backstory_Prophecy</defName>
+    <title>condemned</title>
+    <titleShort>condemned</titleShort>
+    <slot>Adulthood</slot>
+    <shuffleable>false</shuffleable>
+    <spawnCategories>
+      <li>Dovahkiin_NeverSpawn</li>
+    </spawnCategories>
+    <baseDesc>They had [PAWN_objective] on the block with the axe already up. Then the sky went black, and the thing that came out of it was not interested in the execution.\n\n[PAWN_nameDef] walked out of that settlement with nothing but the clothes [PAWN_pronoun] was condemned in.</baseDesc>
+    <skillGains>
+      <li><key>Melee</key><value>4</value></li>
+      <li><key>Construction</key><value>1</value></li>
+      <li><key>Plants</key><value>1</value></li>
+    </skillGains>
+  </BackstoryDef>
+
+</Defs>

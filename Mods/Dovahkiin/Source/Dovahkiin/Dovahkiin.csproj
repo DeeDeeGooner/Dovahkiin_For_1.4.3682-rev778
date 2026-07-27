@@ -1,0 +1,70 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Machine-specific RimWorld location. See RimWorldPath.props. -->
+  <Import Project="RimWorldPath.props" Condition="Exists('RimWorldPath.props')" />
+
+  <PropertyGroup>
+    <!-- RimWorld 1.4 mod assemblies target .NET Framework 4.7.2.
+         Verified against a shipping 1.4 mod on disk - see COMPAT.md section 1. -->
+    <TargetFramework>net472</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <AssemblyName>Dovahkiin</AssemblyName>
+    <RootNamespace>Dovahkiin</RootNamespace>
+
+    <!-- Output straight into the mod's Assemblies folder, flat, no extra subfolders. -->
+    <OutputPath>..\..\Assemblies\</OutputPath>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+
+    <!-- Never copy game or library DLLs next to ours. RimWorld loads them itself,
+         and duplicates cause hard-to-diagnose load errors. -->
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <EnableDefaultItems>true</EnableDefaultItems>
+    <DebugType>none</DebugType>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Version>0.1.0</Version>
+    <Deterministic>true</Deterministic>
+    <NoWarn>$(NoWarn);MSB3277</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Required: .NET SDK cannot build net472 without these unless Visual Studio's
+         targeting packs are installed. This machine does not have them. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The game itself. -->
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(RimWorldDir)\RimWorldWin64_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(RimWorldDir)\RimWorldWin64_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(RimWorldDir)\RimWorldWin64_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <!-- TextAnchor and friends live here - needed for any custom GUI drawing. -->
+    <Reference Include="UnityEngine.TextRenderingModule">
+      <HintPath>$(RimWorldDir)\RimWorldWin64_Data\Managed\UnityEngine.TextRenderingModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+
+    <!-- The only two third-party hard references CLAUDE.md permits. -->
+    <Reference Include="0Harmony">
+      <HintPath>$(RimWorldDir)\Mods\Harmony Library\1.4\Assemblies\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="HugsLib">
+      <HintPath>$(RimWorldDir)\Mods\HugsLib\v1.4\Assemblies\HugsLib.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+</Project>

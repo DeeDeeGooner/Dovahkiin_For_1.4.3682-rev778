@@ -1,0 +1,49 @@
+# =============================================================================
+# Dovahkiin project - repository root
+# =============================================================================
+# This repo is rooted at RimWorldFolder because the project lives in TWO sibling
+# folders that a repo inside either one could not reach:
+#
+#   DovahkiinClaudePluged\   the design documents (SPEC, ROADMAP, COMPAT, ...)
+#   Mods\Dovahkiin\          the mod itself
+#
+# Everything else under this root is the RimWorld installation and 40 other
+# mods, none of which belongs in version control.
+#
+# The pattern below is deny-by-default. Order matters, and git will not let you
+# re-include a file whose PARENT DIRECTORY is excluded - which is why Mods\ is
+# re-included first and only then narrowed to Mods\Dovahkiin\.
+# =============================================================================
+
+# 1. Ignore everything at the root.
+/*
+
+# 2. Allow this file back.
+!/.gitignore
+
+# 3. Allow the design documents.
+!/DovahkiinClaudePluged/
+
+# 4. Allow Mods\ as a directory, but nothing inside it...
+!/Mods/
+/Mods/*
+
+# 5. ...except our own mod.
+!/Mods/Dovahkiin/
+
+# -----------------------------------------------------------------------------
+# Mods\Dovahkiin\.gitignore adds the mod-specific rules on top of this:
+# build intermediates, the machine-specific RimWorldPath.props, and game DLLs.
+# Our own Assemblies\Dovahkiin.dll IS committed deliberately - it is what makes
+# the repo directly usable as a mod without a build step.
+# -----------------------------------------------------------------------------
+
+# Claude Code's per-machine settings. ".local" files are machine-specific by convention -
+# this one holds an allowlist full of absolute paths from one PC and would only ever cause
+# noise or conflicts on another. The shared CLAUDE.md IS committed; this is not.
+**/.claude/settings.local.json
+
+# OS noise, anywhere.
+Thumbs.db
+desktop.ini
+.DS_Store

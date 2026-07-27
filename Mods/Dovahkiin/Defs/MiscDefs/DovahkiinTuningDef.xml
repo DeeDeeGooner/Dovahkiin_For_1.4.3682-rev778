@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The single tuning def. Every balance number in the mod lives here, per CLAUDE.md.
+  Edit these values and restart RimWorld - no rebuild needed.
+  Section references point at SPEC.md.
+-->
+<Defs>
+
+  <Dovahkiin.DovahkiinTuningDef>
+    <defName>Dovahkiin_Tuning</defName>
+
+    <!-- Identity - SPEC.md 3.3, 5.4, OD-1 -->
+    <heirAwakenChance>0.02</heirAwakenChance>
+    <slotReopenDelayDays>8</slotReopenDelayDays>
+    <opinionBonusIsDovahkiin>12</opinionBonusIsDovahkiin>
+    <opinionBonusWitnessedAbsorption>6</opinionBonusWitnessedAbsorption>
+
+    <!-- The Voice - SPEC.md 4.1, 5.2, OD-9 -->
+    <thuumBaseMax>10</thuumBaseMax>
+    <thuumPerSoul>2</thuumPerSoul>
+    <maxWordLevel>3</maxWordLevel>
+    <soulCostPerWordLevel>1</soulCostPerWordLevel>
+
+    <!-- Thu'um economy - SPEC.md 4.2, 5.2. Retune these first if shouts feel wrong. -->
+    <thuumRegenPerDay>12</thuumRegenPerDay>
+    <voiceStrainPerCast>0.34</voiceStrainPerCast>
+    <voiceStrainCooldownFactor>0.6</voiceStrainCooldownFactor>
+    <shoutWitnessRadius>30</shoutWitnessRadius>
+
+    <!-- Slow Time - SPEC.md 4.4a. Attack cooldown multiplier by level; below 1 is faster.
+         The MOVEMENT half of this shout is not here - it is a MoveSpeed offset on the
+         Dovahkiin_SlowTime hediff stages, because that half does have a vanilla stat.
+         This half does not: RangedCooldownFactor is Biotech-only and there is no pawn-side
+         melee cooldown stat at all, so it is applied by a Harmony postfix that reads this. -->
+    <slowTimeCooldownFactorByLevel><li>0.75</li><li>0.55</li><li>0.40</li></slowTimeCooldownFactorByLevel>
+
+    <!-- Storm Call - SPEC.md 4.4e. Hostile AND outdoors only. -->
+    <stormCallStrikesByLevel><li>3</li><li>6</li><li>12</li></stormCallStrikesByLevel>
+    <stormCallRadius>25</stormCallRadius>
+
+    <!-- Soul Tear / dead puppet - SPEC.md 4.4f. Level 1 is damage only. -->
+    <soulTearPuppetChanceByLevel><li>0</li><li>0.25</li><li>0.45</li></soulTearPuppetChanceByLevel>
+    <soulTearPuppetHoursByLevel><li>0</li><li>6</li><li>12</li></soulTearPuppetHoursByLevel>
+
+    <!-- Dragon shouts - SPEC.md 4.6. Same assets, bigger numbers.
+         Each dragon kind knows exactly ONE of Fire / Frost / Unrelenting Force. -->
+    <dragonShoutRadiusFactor>2.2</dragonShoutRadiusFactor>
+    <dragonShoutRangeFactor>2.0</dragonShoutRangeFactor>
+    <dragonShoutIntensityFactor>2.5</dragonShoutIntensityFactor>
+
+    <!-- Draugr shout ladder - SPEC.md 4.5. Rolled once at generation, then stored.
+         Pool is Unrelenting Force + Frost Breath only, so 2 is the ceiling.
+         Common draugr are never rolled at all. -->
+    <draugrWightOneShoutChance>0.20</draugrWightOneShoutChance>
+    <draugrOverlordOneShoutChance>0.90</draugrOverlordOneShoutChance>
+    <draugrOverlordTwoShoutChance>0.15</draugrOverlordTwoShoutChance>
+    <draugrDeathlordOneShoutChance>1.00</draugrDeathlordOneShoutChance>
+    <draugrDeathlordTwoShoutChance>0.50</draugrDeathlordTwoShoutChance>
+    <undeadMaxShoutsKnown>2</undeadMaxShoutsKnown>
+
+    <!-- Souls - SPEC.md 5.1, 5.3 -->
+    <soulAbsorptionRadius>40</soulAbsorptionRadius>
+    <akatoshDamageBase>0.05</akatoshDamageBase>
+    <akatoshDamagePerSoul>0.03</akatoshDamagePerSoul>
+    <akatoshDamageCap>0.40</akatoshDamageCap>
+    <akatoshMitigationBase>0.05</akatoshMitigationBase>
+    <akatoshMitigationPerSoul>0.02</akatoshMitigationPerSoul>
+    <akatoshMitigationCap>0.30</akatoshMitigationCap>
+  </Dovahkiin.DovahkiinTuningDef>
+
+</Defs>

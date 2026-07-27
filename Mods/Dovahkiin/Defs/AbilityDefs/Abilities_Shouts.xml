@@ -1,0 +1,352 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 4.3, 4.4a - one AbilityDef per shout level.
+
+  Vanilla AbilityDef throughout. No VEF, no JecsTools (RISKS.md section 2).
+
+  Every shout inherits ShoutBase, which supplies:
+    - CompProperties_AbilityRequiresCapacity/Talking. This is vanilla, and it is exactly
+      SPEC.md 4.3's "a pawn with a destroyed jaw or in a coma cannot shout, and the UI must say
+      why" - RimWorld greys out the gizmo and states the reason for free.
+    - cooldownTicksRange 0, because the cooldown is SHARED across all shouts and owned by
+      Hediff_TheVoice (SPEC.md 4.2). A per-ability cooldown would fight it.
+
+  Icons are vanilla placeholders - logged in ART_TODO.md.
+-->
+<Defs>
+
+  <AbilityDef Name="Dovahkiin_ShoutBase" Abstract="True">
+    <cooldownTicksRange>0</cooldownTicksRange>
+    <hostile>true</hostile>
+    <targetRequired>true</targetRequired>
+    <showWhenDrafted>true</showWhenDrafted>
+    <displayGizmoWhileUndrafted>true</displayGizmoWhileUndrafted>
+    <disableGizmoWhileUndrafted>false</disableGizmoWhileUndrafted>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>8</range>
+      <warmupTime>0.9</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+  </AbilityDef>
+
+  <!-- ================= Unrelenting Force ================= -->
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_UnrelentingForce_1</defName>
+    <label>fus</label>
+    <description>Force. A single target is staggered and loses what it was doing.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_UnrelentingForce</iconPath>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_UnrelentingForce</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutKnockback">
+        <coneAngle>0</coneAngle>
+        <range>8</range>
+        <damageAmount>3</damageAmount>
+        <damageInstances>2</damageInstances>
+        <spreadDamage>true</spreadDamage>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_UnrelentingForce_2</defName>
+    <label>fus ro</label>
+    <description>Force, Balance. A short cone of force hurls everything in front of you backwards.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_UnrelentingForce</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>10</range>
+      <warmupTime>1.1</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_UnrelentingForce</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutKnockback">
+        <coneAngle>50</coneAngle>
+        <range>10</range>
+        <knockbackCells>4</knockbackCells>
+        <damageAmount>7</damageAmount>
+        <damageInstances>3</damageInstances>
+        <spreadDamage>true</spreadDamage>
+        <!-- 180 ticks = 3s. Was 120; playtest judged the shout weak for its Thu'um cost. -->
+        <stunTicks>180</stunTicks>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_UnrelentingForce_3</defName>
+    <label>fus ro dah</label>
+    <description>Force, Balance, Push. A long cone of raw force. Everything caught in it is thrown back and briefly stunned.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_UnrelentingForce</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>14</range>
+      <warmupTime>1.3</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_UnrelentingForce</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutKnockback">
+        <coneAngle>60</coneAngle>
+        <range>14</range>
+        <knockbackCells>7</knockbackCells>
+        <damageAmount>12</damageAmount>
+        <damageInstances>4</damageInstances>
+        <spreadDamage>true</spreadDamage>
+        <!-- 300 ticks = 5s. Raised twice on playtest feedback. -->
+        <stunTicks>300</stunTicks>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <!-- ================= Fire Breath ================= -->
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_FireBreath_1</defName>
+    <label>yol</label>
+    <description>Fire. A short cone of flame.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_FireBreath</iconPath>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_FireBreath</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>40</coneAngle>
+        <range>7</range>
+        <damageAmount>16</damageAmount>
+        <damageInstances>6</damageInstances>
+        <reburnFraction>0.25</reburnFraction>
+        <damageDef>Flame</damageDef>
+        <fleckDef>Dovahkiin_Fleck_FireWave</fleckDef>
+        <tint>(1.0, 0.55, 0.15)</tint>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_FireBreath_2</defName>
+    <label>yol toor</label>
+    <description>Fire, Inferno. A longer cone of flame that sets its victims alight.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_FireBreath</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>10</range>
+      <warmupTime>1.1</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_FireBreath</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>45</coneAngle>
+        <range>10</range>
+        <damageAmount>30</damageAmount>
+        <damageInstances>9</damageInstances>
+        <reburnFraction>0.25</reburnFraction>
+        <damageDef>Flame</damageDef>
+        <ignitesPawns>true</ignitesPawns>
+        <fleckDef>Dovahkiin_Fleck_FireWave</fleckDef>
+        <tint>(1.0, 0.55, 0.15)</tint>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_FireBreath_3</defName>
+    <label>yol toor shul</label>
+    <description>Fire, Inferno, Sun. A wide, sustained torrent of flame that sets the ground itself burning.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_FireBreath</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>13</range>
+      <warmupTime>1.4</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_FireBreath</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>55</coneAngle>
+        <range>13</range>
+        <damageAmount>46</damageAmount>
+        <damageInstances>12</damageInstances>
+        <reburnFraction>0.25</reburnFraction>
+        <damageDef>Flame</damageDef>
+        <ignitesPawns>true</ignitesPawns>
+        <ignitesGround>true</ignitesGround>
+        <fleckDef>Dovahkiin_Fleck_FireWave</fleckDef>
+        <tint>(1.0, 0.55, 0.15)</tint>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <!-- ================= Clear Skies ================= -->
+  <!--
+    No target, no hostility, no line of sight.
+
+    FIXED 2026-07-26: this def used to say "range -1 like vanilla SpeechBase", with no
+    targetParams. That was wrong and the shout never fired once - the button was there, it
+    could be clicked, and nothing whatsoever happened. No error, no exception, no log line.
+
+    A no-target ability MUST declare <canTargetSelf>true</canTargetSelf> and a POSITIVE range.
+    Without canTargetSelf, RimWorld auto-selects the caster as the target, the verb rejects it
+    as invalid, and the cast silently never begins. Verified against the only three vanilla
+    abilities that self-cast this way: SmokepopMech, FirefoampopMech and Neuroquake.
+
+    SpeechBase really does use range -1 and no targetParams - but it is NOT a normal ability.
+    It runs through ritual machinery (gizmoClass Command_AbilitySpeech, Precept_Ritual) that a
+    plain self-cast has no access to. Copying its shape without its machinery gives a dead
+    button, which is exactly what happened here and again in batch two.
+  -->
+
+  <AbilityDef Name="Dovahkiin_ClearSkiesBase" Abstract="True">
+    <cooldownTicksRange>0</cooldownTicksRange>
+    <hostile>false</hostile>
+    <targetRequired>false</targetRequired>
+    <showWhenDrafted>true</showWhenDrafted>
+    <displayGizmoWhileUndrafted>true</displayGizmoWhileUndrafted>
+    <disableGizmoWhileUndrafted>false</disableGizmoWhileUndrafted>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_ClearSkies</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>3.9</range>
+      <warmupTime>1.2</warmupTime>
+      <drawAimPie>false</drawAimPie>
+      <requireLineOfSight>false</requireLineOfSight>
+      <targetParams>
+        <canTargetSelf>true</canTargetSelf>
+      </targetParams>
+    </verbProperties>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ClearSkiesBase">
+    <defName>Dovahkiin_Ability_ClearSkies_1</defName>
+    <label>lok</label>
+    <description>Sky. The weather clears for a short while.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_ClearSkies</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutClearSkies">
+        <ringFleck>Dovahkiin_Fleck_SkyRing</ringFleck>
+        <!-- Halved on playtest feedback: "make the waves 50% more transparent". -->
+        <ringAlpha>0.5</ringAlpha>
+        <durationTicks>20000</durationTicks>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ClearSkiesBase">
+    <defName>Dovahkiin_Ability_ClearSkies_2</defName>
+    <label>lok vah</label>
+    <description>Sky, Spring. The weather clears for longer.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_ClearSkies</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutClearSkies">
+        <ringFleck>Dovahkiin_Fleck_SkyRing</ringFleck>
+        <!-- Halved on playtest feedback: "make the waves 50% more transparent". -->
+        <ringAlpha>0.5</ringAlpha>
+        <durationTicks>45000</durationTicks>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ClearSkiesBase">
+    <defName>Dovahkiin_Ability_ClearSkies_3</defName>
+    <label>lok vah koor</label>
+    <description>Sky, Spring, Summer. The storm withdraws, and stays withdrawn.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_ClearSkies</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutClearSkies">
+        <ringFleck>Dovahkiin_Fleck_SkyRing</ringFleck>
+        <!-- Halved on playtest feedback: "make the waves 50% more transparent". -->
+        <ringAlpha>0.5</ringAlpha>
+        <durationTicks>90000</durationTicks>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+</Defs>
+
+
+

@@ -1,0 +1,18 @@
+# Build intermediates
+Source/**/obj/
+Source/**/bin/
+
+# Machine-specific game path — each machine sets its own
+Source/Dovahkiin/RimWorldPath.props
+
+# Never commit game or library DLLs.
+# Our own Assemblies/Dovahkiin.dll IS committed on purpose: it is what makes the repo
+# usable as a mod straight from a clone, with no build step.
+Assemblies/Assembly-CSharp.dll
+Assemblies/UnityEngine*.dll
+Assemblies/0Harmony.dll
+Assemblies/HugsLib.dll
+
+# OS noise
+Thumbs.db
+desktop.ini

@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 5.4 - social consequences.
+
+  Numbers here intentionally mirror DovahkiinTuningDef so they can be compared, but XML thought
+  stages cannot read a def at load time. If these are retuned, change DovahkiinTuningDef too.
+-->
+<Defs>
+
+  <!-- Flat opinion bonus from everyone, always. SPEC.md 5.4. -->
+  <ThoughtDef>
+    <defName>Dovahkiin_Thought_IsDovahkiin</defName>
+    <thoughtClass>Thought_SituationalSocial</thoughtClass>
+    <workerClass>Dovahkiin.ThoughtWorker_IsDovahkiin</workerClass>
+    <validWhileDespawned>true</validWhileDespawned>
+    <stages>
+      <li>
+        <label>Dovahkiin</label>
+        <baseOpinionOffset>12</baseOpinionOffset>
+      </li>
+    </stages>
+  </ThoughtDef>
+
+  <!-- SPEC.md 10 - heirs carry a lesser presence of their own. -->
+  <ThoughtDef>
+    <defName>Dovahkiin_Thought_IsDragonblood</defName>
+    <thoughtClass>Thought_SituationalSocial</thoughtClass>
+    <workerClass>Dovahkiin.ThoughtWorker_IsDragonblood</workerClass>
+    <validWhileDespawned>true</validWhileDespawned>
+    <stages>
+      <li>
+        <label>dragonblooded</label>
+        <baseOpinionOffset>5</baseOpinionOffset>
+      </li>
+    </stages>
+  </ThoughtDef>
+
+  <!--
+    SPEC.md 5.4: witnessing an absorption is a PERMANENT opinion boost that never decays,
+    stacking with diminishing returns. durationDays is omitted entirely, which makes the memory
+    permanent; stackLimit plus a shrinking offset per stack gives the diminishing curve.
+
+    Granted in Phase 3, when absorption exists. Defined now so the def is stable.
+  -->
+  <ThoughtDef>
+    <defName>Dovahkiin_Thought_WitnessedSoulAbsorption</defName>
+    <thoughtClass>Thought_MemorySocial</thoughtClass>
+    <stackLimit>5</stackLimit>
+    <stackedEffectMultiplier>0.6</stackedEffectMultiplier>
+    <stages>
+      <li>
+        <label>saw them take a dragon's soul</label>
+        <baseOpinionOffset>6</baseOpinionOffset>
+      </li>
+    </stages>
+  </ThoughtDef>
+
+  <!-- SPEC.md 5.4: witnessing a shout is a TEMPORARY colony mood lift. Granted in Phase 2. -->
+  <ThoughtDef>
+    <defName>Dovahkiin_Thought_WitnessedShout</defName>
+    <thoughtClass>Thought_Memory</thoughtClass>
+    <durationDays>1</durationDays>
+    <stackLimit>3</stackLimit>
+    <stackedEffectMultiplier>0.5</stackedEffectMultiplier>
+    <stages>
+      <li>
+        <label>heard the Thu'um</label>
+        <description>The air itself shook. I have never heard anything like it.</description>
+        <baseMoodEffect>4</baseMoodEffect>
+      </li>
+    </stages>
+  </ThoughtDef>
+
+</Defs>

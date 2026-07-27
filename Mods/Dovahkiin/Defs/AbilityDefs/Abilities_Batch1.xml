@@ -1,0 +1,314 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 4.4a - abilities for batch one.
+  Inherits Dovahkiin_ShoutBase from Abilities_Shouts.xml (cooldownTicksRange 0, because the
+  cooldown is SHARED and owned by Hediff_TheVoice).
+  Icons are vanilla placeholders - see ART_TODO.md.
+-->
+<Defs>
+
+  <!-- ================= Frost Breath ================= -->
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_FrostBreath_1</defName>
+    <label>fo</label>
+    <description>Frost. A chilling cone that slows what it touches.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_FrostBreath</iconPath>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_FrostBreath</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>40</coneAngle>
+        <range>7</range>
+        <damageAmount>14</damageAmount>
+        <damageInstances>6</damageInstances>
+        <snowDepth>0.12</snowDepth>
+        <damageDef>Frostbite</damageDef>
+        <appliedHediff>Dovahkiin_Chilled</appliedHediff>
+        <appliedHediffSeverity>0.5</appliedHediffSeverity>
+        <fleckDef>Dovahkiin_Fleck_FrostWave</fleckDef>
+        <tint>(0.70, 0.90, 1.0)</tint>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_FrostBreath_2</defName>
+    <label>fo krah</label>
+    <description>Frost, Cold. A longer cone. Movement becomes a struggle.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_FrostBreath</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>10</range>
+      <warmupTime>1.1</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_FrostBreath</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>45</coneAngle>
+        <range>10</range>
+        <damageAmount>28</damageAmount>
+        <damageInstances>9</damageInstances>
+        <snowDepth>0.22</snowDepth>
+          <stunTicks>180</stunTicks>
+          <secondaryHediff>Dovahkiin_IceEncased</secondaryHediff>
+          <secondaryHediffSeverity>0.4</secondaryHediffSeverity>
+        <damageDef>Frostbite</damageDef>
+        <appliedHediff>Dovahkiin_Chilled</appliedHediff>
+        <appliedHediffSeverity>1.0</appliedHediffSeverity>
+        <fleckDef>Dovahkiin_Fleck_FrostWave</fleckDef>
+        <tint>(0.70, 0.90, 1.0)</tint>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_ShoutBase">
+    <defName>Dovahkiin_Ability_FrostBreath_3</defName>
+    <label>fo krah diin</label>
+    <description>Frost, Cold, Freeze. A wide torrent of killing winter. What it catches barely moves at all.</description>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_FrostBreath</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>13</range>
+      <warmupTime>1.4</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_FrostBreath</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone">
+        <coneAngle>55</coneAngle>
+        <range>13</range>
+        <damageAmount>44</damageAmount>
+        <damageInstances>12</damageInstances>
+        <snowDepth>0.35</snowDepth>
+          <stunTicks>300</stunTicks>
+          <secondaryHediff>Dovahkiin_IceEncased</secondaryHediff>
+          <secondaryHediffSeverity>1.0</secondaryHediffSeverity>
+        <damageDef>Frostbite</damageDef>
+        <appliedHediff>Dovahkiin_Chilled</appliedHediff>
+        <appliedHediffSeverity>1.5</appliedHediffSeverity>
+        <fleckDef>Dovahkiin_Fleck_FrostWave</fleckDef>
+        <tint>(0.70, 0.90, 1.0)</tint>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <!-- ================= Whirlwind Sprint ================= -->
+  <!-- Self-movement: not hostile, targets a location, no line-of-sight requirement beyond the dash. -->
+
+  <!--
+    CRITICAL: the jump MUST be done by verbClass Verb_CastAbilityJump, not by an ability comp.
+
+    The first build moved the pawn from inside a comp's Apply(), which despawns the caster in
+    the middle of its own cast. The flyer then never landed it and the pawn was destroyed
+    outright - no corpse, no death letter, gone. Vanilla's Longjump (Biotech) does the whole
+    thing in the verb and has NO comp for it; that is the supported path and it orders the job
+    correctly. Verb_CastAbilityJump lives in Assembly-CSharp, so this needs no DLC.
+
+    Do not reintroduce a movement comp here.
+  -->
+  <AbilityDef Name="Dovahkiin_SprintBase" Abstract="True">
+    <cooldownTicksRange>0</cooldownTicksRange>
+    <hostile>false</hostile>
+    <targetRequired>true</targetRequired>
+    <showWhenDrafted>true</showWhenDrafted>
+    <displayGizmoWhileUndrafted>true</displayGizmoWhileUndrafted>
+    <disableGizmoWhileUndrafted>false</disableGizmoWhileUndrafted>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_WhirlwindSprint</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbilityJump</verbClass>
+      <label>whirlwind sprint</label>
+      <violent>false</violent>
+      <range>10</range>
+      <warmupTime>0.4</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>false</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+      </targetParams>
+    </verbProperties>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_SprintBase">
+    <defName>Dovahkiin_Ability_WhirlwindSprint_1</defName>
+    <label>wuld</label>
+    <description>Whirlwind. A short burst of speed.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_WhirlwindSprint</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone"><coneAngle>0</coneAngle><laneWidth>2.4</laneWidth><range>8</range><waveCellsPerSecond>15</waveCellsPerSecond><damageAmount>0</damageAmount><fleckDef>Dovahkiin_Fleck_DashTrail</fleckDef><tint>(0.92, 0.94, 0.98)</tint><fleckScale>1.5</fleckScale></li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_SprintBase">
+    <defName>Dovahkiin_Ability_WhirlwindSprint_2</defName>
+    <label>wuld nah</label>
+    <description>Whirlwind, Fury. A longer dash.</description>
+    <verbProperties>
+      <verbClass>Verb_CastAbilityJump</verbClass><violent>false</violent>
+      <range>16</range>
+      <warmupTime>0.4</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>false</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_WhirlwindSprint</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone"><coneAngle>0</coneAngle><laneWidth>2.4</laneWidth><range>13</range><waveCellsPerSecond>19</waveCellsPerSecond><damageAmount>0</damageAmount><fleckDef>Dovahkiin_Fleck_DashTrail</fleckDef><tint>(0.92, 0.94, 0.98)</tint><fleckScale>1.5</fleckScale></li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_SprintBase">
+    <defName>Dovahkiin_Ability_WhirlwindSprint_3</defName>
+    <label>wuld nah kest</label>
+    <description>Whirlwind, Fury, Tempest. Cross the field before anyone can react.</description>
+    <verbProperties>
+      <verbClass>Verb_CastAbilityJump</verbClass><violent>false</violent>
+      <range>24</range>
+      <warmupTime>0.4</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>false</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_WhirlwindSprint</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone"><coneAngle>0</coneAngle><laneWidth>2.4</laneWidth><range>19</range><waveCellsPerSecond>24</waveCellsPerSecond><damageAmount>0</damageAmount><fleckDef>Dovahkiin_Fleck_DashTrail</fleckDef><tint>(0.92, 0.94, 0.98)</tint><fleckScale>1.5</fleckScale></li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <!-- ================= Marked for Death ================= -->
+  <!-- Single target only: canTargetLocations false, so it cannot be wasted on empty ground. -->
+
+  <AbilityDef Name="Dovahkiin_MarkBase" Abstract="True">
+    <cooldownTicksRange>0</cooldownTicksRange>
+    <hostile>true</hostile>
+    <targetRequired>true</targetRequired>
+    <showWhenDrafted>true</showWhenDrafted>
+    <displayGizmoWhileUndrafted>true</displayGizmoWhileUndrafted>
+    <disableGizmoWhileUndrafted>false</disableGizmoWhileUndrafted>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_MarkedForDeath</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>20</range>
+      <warmupTime>1.0</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+      </targetParams>
+    </verbProperties>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_MarkBase">
+    <defName>Dovahkiin_Ability_MarkedForDeath_1</defName>
+    <label>krii</label>
+    <description>Kill. The target's armour begins to fail.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_MarkedForDeath</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone"><coneAngle>35</coneAngle><range>16</range><damageAmount>0</damageAmount><appliedHediff>Dovahkiin_MarkedForDeath</appliedHediff><appliedHediffSeverity>1</appliedHediffSeverity><fleckDef>Dovahkiin_Fleck_MarkWave</fleckDef><tint>(0.58, 0.63, 0.70)</tint></li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_MarkBase">
+    <defName>Dovahkiin_Ability_MarkedForDeath_2</defName>
+    <label>krii lun</label>
+    <description>Kill, Leech. Armour fails faster, and every wound bites deeper.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_MarkedForDeath</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone"><coneAngle>45</coneAngle><range>18</range><damageAmount>0</damageAmount><appliedHediff>Dovahkiin_MarkedForDeath</appliedHediff><appliedHediffSeverity>2</appliedHediffSeverity><fleckDef>Dovahkiin_Fleck_MarkWave</fleckDef><tint>(0.58, 0.63, 0.70)</tint></li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_MarkBase">
+    <defName>Dovahkiin_Ability_MarkedForDeath_3</defName>
+    <label>krii lun aus</label>
+    <description>Kill, Leech, Suffer. The mark lingers, and the world has already begun to forget them.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_MarkedForDeath</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutCone"><coneAngle>55</coneAngle><range>20</range><damageAmount>0</damageAmount><appliedHediff>Dovahkiin_MarkedForDeath</appliedHediff><appliedHediffSeverity>3</appliedHediffSeverity><fleckDef>Dovahkiin_Fleck_MarkWave</fleckDef><tint>(0.58, 0.63, 0.70)</tint></li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+</Defs>
+
+
+
+
+
+
+
+

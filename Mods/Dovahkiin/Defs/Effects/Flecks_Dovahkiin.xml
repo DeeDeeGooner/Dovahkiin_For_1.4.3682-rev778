@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 4.3 - the shout cone's particles.
+
+  Why these exist rather than reusing vanilla DustPuffThick: that def sets
+  <renderInstanced>true</renderInstanced>, which batches every fleck into one draw call and
+  therefore IGNORES per-instance colour. Passing a Color to FleckMaker.ThrowDustPuffThick
+  silently did nothing - the playtest report was "no blue gradient, only a cone of ashes".
+
+  These deliberately omit renderInstanced and use the MoteGlow shader, which respects both the
+  def colour and a per-instance colour with alpha. That is what lets the wave fade from a bright
+  leading edge to nothing.
+
+  Textures are vanilla; only the tint is ours.
+-->
+<Defs>
+
+  <FleckDef ParentName="FleckBase">
+    <defName>Dovahkiin_Fleck_ForceWave</defName>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+    <fadeInTime>0.04</fadeInTime>
+    <solidTime>0.16</solidTime>
+    <fadeOutTime>0.45</fadeOutTime>
+    <graphicData>
+      <texPath>Things/Mote/DustPuff</texPath>
+      <shaderType>MoteGlow</shaderType>
+      <color>(0.45, 0.75, 1.0, 1.0)</color>
+    </graphicData>
+  </FleckDef>
+
+  <!--
+    Marked for Death. Recoloured to BLUE-GREY, leaning grey: it was a grey-blue-violet, and
+    once Drain Vitality arrived in deep purple the two shouts read as the same effect on screen.
+    Marked for Death is the colder, deader of the two, so it gives up the violet entirely.
+  -->
+  <FleckDef ParentName="FleckBase">
+    <defName>Dovahkiin_Fleck_MarkWave</defName>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+    <fadeInTime>0.05</fadeInTime>
+    <solidTime>0.22</solidTime>
+    <fadeOutTime>0.6</fadeOutTime>
+    <graphicData>
+      <texPath>Things/Mote/DustPuff</texPath>
+      <shaderType>MoteGlow</shaderType>
+      <color>(0.58, 0.63, 0.70, 1.0)</color>
+    </graphicData>
+  </FleckDef>
+
+  <!-- The glow pinned to a marked victim while the curse lasts. Same blue-grey family. -->
+  <FleckDef ParentName="FleckBase">
+    <defName>Dovahkiin_Fleck_MarkGlow</defName>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+    <fadeInTime>0.15</fadeInTime>
+    <solidTime>0.35</solidTime>
+    <fadeOutTime>0.8</fadeOutTime>
+    <graphicData>
+      <texPath>Things/Mote/ExplosionFlash</texPath>
+      <shaderType>MoteGlow</shaderType>
+      <color>(0.66, 0.72, 0.80, 0.85)</color>
+    </graphicData>
+  </FleckDef>
+
+  <!-- Whirlwind Sprint's trail: near-white, fading fast. -->
+  <FleckDef ParentName="FleckBase">
+    <defName>Dovahkiin_Fleck_DashTrail</defName>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+    <fadeInTime>0.02</fadeInTime>
+    <solidTime>0.10</solidTime>
+    <fadeOutTime>0.35</fadeOutTime>
+    <graphicData>
+      <texPath>Things/Mote/DustPuff</texPath>
+      <shaderType>MoteGlow</shaderType>
+      <color>(0.92, 0.94, 0.98, 1.0)</color>
+    </graphicData>
+  </FleckDef>
+
+  <FleckDef ParentName="FleckBase">
+    <defName>Dovahkiin_Fleck_FrostWave</defName>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+    <fadeInTime>0.04</fadeInTime>
+    <solidTime>0.20</solidTime>
+    <fadeOutTime>0.55</fadeOutTime>
+    <graphicData>
+      <texPath>Things/Mote/DustPuff</texPath>
+      <shaderType>MoteGlow</shaderType>
+      <color>(0.70, 0.90, 1.0, 1.0)</color>
+    </graphicData>
+  </FleckDef>
+
+  <FleckDef ParentName="FleckBase">
+    <defName>Dovahkiin_Fleck_FireWave</defName>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+    <fadeInTime>0.04</fadeInTime>
+    <solidTime>0.18</solidTime>
+    <fadeOutTime>0.5</fadeOutTime>
+    <graphicData>
+      <texPath>Things/Mote/DustPuff</texPath>
+      <shaderType>MoteGlow</shaderType>
+      <color>(1.0, 0.55, 0.15, 1.0)</color>
+    </graphicData>
+  </FleckDef>
+
+  <!-- ================= Batch three, and the two ring bursts ================= -->
+
+  <!--
+    Slow Time's ring. Now near-white and MOSTLY TRANSPARENT, as asked - it was sand-gold and
+    too solid. The transparency comes from ringAlpha on the ability (0.30), not from this
+    colour: the wave computes alpha per band, so a colour with a low alpha channel here would
+    simply be overwritten.
+  -->
+  <FleckDef ParentName="FleckBase">
+    <defName>Dovahkiin_Fleck_TimeRing</defName>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+    <fadeInTime>0.02</fadeInTime>
+    <solidTime>0.08</solidTime>
+    <fadeOutTime>0.28</fadeOutTime>
+    <graphicData>
+      <texPath>Things/Mote/DustPuff</texPath>
+      <shaderType>MoteGlow</shaderType>
+      <color>(1.0, 1.0, 1.0, 1.0)</color>
+    </graphicData>
+  </FleckDef>
+
+  <!-- Clear Skies' ring. Pushed slightly further toward blue, as asked. -->
+  <FleckDef ParentName="FleckBase">
+    <defName>Dovahkiin_Fleck_SkyRing</defName>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+    <fadeInTime>0.03</fadeInTime>
+    <solidTime>0.14</solidTime>
+    <fadeOutTime>0.45</fadeOutTime>
+    <graphicData>
+      <texPath>Things/Mote/DustPuff</texPath>
+      <shaderType>MoteGlow</shaderType>
+      <color>(0.68, 0.86, 1.0, 1.0)</color>
+    </graphicData>
+  </FleckDef>
+
+  <!--
+    Drain Vitality. Asked for: deeper, darker and MORE purple than Marked for Death, which is
+    (0.52, 0.45, 0.75). This drops the blue-grey and pushes the violet down.
+  -->
+  <FleckDef ParentName="FleckBase">
+    <defName>Dovahkiin_Fleck_DrainWave</defName>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+    <fadeInTime>0.05</fadeInTime>
+    <solidTime>0.24</solidTime>
+    <fadeOutTime>0.65</fadeOutTime>
+    <graphicData>
+      <texPath>Things/Mote/DustPuff</texPath>
+      <shaderType>MoteGlow</shaderType>
+      <color>(0.38, 0.13, 0.62, 1.0)</color>
+    </graphicData>
+  </FleckDef>
+
+  <!-- The glow pinned to a victim while the drain lasts. Same family, brighter. -->
+  <FleckDef ParentName="FleckBase">
+    <defName>Dovahkiin_Fleck_DrainGlow</defName>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+    <fadeInTime>0.15</fadeInTime>
+    <solidTime>0.35</solidTime>
+    <fadeOutTime>0.8</fadeOutTime>
+    <graphicData>
+      <texPath>Things/Mote/ExplosionFlash</texPath>
+      <shaderType>MoteGlow</shaderType>
+      <color>(0.45, 0.10, 0.75, 0.80)</color>
+    </graphicData>
+  </FleckDef>
+
+  <!-- Dismay. Red, as asked. -->
+  <FleckDef ParentName="FleckBase">
+    <defName>Dovahkiin_Fleck_DismayWave</defName>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+    <fadeInTime>0.04</fadeInTime>
+    <solidTime>0.20</solidTime>
+    <fadeOutTime>0.55</fadeOutTime>
+    <graphicData>
+      <texPath>Things/Mote/DustPuff</texPath>
+      <shaderType>MoteGlow</shaderType>
+      <color>(0.85, 0.15, 0.15, 1.0)</color>
+    </graphicData>
+  </FleckDef>
+
+  <!--
+    Cyclone. Asked for a transparent grey, even less visible than Whirlwind Sprint's trail,
+    which is (0.92, 0.94, 0.98). This is greyer and darker; the ability also sets alphaScale
+    below 1, which is what actually makes the front faint - colour alone cannot do it.
+  -->
+  <FleckDef ParentName="FleckBase">
+    <defName>Dovahkiin_Fleck_CycloneWave</defName>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+    <fadeInTime>0.03</fadeInTime>
+    <solidTime>0.12</solidTime>
+    <fadeOutTime>0.40</fadeOutTime>
+    <graphicData>
+      <texPath>Things/Mote/DustPuff</texPath>
+      <shaderType>MoteGlow</shaderType>
+      <color>(0.70, 0.72, 0.76, 1.0)</color>
+    </graphicData>
+  </FleckDef>
+
+</Defs>

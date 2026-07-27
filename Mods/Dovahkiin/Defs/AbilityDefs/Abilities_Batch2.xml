@@ -1,0 +1,278 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 4.4a - abilities for batch two: Slow Time and Become Ethereal.
+
+  Both are SELF-BUFFS: the caster is the target, and the player is never asked to aim.
+
+  ============================================================================================
+  THE SHAPE OF A NO-TARGET ABILITY - do not "simplify" this, it is load-bearing
+  ============================================================================================
+
+  A self-cast ability needs ALL THREE of these, verified against the only three vanilla
+  abilities that do it - SmokepopMech, FirefoampopMech (Biotech) and Neuroquake (Royalty):
+
+    1. <targetRequired>false</targetRequired>
+    2. <targetParams><canTargetSelf>true</canTargetSelf></targetParams>   (THE CRITICAL ONE)
+    3. a POSITIVE <range>, never -1
+
+  (Aside, learned by breaking it: an XML comment may not contain a double dash. Writing an
+   arrow like that in a comment is a parse error, and RimWorld discards the WHOLE FILE.)
+
+  Item 2 is the one that bites. Without canTargetSelf, RimWorld auto-selects the caster as the
+  target, the verb rejects it as an invalid target, and the cast never begins - no error, no
+  exception, no log line, nothing. The button simply does nothing when pressed.
+
+  This is exactly how the first build of these two shouts failed, and it is ALSO why Clear
+  Skies never worked from Phase 2a onward: all three were modelled on vanilla's SpeechBase,
+  which does use range -1 and no targetParams - but SpeechBase is not a normal ability. It runs
+  through ritual machinery (gizmoClass Command_AbilitySpeech, Precept_Ritual) that a plain
+  self-buff has no access to. Copying its shape without its machinery gives you a dead button.
+
+  drawAimPie is false because there is nothing to aim at, and requireLineOfSight is false
+  because line of sight to yourself is meaningless.
+  ============================================================================================
+
+  All three levels of a shout share ONE HediffDef and differ only in severity and duration,
+  which CompProperties_ShoutSelfBuff sets per level. Severity is the shout level, so the
+  hediff's stages scale with words known.
+
+  NOTE: verbProperties is replaced wholesale by a child def, never merged - so each level that
+  overrides it must repeat the whole block, targetParams included. Dropping targetParams in an
+  override would silently break that one level and no other.
+
+  Icons are placeholders and are deliberately ROYALTY icons, not Biotech ones. The baseline
+  environment in CLAUDE.md is Core + Royalty + Ideology, with Biotech optional at runtime - so a
+  Biotech icon path shows RimWorld's missing-texture square on a legal baseline install. See
+  ART_TODO.md, which records that three existing shouts have exactly that problem.
+-->
+<Defs>
+
+  <!-- ================= Slow Time ================= -->
+
+  <AbilityDef Name="Dovahkiin_SlowTimeBase" Abstract="True">
+    <cooldownTicksRange>0</cooldownTicksRange>
+    <hostile>false</hostile>
+    <targetRequired>false</targetRequired>
+    <showWhenDrafted>true</showWhenDrafted>
+    <displayGizmoWhileUndrafted>true</displayGizmoWhileUndrafted>
+    <disableGizmoWhileUndrafted>false</disableGizmoWhileUndrafted>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_SlowTime</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>3.9</range>
+      <warmupTime>0.7</warmupTime>
+      <drawAimPie>false</drawAimPie>
+      <requireLineOfSight>false</requireLineOfSight>
+      <targetParams>
+        <canTargetSelf>true</canTargetSelf>
+      </targetParams>
+    </verbProperties>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_SlowTimeBase">
+    <defName>Dovahkiin_Ability_SlowTime_1</defName>
+    <label>tiid</label>
+    <description>Time. For a few moments you move faster than the fight around you.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_SlowTime</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutSelfBuff">
+        <hediffDef>Dovahkiin_SlowTime</hediffDef>
+        <severity>1</severity>
+        <!-- 6s -> 10s -> now 15s. Raised by half again on the second round of feedback. -->
+        <durationTicks>900</durationTicks>
+        <castSound>PsychicPulseGlobal</castSound>
+        <soundOnCamera>true</soundOnCamera>
+        <ringRadius>14</ringRadius>
+        <ringTint>(1.0, 1.0, 1.0)</ringTint>
+        <ringAlpha>0.30</ringAlpha>
+        <ringFleck>Dovahkiin_Fleck_TimeRing</ringFleck>
+        <ringFleckScale>1.9</ringFleckScale>
+        <ringCellsPerSecond>30</ringCellsPerSecond>
+        <ringDistortion>true</ringDistortion>
+        <bystanderHediff>Dovahkiin_TimeSlowed</bystanderHediff>
+        <bystanderSeverity>1</bystanderSeverity>
+        <bystanderRadius>14</bystanderRadius>
+        <bystanderDurationTicks>900</bystanderDurationTicks>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_SlowTimeBase">
+    <defName>Dovahkiin_Ability_SlowTime_2</defName>
+    <label>tiid klo</label>
+    <description>Time, Sand. Longer, and faster still - blows land before the eye follows them.</description>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>3.9</range>
+      <warmupTime>0.9</warmupTime>
+      <drawAimPie>false</drawAimPie>
+      <requireLineOfSight>false</requireLineOfSight>
+      <targetParams>
+        <canTargetSelf>true</canTargetSelf>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_SlowTime</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutSelfBuff">
+        <hediffDef>Dovahkiin_SlowTime</hediffDef>
+        <severity>2</severity>
+        <durationTicks>1800</durationTicks>
+        <castSound>PsychicPulseGlobal</castSound>
+        <soundOnCamera>true</soundOnCamera>
+        <ringRadius>17</ringRadius>
+        <ringTint>(1.0, 1.0, 1.0)</ringTint>
+        <ringAlpha>0.30</ringAlpha>
+        <ringFleck>Dovahkiin_Fleck_TimeRing</ringFleck>
+        <ringFleckScale>2.0</ringFleckScale>
+        <ringCellsPerSecond>32</ringCellsPerSecond>
+        <ringDistortion>true</ringDistortion>
+        <bystanderHediff>Dovahkiin_TimeSlowed</bystanderHediff>
+        <bystanderSeverity>2</bystanderSeverity>
+        <bystanderRadius>17</bystanderRadius>
+        <bystanderDurationTicks>1800</bystanderDurationTicks>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_SlowTimeBase">
+    <defName>Dovahkiin_Ability_SlowTime_3</defName>
+    <label>tiid klo ul</label>
+    <description>Time, Sand, Eternity. The world seems to hold still while you cross it.</description>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>3.9</range>
+      <warmupTime>1.1</warmupTime>
+      <drawAimPie>false</drawAimPie>
+      <requireLineOfSight>false</requireLineOfSight>
+      <targetParams>
+        <canTargetSelf>true</canTargetSelf>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_SlowTime</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutSelfBuff">
+        <hediffDef>Dovahkiin_SlowTime</hediffDef>
+        <severity>3</severity>
+        <durationTicks>2700</durationTicks>
+        <castSound>PsychicPulseGlobal</castSound>
+        <soundOnCamera>true</soundOnCamera>
+        <ringRadius>20</ringRadius>
+        <ringTint>(1.0, 1.0, 1.0)</ringTint>
+        <ringAlpha>0.30</ringAlpha>
+        <ringFleck>Dovahkiin_Fleck_TimeRing</ringFleck>
+        <ringFleckScale>2.1</ringFleckScale>
+        <ringCellsPerSecond>34</ringCellsPerSecond>
+        <ringDistortion>true</ringDistortion>
+        <bystanderHediff>Dovahkiin_TimeSlowed</bystanderHediff>
+        <bystanderSeverity>3</bystanderSeverity>
+        <bystanderRadius>20</bystanderRadius>
+        <bystanderDurationTicks>2700</bystanderDurationTicks>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <!-- ================= Become Ethereal ================= -->
+
+  <AbilityDef Name="Dovahkiin_EtherealBase" Abstract="True">
+    <cooldownTicksRange>0</cooldownTicksRange>
+    <hostile>false</hostile>
+    <targetRequired>false</targetRequired>
+    <showWhenDrafted>true</showWhenDrafted>
+    <displayGizmoWhileUndrafted>true</displayGizmoWhileUndrafted>
+    <disableGizmoWhileUndrafted>false</disableGizmoWhileUndrafted>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_BecomeEthereal</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>3.9</range>
+      <warmupTime>0.6</warmupTime>
+      <drawAimPie>false</drawAimPie>
+      <requireLineOfSight>false</requireLineOfSight>
+      <targetParams>
+        <canTargetSelf>true</canTargetSelf>
+      </targetParams>
+    </verbProperties>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_EtherealBase">
+    <defName>Dovahkiin_Ability_BecomeEthereal_1</defName>
+    <label>feim</label>
+    <description>Fade. Briefly untouchable - but you cannot strike back while it lasts.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_BecomeEthereal</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutSelfBuff">
+        <hediffDef>Dovahkiin_Ethereal</hediffDef>
+        <severity>1</severity>
+        <!-- 4s -> 8s -> now 12s. Raised by half again on the second round of feedback. -->
+        <durationTicks>720</durationTicks>
+        <castSound>PsychicSoothePulserCast</castSound>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_EtherealBase">
+    <defName>Dovahkiin_Ability_BecomeEthereal_2</defName>
+    <label>feim zii</label>
+    <description>Fade, Spirit. Longer out of the world - long enough to walk away from a losing fight.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_BecomeEthereal</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutSelfBuff">
+        <hediffDef>Dovahkiin_Ethereal</hediffDef>
+        <severity>2</severity>
+        <durationTicks>1350</durationTicks>
+        <castSound>PsychicSoothePulserCast</castSound>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_EtherealBase">
+    <defName>Dovahkiin_Ability_BecomeEthereal_3</defName>
+    <label>feim zii gron</label>
+    <description>Fade, Spirit, Bind. Long enough to cross a battlefield untouched, and arrive somewhere else entirely.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_BecomeEthereal</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutSelfBuff">
+        <hediffDef>Dovahkiin_Ethereal</hediffDef>
+        <severity>3</severity>
+        <durationTicks>2160</durationTicks>
+        <castSound>PsychicSoothePulserCast</castSound>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+</Defs>

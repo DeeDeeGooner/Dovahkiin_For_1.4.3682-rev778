@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 3.1 and 10.
+
+  Both traits have commonality 0 so they are NEVER rolled at pawn generation and never appear
+  in the trait pool. Dovahkiin is granted only by GameComponent_DragonbornRegistry;
+  Dragonblood only by inheritance (SPEC.md 10) or the dev tool.
+-->
+<Defs>
+
+  <TraitDef>
+    <defName>Dovahkiin_Trait_Dovahkiin</defName>
+    <commonality>0</commonality>
+    <degreeDatas>
+      <li>
+        <label>Dovahkiin</label>
+        <description>[PAWN_nameDef] carries the soul of a dragon in a mortal body. [PAWN_pronoun] can learn the Thu'um, and the world has begun to react to [PAWN_objective].\n\nDragons hate [PAWN_objective] on sight - tamed or allied makes no difference.</description>
+        <commonality>0</commonality>
+        <degree>0</degree>
+      </li>
+    </degreeDatas>
+  </TraitDef>
+
+  <TraitDef>
+    <defName>Dovahkiin_Trait_Dragonblood</defName>
+    <commonality>0</commonality>
+    <degreeDatas>
+      <li>
+        <label>dragonblood</label>
+        <description>[PAWN_nameDef] is descended from a Dovahkiin. The blood is thinner, but it is there - [PAWN_pronoun] learns quickly, carries [PAWN_possessive] self well, and notices things others miss.\n\nIt is not the Voice. But should the world ever be without a Dragonborn, it may yet be [PAWN_objective].</description>
+        <commonality>0</commonality>
+        <degree>0</degree>
+        <statOffsets>
+          <SocialImpact>0.10</SocialImpact>
+          <GlobalLearningFactor>0.10</GlobalLearningFactor>
+          <ShootingAccuracyPawn>0.20</ShootingAccuracyPawn>
+          <AimingDelayFactor>-0.05</AimingDelayFactor>
+        </statOffsets>
+      </li>
+    </degreeDatas>
+  </TraitDef>
+
+</Defs>

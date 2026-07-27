@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 4.4a - Marked for Death's damage over time.
+
+  History, because this def has been wrong twice:
+
+  1. First attempt used vanilla DamageDefOf.Deterioration - the ITEM decay type, which does
+     nothing at all to a pawn. No damage appeared in playtest.
+  2. Second attempt parented this to Scratch. That worked, but Scratch makes CUTS, and once the
+     damage was spread across the whole body the victim had a dozen small open wounds at once.
+     RimWorld sums bleed rate across wounds, so everything marked died of blood loss - deadlier
+     than the concentrated version it was meant to soften.
+
+  Now parented to Blunt, whose injuries are crushes and bruises rather than cuts. It still
+  damages properly and is still reduced by armour - which pairs with the mark's armour penalty -
+  but it does not open a dozen bleeding wounds. A wasting curse should not make someone bleed.
+
+  The application count is also capped in HediffComp_DamageOverTime, so total damage is bounded.
+-->
+<Defs>
+
+  <DamageDef ParentName="BluntBase">
+    <defName>Dovahkiin_SoulWither</defName>
+    <label>withering</label>
+    <deathMessage>{0} has withered away under the Thu'um.</deathMessage>
+  </DamageDef>
+
+</Defs>

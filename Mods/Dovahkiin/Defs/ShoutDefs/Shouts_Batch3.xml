@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 4.4a - batch three.
+
+  ============================================================================================
+  SCOPE CHANGE, made deliberately and on the user's explicit instruction
+  ============================================================================================
+  Drain Vitality (Gaan Lah Haas) and Dismay (Faas Ru Maar) were both on SPEC.md 4.4c's DEFERRED
+  list, which says: "Promoting any of these costs three more word walls and a re-cost of 7.
+  Ask first." The user asked for them by name, which is that question answered.
+
+  Cyclone (Ven Gaar Nos) is from the Dragonborn DLC and was not on either list; it is a new
+  addition, also requested by name.
+
+  CONSEQUENCE, recorded so nobody has to rediscover it:
+    core shouts   11 -> 14
+    word walls    33 -> 42   (14 x 3, Dragonrend's three still come from the 9.3 quest chain)
+
+  SPEC.md 4.4 says the list must not grow "without re-costing 7". That re-cost belongs to Phase
+  7, which builds the world content, and is NOT done here. Phase 7 must either raise wall
+  density or accept more walls per site. See DECISIONS.md / ROADMAP.md before starting Phase 7.
+  ============================================================================================
+
+  Still outstanding after this: Storm Call, Soul Tear, Dragon Aspect.
+-->
+<Defs>
+
+  <!-- ============ Drain Vitality - Gaan Lah Haas ============ -->
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Gaan</defName>
+    <label>Gaan</label>
+    <word>Gaan</word>
+    <meaning>Stamina</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Lah</defName>
+    <label>Lah</label>
+    <word>Lah</word>
+    <meaning>Magicka</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Haas</defName>
+    <label>Haas</label>
+    <word>Haas</word>
+    <meaning>Health</meaning>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_DrainVitality</defName>
+    <label>Drain Vitality</label>
+    <description>Sap the strength, the magic and finally the life from all before you.</description>
+    <words>
+      <li>Dovahkiin_Word_Gaan</li>
+      <li>Dovahkiin_Word_Lah</li>
+      <li>Dovahkiin_Word_Haas</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_DrainVitality_1</li>
+      <li>Dovahkiin_Ability_DrainVitality_2</li>
+      <li>Dovahkiin_Ability_DrainVitality_3</li>
+    </abilitiesByLevel>
+    <thuumCostByLevel><li>6</li><li>10</li><li>15</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>1000</li><li>1800</li><li>2800</li></cooldownTicksByLevel>
+    <availableToDragons>false</availableToDragons>
+    <availableToUndead>false</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
+  <!-- ============ Dismay - Faas Ru Maar ============ -->
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Faas</defName>
+    <label>Faas</label>
+    <word>Faas</word>
+    <meaning>Fear</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Ru</defName>
+    <label>Ru</label>
+    <word>Ru</word>
+    <meaning>Run</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Maar</defName>
+    <label>Maar</label>
+    <word>Maar</word>
+    <meaning>Terror</meaning>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_Dismay</defName>
+    <label>Dismay</label>
+    <description>Your Voice is a weapon of terror. Those who hear it break, and run.</description>
+    <words>
+      <li>Dovahkiin_Word_Faas</li>
+      <li>Dovahkiin_Word_Ru</li>
+      <li>Dovahkiin_Word_Maar</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_Dismay_1</li>
+      <li>Dovahkiin_Ability_Dismay_2</li>
+      <li>Dovahkiin_Ability_Dismay_3</li>
+    </abilitiesByLevel>
+    <thuumCostByLevel><li>5</li><li>8</li><li>13</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>900</li><li>1600</li><li>2400</li></cooldownTicksByLevel>
+    <availableToDragons>false</availableToDragons>
+    <availableToUndead>false</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
+  <!-- ============ Cyclone - Ven Gaar Nos ============ -->
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Ven</defName>
+    <label>Ven</label>
+    <word>Ven</word>
+    <meaning>Wind</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Gaar</defName>
+    <label>Gaar</label>
+    <word>Gaar</word>
+    <meaning>Unleash</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Nos</defName>
+    <label>Nos</label>
+    <word>Nos</word>
+    <meaning>Strike</meaning>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_Cyclone</defName>
+    <label>Cyclone</label>
+    <description>Unleash a whirlwind that takes hold of everything it touches and will not let go.</description>
+    <words>
+      <li>Dovahkiin_Word_Ven</li>
+      <li>Dovahkiin_Word_Gaar</li>
+      <li>Dovahkiin_Word_Nos</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_Cyclone_1</li>
+      <li>Dovahkiin_Ability_Cyclone_2</li>
+      <li>Dovahkiin_Ability_Cyclone_3</li>
+    </abilitiesByLevel>
+    <thuumCostByLevel><li>5</li><li>9</li><li>14</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>1000</li><li>1800</li><li>2600</li></cooldownTicksByLevel>
+    <availableToDragons>false</availableToDragons>
+    <availableToUndead>false</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
+</Defs>

@@ -1,0 +1,598 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 3.1, 5.1, 5.2.
+
+  Phase 1 deliberately gives Attunement ZERO stat effects. Its severity tracks soul count so the
+  save format is right from the start, but the curve in SPEC.md 5.2 - and the RimWorld of Magic
+  <enchantments> block from COMPAT.md 5 - land in Phase 3.
+
+  SPEC.md 0: "Nothing is strong at the moment of awakening."
+-->
+<Defs>
+
+  <HediffDef>
+    <defName>Dovahkiin_DragonSoulAttunement</defName>
+    <!-- Custom class: severity is the soul count and legitimately starts at 0, so the default
+         "remove when severity <= 0" behaviour must be overridden or this vanishes instantly. -->
+    <hediffClass>Dovahkiin.Hediff_DragonSoulAttunement</hediffClass>
+    <label>dragon soul attunement</label>
+    <description>The souls of slain dragons, gathered and held. They do not make the body stronger - they make what it knows, and what it can do, deeper.</description>
+    <defaultLabelColor>(0.85, 0.65, 0.25)</defaultLabelColor>
+    <isBad>false</isBad>
+    <initialSeverity>0</initialSeverity>
+    <maxSeverity>999</maxSeverity>
+    <everCurableByItem>false</everCurableByItem>
+    <stages>
+      <li>
+        <!-- Zero effects by design in Phase 1. Do not add offsets here without SPEC.md 5.2. -->
+        <minSeverity>0</minSeverity>
+      </li>
+    </stages>
+  </HediffDef>
+
+  <HediffDef>
+    <defName>Dovahkiin_TheVoice</defName>
+    <hediffClass>Dovahkiin.Hediff_TheVoice</hediffClass>
+    <label>the Voice</label>
+    <description>The Thu'um. Words of the dragon tongue, understood rather than learned, and spoken with the whole self.</description>
+    <defaultLabelColor>(0.55, 0.80, 0.90)</defaultLabelColor>
+    <isBad>false</isBad>
+    <initialSeverity>1</initialSeverity>
+    <everCurableByItem>false</everCurableByItem>
+    <!-- SPEC.md 5.2 / OD-9: the Voice is what gives the pawn a Thu'um bar. -->
+    <causesNeed>Dovahkiin_Need_Thuum</causesNeed>
+    <stages>
+      <li>
+        <minSeverity>0</minSeverity>
+      </li>
+    </stages>
+  </HediffDef>
+
+  <!--
+    SPEC.md 4.2 - the anti-spam valve. Each shout adds severity; it decays on its own.
+    Recovery time is multiplied by the strain accrued BEFORE the current cast, so the first
+    shout of a fight is never penalised. Tune this rather than nerfing individual shouts.
+  -->
+  <HediffDef>
+    <defName>Dovahkiin_VoiceStrain</defName>
+    <hediffClass>HediffWithComps</hediffClass>
+    <label>voice strain</label>
+    <description>The throat is not built for this. Shouting again so soon will take longer to gather.</description>
+    <defaultLabelColor>(0.80, 0.60, 0.45)</defaultLabelColor>
+    <isBad>true</isBad>
+    <initialSeverity>0.01</initialSeverity>
+    <maxSeverity>4</maxSeverity>
+    <everCurableByItem>false</everCurableByItem>
+    <comps>
+      <li Class="HediffCompProperties_SeverityPerDay">
+        <severityPerDay>-6</severityPerDay>
+      </li>
+    </comps>
+    <stages>
+      <li>
+        <minSeverity>0</minSeverity>
+        <label>slight</label>
+      </li>
+      <li>
+        <minSeverity>1</minSeverity>
+        <label>hoarse</label>
+      </li>
+      <li>
+        <minSeverity>2</minSeverity>
+        <label>raw</label>
+        <painOffset>0.05</painOffset>
+      </li>
+    </stages>
+  </HediffDef>
+
+  <!-- SPEC.md 4.4a - Frost Breath's chill. Slows and spoils aim; decays on its own. -->
+  <HediffDef>
+    <defName>Dovahkiin_Chilled</defName>
+    <hediffClass>HediffWithComps</hediffClass>
+    <label>chilled</label>
+    <description>Frozen to the marrow by the Thu'um. Movement is laboured and the hands will not hold steady.</description>
+    <defaultLabelColor>(0.55, 0.80, 0.95)</defaultLabelColor>
+    <isBad>true</isBad>
+    <initialSeverity>0.5</initialSeverity>
+    <maxSeverity>3</maxSeverity>
+    <everCurableByItem>false</everCurableByItem>
+    <comps>
+      <li Class="HediffCompProperties_SeverityPerDay">
+        <severityPerDay>-4</severityPerDay>
+      </li>
+    </comps>
+    <stages>
+      <li>
+        <minSeverity>0</minSeverity>
+        <label>chilled</label>
+        <statOffsets>
+          <MoveSpeed>-0.6</MoveSpeed>
+        </statOffsets>
+        <statFactors>
+          <AimingDelayFactor>1.2</AimingDelayFactor>
+        </statFactors>
+      </li>
+      <li>
+        <minSeverity>1</minSeverity>
+        <label>frozen</label>
+        <statOffsets>
+          <MoveSpeed>-1.4</MoveSpeed>
+        </statOffsets>
+        <statFactors>
+          <AimingDelayFactor>1.5</AimingDelayFactor>
+        </statFactors>
+        <painOffset>0.10</painOffset>
+      </li>
+      <li>
+        <minSeverity>2</minSeverity>
+        <label>frozen solid</label>
+        <statOffsets>
+          <MoveSpeed>-2.4</MoveSpeed>
+        </statOffsets>
+        <statFactors>
+          <AimingDelayFactor>2.0</AimingDelayFactor>
+        </statFactors>
+        <painOffset>0.20</painOffset>
+      </li>
+    </stages>
+  </HediffDef>
+
+  <!--
+    SPEC.md 4.4a - Frost Breath's ice-encasing at full power.
+
+    This is the VISIBLE marker and the slow. The actual immobilisation is a real stun applied
+    by the wave before any damage lands.
+
+    It deliberately does NOT zero the Moving capacity any more. Doing so made the victim
+    collapse - RimWorld downs a pawn whose Moving falls below its threshold - so the second
+    playtest saw "downed instantly, then stood up" instead of a pawn frozen upright. A large
+    MoveSpeed penalty slows without triggering that.
+
+    severityPerDay -400 empties severity 1.0 in ~150 ticks (2.5s) - half of Fus Ro Dah level 3,
+    as requested. NOTE: at 3x game speed that is well under a second of real time.
+  -->
+  <HediffDef>
+    <defName>Dovahkiin_IceEncased</defName>
+    <hediffClass>HediffWithComps</hediffClass>
+    <label>encased in ice</label>
+    <description>Frozen where they stand. Nothing moves until the ice lets go.</description>
+    <defaultLabelColor>(0.60, 0.85, 1.0)</defaultLabelColor>
+    <isBad>true</isBad>
+    <initialSeverity>1</initialSeverity>
+    <maxSeverity>1</maxSeverity>
+    <everCurableByItem>false</everCurableByItem>
+    <comps>
+      <li Class="HediffCompProperties_SeverityPerDay">
+        <severityPerDay>-400</severityPerDay>
+      </li>
+    </comps>
+    <stages>
+      <li>
+        <minSeverity>0</minSeverity>
+        <label>encased</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <MoveSpeed>-3.0</MoveSpeed>
+        </statOffsets>
+        <statFactors>
+          <AimingDelayFactor>2.5</AimingDelayFactor>
+        </statFactors>
+      </li>
+    </stages>
+  </HediffDef>
+
+  <!-- SPEC.md 4.4a - Marked for Death. Armour rots and wounds land harder. -->
+  <HediffDef>
+    <defName>Dovahkiin_MarkedForDeath</defName>
+    <hediffClass>HediffWithComps</hediffClass>
+    <label>marked for death</label>
+    <description>The Thu'um has named this one. Their armour fails, their wounds run deep, and the world has already begun to forget them.</description>
+    <!-- Blue-grey leaning grey. It was violet, which collided with Drain Vitality's purple. -->
+    <defaultLabelColor>(0.58, 0.63, 0.70)</defaultLabelColor>
+    <isBad>true</isBad>
+    <initialSeverity>1</initialSeverity>
+    <maxSeverity>3</maxSeverity>
+    <everCurableByItem>false</everCurableByItem>
+    <comps>
+      <li Class="HediffCompProperties_SeverityPerDay">
+        <severityPerDay>-3</severityPerDay>
+      </li>
+      <!--
+        SPEC.md 4.4a - in TES5 this shout bleeds its victim, and the effect grows with each
+        word learned. Severity here IS the shout level, so damage scales with words known.
+        Applied on an interval, never per tick.
+      -->
+      <li Class="Dovahkiin.HediffCompProperties_DamageOverTime">
+        <damagePerIntervalPerSeverity>1.6</damagePerIntervalPerSeverity>
+        <intervalTicks>240</intervalTicks>
+        <!--
+          Total damage is bounded: 10 hits x 1.6 x severity. At three words that is ~48 spread
+          across the body - punishing but survivable, and tendable. Uncapped spreading killed
+          everything it touched by cumulative blood loss.
+        -->
+        <maxApplications>10</maxApplications>
+        <!-- Deterioration (the first attempt) is the ITEM decay type and does nothing to a
+             pawn, which is why no damage was visible in playtest. This one really injures. -->
+        <damageDef>Dovahkiin_SoulWither</damageDef>
+        <glowFleck>Dovahkiin_Fleck_MarkGlow</glowFleck>
+        <glowScale>1.15</glowScale>
+        <glowIntervalTicks>40</glowIntervalTicks>
+      </li>
+    </comps>
+    <stages>
+      <li>
+        <minSeverity>0</minSeverity>
+        <label>marked</label>
+        <statFactors>
+          <ArmorRating_Sharp>0.75</ArmorRating_Sharp>
+          <ArmorRating_Blunt>0.75</ArmorRating_Blunt>
+          <IncomingDamageFactor>1.20</IncomingDamageFactor>
+        </statFactors>
+      </li>
+      <li>
+        <minSeverity>2</minSeverity>
+        <label>doomed</label>
+        <statFactors>
+          <ArmorRating_Sharp>0.55</ArmorRating_Sharp>
+          <ArmorRating_Blunt>0.55</ArmorRating_Blunt>
+          <IncomingDamageFactor>1.35</IncomingDamageFactor>
+        </statFactors>
+      </li>
+    </stages>
+  </HediffDef>
+
+  <!--
+    SPEC.md 4.4a - Slow Time, Tiid Klo Ul. REWORKED per SPEC: self-only extreme haste.
+
+    In TES5 this slows the world. Here it must NOT: SPEC.md 4.4a says never a global time
+    effect, and never touch Find.TickManager. Slowing the world in RimWorld would slow the
+    colony, the caravans and every other pawn's jobs, and it would fight RocketMan directly.
+    The same fantasy is delivered by making the caster faster, which is caster-local and safe.
+
+    Severity IS the shout level, so the stages below scale with words known.
+
+    Only half of the effect is here. The attack-speed half has no vanilla pawn-side stat to
+    hang it on - RangedCooldownFactor is a Biotech stat and MeleeWeapon_CooldownMultiplier
+    belongs to the weapon - so it lives in Patch_VerbProperties_AdjustedCooldownTicks, with the
+    numbers in DovahkiinTuningDef.slowTimeCooldownFactorByLevel.
+
+    disappearsAfterTicks is a default only; CompProperties_ShoutSelfBuff overrides it per level.
+    NOTE those are GAME ticks - 360 is 6s at normal speed but 2s at 3x. Judge it at normal.
+  -->
+  <HediffDef>
+    <defName>Dovahkiin_SlowTime</defName>
+    <hediffClass>HediffWithComps</hediffClass>
+    <label>slow time</label>
+    <description>Time is a river, and the Thu'um has stepped out of its current. The world has not slowed - you have quickened.</description>
+    <defaultLabelColor>(0.85, 0.80, 0.45)</defaultLabelColor>
+    <isBad>false</isBad>
+    <initialSeverity>1</initialSeverity>
+    <maxSeverity>3</maxSeverity>
+    <everCurableByItem>false</everCurableByItem>
+    <comps>
+      <li Class="HediffCompProperties_Disappears">
+        <disappearsAfterTicks>360</disappearsAfterTicks>
+        <showRemainingTime>true</showRemainingTime>
+      </li>
+    </comps>
+    <stages>
+      <li>
+        <minSeverity>0</minSeverity>
+        <label>quickened</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <MoveSpeed>1.6</MoveSpeed>
+        </statOffsets>
+      </li>
+      <li>
+        <minSeverity>2</minSeverity>
+        <label>swift</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <MoveSpeed>3.0</MoveSpeed>
+        </statOffsets>
+      </li>
+      <li>
+        <minSeverity>3</minSeverity>
+        <label>outside time</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <MoveSpeed>4.6</MoveSpeed>
+        </statOffsets>
+      </li>
+    </stages>
+  </HediffDef>
+
+  <!--
+    SPEC.md 4.4a - Become Ethereal, Feim Zii Gron. Invulnerable, cannot attack, still moves.
+
+    RimWorld 1.4 has NO invulnerability mechanic - reflecting over Assembly-CSharp finds zero
+    types matching "Invulnerab"; that arrived with Anomaly in 1.5, which this project does not
+    have. IncomingDamageFactor is the honest substitute: Core defines it with minValue 0 and
+    describes it as "a multiplier on all incoming damage", so a factor of 0 really is immunity
+    to damage, and it is already proven in this mod by Marked for Death using it the other way.
+
+    The "cannot attack" half is Patch_Pawn_TryStartAttack. Movement is deliberately untouched -
+    SPEC.md says movement is retained, so there is no MoveSpeed line here.
+
+    KNOWN LIMIT, deliberate: this stops damage, not everything. Being downed by an existing
+    wound, starvation, or a mental break is unaffected. It is a combat panic button, not a
+    god-mode toggle, and that is the intent.
+  -->
+  <HediffDef>
+    <defName>Dovahkiin_Ethereal</defName>
+    <hediffClass>HediffWithComps</hediffClass>
+    <label>ethereal</label>
+    <description>Fade, Spirit, Bind. The body is briefly no longer quite present. Nothing can touch it, and it can touch nothing.</description>
+    <defaultLabelColor>(0.70, 0.85, 0.95)</defaultLabelColor>
+    <isBad>false</isBad>
+    <initialSeverity>1</initialSeverity>
+    <maxSeverity>3</maxSeverity>
+    <everCurableByItem>false</everCurableByItem>
+    <stages>
+      <li>
+        <minSeverity>0</minSeverity>
+        <label>ethereal</label>
+        <becomeVisible>true</becomeVisible>
+        <statFactors>
+          <IncomingDamageFactor>0</IncomingDamageFactor>
+        </statFactors>
+      </li>
+    </stages>
+    <comps>
+      <li Class="HediffCompProperties_Disappears">
+        <disappearsAfterTicks>480</disappearsAfterTicks>
+        <showRemainingTime>true</showRemainingTime>
+      </li>
+      <!--
+        The pawn renders semi-transparent while ethereal.
+
+        This is VANILLA's own invisibility, exactly as Royalty's PsychicInvisibility declares it:
+        a plain HediffCompProperties carrying compClass HediffComp_Invisibility. The Royalty
+        *def* is DLC content, but the CLASS lives in Verse inside Assembly-CSharp, so this works
+        on the baseline environment - the same reasoning that made PawnJumper safe to use.
+
+        Why this rather than a PawnRenderer patch, which is the obvious way to fade a pawn:
+        a renderer patch is exactly what RocketMan contends with, and it would have to be taught
+        about every modded pawn-rendering path in the list (Melee Animation, the xenotype mods,
+        Gloomy Face). Going through vanilla's own invisibility means anything that renders a
+        vanilla invisible pawn correctly renders this correctly too, for free.
+
+        KNOWN AND INTENDED SIDE EFFECT: vanilla invisibility also makes the pawn hard to target.
+        For Become Ethereal that is arguably more faithful than not - "nothing can touch you" -
+        and it removes the odd sight of raiders beating on an invulnerable colonist. Flagged in
+        TESTS/phase2e.md as a thing to judge in play; if it is unwanted, delete this one comp
+        and the invulnerability above still stands on its own.
+      -->
+      <li Class="HediffCompProperties">
+        <compClass>HediffComp_Invisibility</compClass>
+      </li>
+    </comps>
+  </HediffDef>
+
+  <!--
+    Slow Time's other half - the slow laid on everyone ELSE.
+
+    SPEC.md 4.4a forbids a global time effect and forbids touching Find.TickManager. RimWorld
+    also has no sub-normal game speed to reach for: TimeSpeed is Paused/Normal/Fast/Superfast/
+    Ultrafast with nothing below Normal. Slowing every other pawn in range produces the same
+    picture - the world crawls, the Dovahkiin does not - with none of that risk.
+
+    Applied to ALLIES TOO, deliberately, because the effect is about relative speed. It is
+    applied as a bare hediff with no DamageInfo and no instigator, so no faction takes offence.
+  -->
+  <HediffDef>
+    <defName>Dovahkiin_TimeSlowed</defName>
+    <hediffClass>HediffWithComps</hediffClass>
+    <label>slowed</label>
+    <description>Time has thickened around them. Every movement takes longer than it should, and they do not seem to notice.</description>
+    <defaultLabelColor>(0.80, 0.80, 0.86)</defaultLabelColor>
+    <isBad>true</isBad>
+    <initialSeverity>1</initialSeverity>
+    <maxSeverity>3</maxSeverity>
+    <everCurableByItem>false</everCurableByItem>
+    <comps>
+      <li Class="HediffCompProperties_Disappears">
+        <disappearsAfterTicks>900</disappearsAfterTicks>
+        <showRemainingTime>true</showRemainingTime>
+      </li>
+    </comps>
+    <stages>
+      <li>
+        <minSeverity>0</minSeverity>
+        <label>slowed</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <MoveSpeed>-1.2</MoveSpeed>
+        </statOffsets>
+        <statFactors>
+          <AimingDelayFactor>1.4</AimingDelayFactor>
+        </statFactors>
+      </li>
+      <li>
+        <minSeverity>2</minSeverity>
+        <label>crawling</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <MoveSpeed>-2.0</MoveSpeed>
+        </statOffsets>
+        <statFactors>
+          <AimingDelayFactor>1.7</AimingDelayFactor>
+        </statFactors>
+      </li>
+      <li>
+        <minSeverity>3</minSeverity>
+        <label>near-frozen in time</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <MoveSpeed>-2.8</MoveSpeed>
+        </statOffsets>
+        <statFactors>
+          <AimingDelayFactor>2.1</AimingDelayFactor>
+        </statFactors>
+      </li>
+    </stages>
+  </HediffDef>
+
+  <!--
+    Drain Vitality - Gaan Lah Haas. Promoted from SPEC.md 4.4c at the user's request.
+    Gaan = Stamina, Lah = Magicka, Haas = Health.
+
+    Severity IS the shout level, and HediffComp_DrainNeeds keys off it:
+      1  stamina (RWoM) + Rest
+      2  adds magicka (RWoM) + Joy
+      3  adds health, capped
+
+    RimWorld of Magic is RECOMMENDED, NEVER REQUIRED. The comp looks TM_Stamina and TM_Mana up
+    by defName through DefDatabase and drains them through the vanilla Need.CurLevel API. With
+    the magic mod absent - or on any pawn with no magic class, which is most pawns - those
+    lookups return null and the vanilla Rest/Joy drain carries the shout on its own. No
+    assembly reference, no reflection, nothing to break. See COMPAT.md section 5.
+
+    Health damage is Dovahkiin_SoulWither, the Blunt-parented def written for Marked for Death:
+    a wasting curse must not make the victim BLEED, or spreading it across the body kills by
+    cumulative blood loss. That mistake cost a playtest round once already.
+  -->
+  <HediffDef>
+    <defName>Dovahkiin_VitalityDrained</defName>
+    <!-- Custom class: it remembers WHO drained the victim, because the health taken is given
+         back to that caster. A plain hediff carries no instigator. -->
+    <hediffClass>Dovahkiin.Hediff_VitalityDrained</hediffClass>
+    <label>vitality drained</label>
+    <description>The Thu'um is pulling the strength out of them - the body first, then whatever power they hold, then the life itself.</description>
+    <defaultLabelColor>(0.45, 0.15, 0.72)</defaultLabelColor>
+    <isBad>true</isBad>
+    <initialSeverity>1</initialSeverity>
+    <maxSeverity>3</maxSeverity>
+    <everCurableByItem>false</everCurableByItem>
+    <comps>
+      <li Class="HediffCompProperties_SeverityPerDay">
+        <severityPerDay>-3</severityPerDay>
+      </li>
+      <li Class="Dovahkiin.HediffCompProperties_DrainNeeds">
+        <intervalTicks>120</intervalTicks>
+        <restDrainPerInterval>0.010</restDrainPerInterval>
+        <joyDrainPerInterval>0.014</joyDrainPerInterval>
+        <staminaDrainPerInterval>0.030</staminaDrainPerInterval>
+        <manaDrainPerInterval>0.030</manaDrainPerInterval>
+        <manaDrainMinSeverity>2</manaDrainMinSeverity>
+        <!--
+          Now behaves like Marked for Death, at HALF strength, from level 1 rather than only
+          level 3 - and gives what it takes back to the caster.
+          Marked for Death deals 1.6 per interval per severity over 10 applications; this is
+          0.8 over 10, literally half, and it carries NO armour penalty (that is Marked for
+          Death's identity, and the two shouts should not collapse into each other).
+          casterHealFraction 1.0 heals the caster by exactly the health drained.
+        -->
+        <healthDrainMinSeverity>1</healthDrainMinSeverity>
+        <healthDrainPerInterval>0.8</healthDrainPerInterval>
+        <maxHealthApplications>10</maxHealthApplications>
+        <casterHealFraction>1.0</casterHealFraction>
+        <healthDamageDef>Dovahkiin_SoulWither</healthDamageDef>
+        <glowFleck>Dovahkiin_Fleck_DrainGlow</glowFleck>
+        <glowScale>1.1</glowScale>
+        <glowIntervalTicks>45</glowIntervalTicks>
+      </li>
+    </comps>
+    <stages>
+      <li>
+        <minSeverity>0</minSeverity>
+        <label>weakened</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <MoveSpeed>-0.4</MoveSpeed>
+        </statOffsets>
+        <statFactors>
+          <WorkSpeedGlobal>0.85</WorkSpeedGlobal>
+        </statFactors>
+      </li>
+      <li>
+        <minSeverity>2</minSeverity>
+        <label>sapped</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <MoveSpeed>-0.8</MoveSpeed>
+        </statOffsets>
+        <statFactors>
+          <WorkSpeedGlobal>0.70</WorkSpeedGlobal>
+          <MeleeHitChance>0.85</MeleeHitChance>
+        </statFactors>
+      </li>
+      <li>
+        <minSeverity>3</minSeverity>
+        <label>withering</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <MoveSpeed>-1.2</MoveSpeed>
+        </statOffsets>
+        <statFactors>
+          <WorkSpeedGlobal>0.55</WorkSpeedGlobal>
+          <MeleeHitChance>0.75</MeleeHitChance>
+        </statFactors>
+        <painOffset>0.08</painOffset>
+      </li>
+    </stages>
+  </HediffDef>
+
+  <!--
+    Dismay - Faas Ru Maar. Promoted from SPEC.md 4.4c at the user's request.
+    Faas = Fear, Ru = Run, Maar = Terror.
+
+    The fear itself is a real mental state applied by the wave (vanilla PanicFlee - RWoM's own
+    TM_FearWave uses its private TM_PanicFlee, but vanilla's works with no mod present, so that
+    is what this uses). This hediff is the lingering shake afterwards: the victim is rattled,
+    slower and worse in a fight even once they stop running.
+  -->
+  <HediffDef>
+    <defName>Dovahkiin_Dismayed</defName>
+    <hediffClass>HediffWithComps</hediffClass>
+    <label>dismayed</label>
+    <description>They have heard something they were never meant to hear, and some part of them has not stopped running from it.</description>
+    <defaultLabelColor>(0.85, 0.25, 0.25)</defaultLabelColor>
+    <isBad>true</isBad>
+    <initialSeverity>1</initialSeverity>
+    <maxSeverity>3</maxSeverity>
+    <everCurableByItem>false</everCurableByItem>
+    <comps>
+      <li Class="HediffCompProperties_SeverityPerDay">
+        <severityPerDay>-4</severityPerDay>
+      </li>
+    </comps>
+    <stages>
+      <li>
+        <minSeverity>0</minSeverity>
+        <label>shaken</label>
+        <becomeVisible>true</becomeVisible>
+        <statFactors>
+          <AimingDelayFactor>1.25</AimingDelayFactor>
+          <MeleeHitChance>0.85</MeleeHitChance>
+        </statFactors>
+      </li>
+      <li>
+        <minSeverity>2</minSeverity>
+        <label>frightened</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <MoveSpeed>-0.3</MoveSpeed>
+        </statOffsets>
+        <statFactors>
+          <AimingDelayFactor>1.5</AimingDelayFactor>
+          <MeleeHitChance>0.75</MeleeHitChance>
+        </statFactors>
+      </li>
+      <li>
+        <minSeverity>3</minSeverity>
+        <label>terrified</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <MoveSpeed>-0.6</MoveSpeed>
+        </statOffsets>
+        <statFactors>
+          <AimingDelayFactor>1.9</AimingDelayFactor>
+          <MeleeHitChance>0.60</MeleeHitChance>
+        </statFactors>
+      </li>
+    </stages>
+  </HediffDef>
+
+</Defs>

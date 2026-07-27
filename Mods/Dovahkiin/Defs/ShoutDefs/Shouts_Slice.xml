@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 4.1 and 4.4a - the Phase 2 vertical slice.
+
+  Three shouts, nine words, and one AbilityDef per level (declared in Abilities_Shouts.xml).
+  OD-10 governs progression: word N gates level N, and each level also costs one dragon soul.
+  Words are ordered; ShoutDef.MaxAttainableLevel counts them from the first.
+
+  Eight more shouts follow once this slice is verified. See SPEC.md 4.4a for the full eleven.
+-->
+<Defs>
+
+  <!-- ============ Unrelenting Force - Fus Ro Dah ============ -->
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Fus</defName>
+    <label>Fus</label>
+    <word>Fus</word>
+    <meaning>Force</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Ro</defName>
+    <label>Ro</label>
+    <word>Ro</word>
+    <meaning>Balance</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Dah</defName>
+    <label>Dah</label>
+    <word>Dah</word>
+    <meaning>Push</meaning>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_UnrelentingForce</defName>
+    <label>Unrelenting Force</label>
+    <description>Your Voice is raw power, pushing aside anything - or anyone - who stands before you.</description>
+    <words>
+      <li>Dovahkiin_Word_Fus</li>
+      <li>Dovahkiin_Word_Ro</li>
+      <li>Dovahkiin_Word_Dah</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_UnrelentingForce_1</li>
+      <li>Dovahkiin_Ability_UnrelentingForce_2</li>
+      <li>Dovahkiin_Ability_UnrelentingForce_3</li>
+    </abilitiesByLevel>
+    <thuumCostByLevel><li>4</li><li>7</li><li>11</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>600</li><li>1200</li><li>2000</li></cooldownTicksByLevel>
+    <!-- SPEC.md 4.5 / 4.6: one of the three shared by dragons, draugr and veteran mortals. -->
+    <availableToDragons>true</availableToDragons>
+    <availableToUndead>true</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
+  <!-- ============ Fire Breath - Yol Toor Shul ============ -->
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Yol</defName>
+    <label>Yol</label>
+    <word>Yol</word>
+    <meaning>Fire</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Toor</defName>
+    <label>Toor</label>
+    <word>Toor</word>
+    <meaning>Inferno</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Shul</defName>
+    <label>Shul</label>
+    <word>Shul</word>
+    <meaning>Sun</meaning>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_FireBreath</defName>
+    <label>Fire Breath</label>
+    <description>Inhale air, exhale flame, and watch your enemies burn as does a dragon.</description>
+    <words>
+      <li>Dovahkiin_Word_Yol</li>
+      <li>Dovahkiin_Word_Toor</li>
+      <li>Dovahkiin_Word_Shul</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_FireBreath_1</li>
+      <li>Dovahkiin_Ability_FireBreath_2</li>
+      <li>Dovahkiin_Ability_FireBreath_3</li>
+    </abilitiesByLevel>
+    <thuumCostByLevel><li>6</li><li>10</li><li>15</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>900</li><li>1800</li><li>2800</li></cooldownTicksByLevel>
+    <availableToDragons>true</availableToDragons>
+    <!-- Draugr never breathe fire - SPEC.md 4.5. -->
+    <availableToUndead>false</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
+  <!-- ============ Clear Skies - Lok Vah Koor ============ -->
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Lok</defName>
+    <label>Lok</label>
+    <word>Lok</word>
+    <meaning>Sky</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Vah</defName>
+    <label>Vah</label>
+    <word>Vah</word>
+    <meaning>Spring</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Koor</defName>
+    <label>Koor</label>
+    <word>Koor</word>
+    <meaning>Summer</meaning>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_ClearSkies</defName>
+    <label>Clear Skies</label>
+    <description>Bend the sky with your Voice, and the storm withdraws.</description>
+    <words>
+      <li>Dovahkiin_Word_Lok</li>
+      <li>Dovahkiin_Word_Vah</li>
+      <li>Dovahkiin_Word_Koor</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_ClearSkies_1</li>
+      <li>Dovahkiin_Ability_ClearSkies_2</li>
+      <li>Dovahkiin_Ability_ClearSkies_3</li>
+    </abilitiesByLevel>
+    <thuumCostByLevel><li>3</li><li>5</li><li>7</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>1200</li><li>1800</li><li>2400</li></cooldownTicksByLevel>
+    <availableToDragons>false</availableToDragons>
+    <availableToUndead>false</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
+</Defs>
