@@ -371,6 +371,55 @@
   </HediffDef>
 
   <!--
+    SPEC.md 4.4f / RISKS.md section 9 - Soul Tear's dead puppet.
+
+    INCURABLE, UNTENDABLE, NON-REMOVABLE, with a fixed lifetime that KILLS the pawn when it
+    expires. The absence of any way out is the design, not an oversight: RISKS.md section 9
+    records that the original "restore the pawn afterwards" plan was the highest
+    save-corruption risk in the mod, because a puppet surviving a reload while still
+    player-faction with its hediff gone is an unremovable pseudo-colonist.
+
+    Because the puppet is always doomed, every exit path already ends in death and the only
+    thing that must survive a reload is this ordinary hediff.
+
+    DO NOT add tendable, everCurableByItem, a severity that can reach zero, or anything else
+    that could remove this. Hediff_DeadPuppet.ShouldRemove is hard-coded false for the same
+    reason.
+  -->
+  <HediffDef>
+    <defName>Dovahkiin_DeadPuppet</defName>
+    <hediffClass>Dovahkiin.Hediff_DeadPuppet</hediffClass>
+    <label>torn soul</label>
+    <description>The Thu'um tore this one's soul loose and put it back facing the wrong way. It walks, and it fights, and it is not coming back from this.</description>
+    <defaultLabelColor>(0.75, 0.10, 0.14)</defaultLabelColor>
+    <isBad>true</isBad>
+    <initialSeverity>1</initialSeverity>
+    <maxSeverity>1</maxSeverity>
+    <tendable>false</tendable>
+    <everCurableByItem>false</everCurableByItem>
+    <!-- Never contributes a "this pawn is ill" mood or a market-value change. -->
+    <makesSickThought>false</makesSickThought>
+    <priceImpact>false</priceImpact>
+    <scenarioCanAdd>false</scenarioCanAdd>
+    <stages>
+      <li>
+        <minSeverity>0</minSeverity>
+        <becomeVisible>true</becomeVisible>
+        <!-- A torn soul is driven, not healthy: it hits harder and feels less, but it is
+             falling apart the whole time it serves. -->
+        <painFactor>0.2</painFactor>
+        <statOffsets>
+          <MoveSpeed>0.3</MoveSpeed>
+        </statOffsets>
+        <statFactors>
+          <MeleeDamageFactor>1.15</MeleeDamageFactor>
+          <IncomingDamageFactor>1.25</IncomingDamageFactor>
+        </statFactors>
+      </li>
+    </stages>
+  </HediffDef>
+
+  <!--
     Slow Time's other half - the slow laid on everyone ELSE.
 
     SPEC.md 4.4a forbids a global time effect and forbids touching Find.TickManager. RimWorld

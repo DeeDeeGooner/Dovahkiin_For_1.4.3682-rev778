@@ -24,6 +24,15 @@ namespace Dovahkiin
         public static HediffDef Dovahkiin_VitalityDrained;
         public static HediffDef Dovahkiin_Dismayed;
 
+        /// <summary>
+        /// Soul Tear's dead puppet. SPEC.md 4.4f. Read by the registry's load-time safety
+        /// sweep, so a null here would silently disable that guard - hence the startup check.
+        /// </summary>
+        public static HediffDef Dovahkiin_DeadPuppet;
+
+        /// <summary>The crimson mark on a puppet, so it is never mistaken for a real ally.</summary>
+        public static FleckDef Dovahkiin_Fleck_PuppetGlow;
+
         /// <summary>Slow Time's slow on everyone who is not the caster. SPEC.md 4.4a.</summary>
         public static HediffDef Dovahkiin_TimeSlowed;
 

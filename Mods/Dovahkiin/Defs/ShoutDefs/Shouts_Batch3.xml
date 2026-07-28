@@ -191,4 +191,52 @@
     <availableToUndead>false</availableToUndead>
   </Dovahkiin.ShoutDef>
 
+  <!-- ============ Soul Tear - Rii Vaaz Zol ============ -->
+  <!--
+    SPEC.md 4.4f. "The most powerful shout in the mod; place its three words in high-tier
+    crypts only." That last clause is a PHASE 7 world-generation constraint - when word walls
+    are placed, these three go in high-tier crypts and nowhere else.
+
+    Single target, no cone, no splash. Level 1 is damage only; the puppet chance starts at
+    level 2 and the tuning def encodes that as a 0 in the first slot.
+  -->
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Rii</defName>
+    <label>Rii</label>
+    <word>Rii</word>
+    <meaning>Essence</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Vaaz</defName>
+    <label>Vaaz</label>
+    <word>Vaaz</word>
+    <meaning>Tear</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Zol</defName>
+    <label>Zol</label>
+    <word>Zol</word>
+    <meaning>Zombie</meaning>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_SoulTear</defName>
+    <label>Soul Tear</label>
+    <description>Rip a soul from its body and bind what remains to your will. What rises is not alive, and it will not last.</description>
+    <words>
+      <li>Dovahkiin_Word_Rii</li>
+      <li>Dovahkiin_Word_Vaaz</li>
+      <li>Dovahkiin_Word_Zol</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_SoulTear_1</li>
+      <li>Dovahkiin_Ability_SoulTear_2</li>
+      <li>Dovahkiin_Ability_SoulTear_3</li>
+    </abilitiesByLevel>
+    <thuumCostByLevel><li>12</li><li>20</li><li>30</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>3000</li><li>5000</li><li>7500</li></cooldownTicksByLevel>
+    <availableToDragons>false</availableToDragons>
+    <availableToUndead>false</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
 </Defs>

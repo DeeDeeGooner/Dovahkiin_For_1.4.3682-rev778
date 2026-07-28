@@ -1,5 +1,76 @@
 # CHANGELOG
 
+## Phase 2h — Soul Tear and the dead puppet (2026-07-28)
+
+`SPEC.md §4.4f`, `RISKS.md §9`. **13 of 14 core shouts built.** Only Dragon Aspect remains.
+Builds clean, 0 warnings; all XML parses, all translate keys and icon paths resolve.
+**Awaiting playtest** — `TESTS/phase2h.md`.
+
+### The design that removes the risk
+
+`RISKS.md §9` recorded the dead puppet as **the highest save-corruption risk in the mod**. The
+original plan moved a hostile pawn into the player faction and *restored* it afterwards — which
+required a correct restore-or-kill on seven exit paths, one of them save→load. Getting it wrong
+leaves a player-faction pawn nobody can arrest, banish or kill cleanly.
+
+**The adopted design: the puppet is always doomed.** It joins the player faction, receives
+`Hediff_DeadPuppet` — incurable, untendable, **non-removable** — and that hediff **kills it** on
+expiry. It is never restored, because it never survives.
+
+That collapses the whole failure surface:
+
+- timer expiry kills it;
+- being killed early is already death;
+- being downed leaves the hediff ticking, so it still dies;
+- leaving the map carries the hediff along;
+- the caster dying changes nothing — the puppet's death does not depend on the caster;
+- **save→load is safe by construction**, because the only thing that must survive is an ordinary
+  hediff using RimWorld's normal, well-tested serialisation. There is no bespoke state to lose.
+
+`Hediff_DeadPuppet.ShouldRemove` is hard-coded `false`. The def sets `tendable false`,
+`everCurableByItem false`, `makesSickThought false`. **The absence of a way out is the design**,
+and both the class and the def say so in comments so a future session does not "helpfully" add
+one.
+
+### Enforcement details
+
+- **Single target only.** `canTargetLocations false` so it cannot be thrown at empty ground, and
+  the comp re-checks legality on cast: never colonists, never player-faction, never a pawn
+  already puppeted, and it must be genuinely hostile.
+- **Level 1 raises nothing.** The tuning def's `soulTearPuppetChanceByLevel` starts at 0
+  deliberately, so the puppet is unlocked by mastering the shout rather than given free.
+- **No colonist-death mood.** The puppet drops out of the player faction **one tick before**
+  dying, so the death raises no such thought — and `RemoveDiedThoughts` runs afterwards as belt
+  and braces. Splitting the faction change and the kill across two ticks also avoids mutating
+  the pawn twice while the health tracker is mid-iteration.
+- **Visibly marked**, as the spec requires: a pulsing crimson attached fleck, plus a patched
+  inspect line giving the countdown and stating it cannot be healed, recruited or saved. The
+  patch is on `Pawn.GetInspectString`, which runs only for the selected pawn.
+- **Resurrect, not ResurrectWithSideEffects.** The side-effect version can inflict brain damage
+  and resurrection sickness, which would produce a puppet unable to fight — and fighting for its
+  short life is the entire point.
+
+### The safety sweep
+
+`SPEC.md §4.4f` asks for a load-time sweep, so the registry now tracks raised puppets by
+reference and checks them in `FinalizeInit`. Any tracked puppet still alive and player-faction
+but **missing its hediff** is killed, with a loud red error naming `RISKS.md §9`.
+
+**This should never fire** — the hediff is non-removable. It exists because the failure it
+guards against is bad enough to be worth a check that costs nothing on load.
+
+### Balance
+
+The most expensive shout in the mod, above Storm Call: 12/20/30 thu'um, cooldown 3000/5000/7500.
+Damage 40/65/95 via `Dovahkiin_SoulWither` (Blunt-parented, so spreading it cannot kill by
+cumulative blood loss). Puppet chance 0/0.25/0.45, lifetime 0/6/12 in-game hours.
+
+**Recorded for Phase 7:** `SPEC.md §4.4f` says Soul Tear's three words belong in **high-tier
+crypts only**. That is a world-generation constraint for when word walls are placed, and cannot
+be enforced from this phase.
+
+---
+
 ## Balance — Drain Vitality heals more per victim when draining few (2026-07-28)
 
 Follow-up: the raised healing was good against four victims but still thin against **one**.

@@ -545,6 +545,185 @@ namespace Dovahkiin
     }
 
     // ------------------------------------------------------------------
+    // Soul Tear - Rii Vaaz Zol. SPEC.md 4.4f, RISKS.md section 9.
+    //
+    // SINGLE TARGET. No cone, no chain, no splash - the spec is explicit, and it is what keeps
+    // the most powerful shout in the mod from also being the widest.
+    //
+    // Heavy direct damage, and on a roll the target rises as a DEAD PUPPET: it joins the player
+    // faction, fights for a limited time, and then dies. It is never restored, never recruited,
+    // never healed out of it. See Hediff_DeadPuppet for why that is the safe design.
+    // ------------------------------------------------------------------
+
+    public class CompProperties_ShoutSoulTear : CompProperties_AbilityEffect
+    {
+        /// <summary>Shout level 1-3. Puppet chance and duration come from the tuning def.</summary>
+        public int level = 1;
+
+        /// <summary>Direct impact damage. Split across a few hits so it wounds rather than
+        /// removing one limb outright.</summary>
+        public float damageAmount = 40f;
+        public int damageInstances = 3;
+        public DamageDef damageDef;
+
+        public SoundDef castSound;
+        public FleckDef fleckDef;
+        public Color tint = new Color(0.75f, 0.10f, 0.14f);
+
+        public CompProperties_ShoutSoulTear()
+        {
+            compClass = typeof(CompAbilityEffect_ShoutSoulTear);
+        }
+    }
+
+    public class CompAbilityEffect_ShoutSoulTear : CompAbilityEffect
+    {
+        public new CompProperties_ShoutSoulTear Props
+        {
+            get { return (CompProperties_ShoutSoulTear)props; }
+        }
+
+        /// <summary>
+        /// SPEC.md 4.4f: valid only on hostile pawns. Never colonists, never player-faction,
+        /// never tamed animals, never a pawn already puppeted.
+        /// </summary>
+        private bool IsLegalTarget(Pawn victim, Pawn caster)
+        {
+            if (victim == null || victim == caster || victim.Destroyed)
+            {
+                return false;
+            }
+            if (victim.Faction != null && victim.Faction.IsPlayer)
+            {
+                return false;
+            }
+            if (!victim.HostileTo(caster))
+            {
+                return false;
+            }
+            if (DovahkiinDefOf.Dovahkiin_DeadPuppet != null && victim.health != null
+                && victim.health.hediffSet.GetFirstHediffOfDef(
+                    DovahkiinDefOf.Dovahkiin_DeadPuppet) != null)
+            {
+                return false; // already a puppet - never re-tear one
+            }
+            return true;
+        }
+
+        public override bool CanApplyOn(LocalTargetInfo target, LocalTargetInfo dest)
+        {
+            return base.CanApplyOn(target, dest)
+                && IsLegalTarget(target.Pawn, parent.pawn);
+        }
+
+        public override void Apply(LocalTargetInfo target, LocalTargetInfo dest)
+        {
+            base.Apply(target, dest);
+            Pawn caster = parent.pawn;
+            Pawn victim = target.Pawn;
+            if (caster == null || caster.Map == null || !IsLegalTarget(victim, caster))
+            {
+                return;
+            }
+
+            if (Props.fleckDef != null)
+            {
+                FleckMaker.AttachedOverlay(victim, Props.fleckDef, Vector3.zero, 1.6f, -1f);
+            }
+            SoundDef sound = Props.castSound ?? SoundDefOf.Thunder_OnMap;
+            sound.PlayOneShot(new TargetInfo(victim.Position, caster.Map, false));
+
+            // --- the tear itself -----------------------------------------------------------
+            DamageDef def = Props.damageDef ?? DamageDefOf.Blunt;
+            int instances = Mathf.Max(1, Props.damageInstances);
+            float per = Props.damageAmount / instances;
+            for (int i = 0; i < instances && !victim.Destroyed && !victim.Dead; i++)
+            {
+                BodyPartRecord part = DovahkiinDamageUtility.SelectSpreadTarget(victim);
+                victim.TakeDamage(new DamageInfo(def, per, 0f, -1f, caster, part));
+            }
+
+            // --- the roll ------------------------------------------------------------------
+            DovahkiinTuningDef t = DovahkiinTuningDef.Current;
+            int index = Mathf.Clamp(Props.level - 1, 0, 2);
+
+            float chance = 0f;
+            if (t != null && t.soulTearPuppetChanceByLevel != null
+                && index < t.soulTearPuppetChanceByLevel.Count)
+            {
+                chance = t.soulTearPuppetChanceByLevel[index];
+            }
+            if (chance <= 0f || !Rand.Chance(chance))
+            {
+                return; // Level 1 is damage only by design - the chance there is zero.
+            }
+
+            float hours = 0f;
+            if (t != null && t.soulTearPuppetHoursByLevel != null
+                && index < t.soulTearPuppetHoursByLevel.Count)
+            {
+                hours = t.soulTearPuppetHoursByLevel[index];
+            }
+            if (hours <= 0f)
+            {
+                return;
+            }
+
+            RaisePuppet(victim, caster, Mathf.RoundToInt(hours * GenDate.TicksPerHour));
+        }
+
+        /// <summary>
+        /// Raise the victim as a doomed puppet.
+        ///
+        /// If the tear killed it, it is resurrected first - which is also what makes the puppet
+        /// combat-worthy, since resurrection clears the wounds the shout just inflicted. If it
+        /// survived, it is torn into service alive. Both read correctly and, more importantly,
+        /// both end at the same place: carrying Hediff_DeadPuppet, which kills it on expiry.
+        /// </summary>
+        private void RaisePuppet(Pawn victim, Pawn caster, int lifetimeTicks)
+        {
+            if (DovahkiinDefOf.Dovahkiin_DeadPuppet == null)
+            {
+                Log.Error("[Dovahkiin] Soul Tear rolled a puppet but Dovahkiin_DeadPuppet is "
+                    + "missing, so nothing was raised. Check the log for an XML error.");
+                return;
+            }
+
+            if (victim.Dead)
+            {
+                // Resurrect, not ResurrectWithSideEffects: the side-effect version can inflict
+                // brain damage and resurrection sickness, which would leave a puppet that
+                // cannot fight - and the puppet's whole purpose is to fight for its short life.
+                ResurrectionUtility.Resurrect(victim);
+                if (victim.Dead || victim.Destroyed)
+                {
+                    return; // resurrection refused; leave it dead rather than half-raised
+                }
+            }
+
+            victim.SetFaction(Faction.OfPlayer, null);
+
+            Hediff h = HediffMaker.MakeHediff(DovahkiinDefOf.Dovahkiin_DeadPuppet, victim);
+            Hediff_DeadPuppet puppet = h as Hediff_DeadPuppet;
+            if (puppet != null)
+            {
+                puppet.SetLifetime(lifetimeTicks);
+            }
+            victim.health.AddHediff(h);
+
+            GameComponent_DragonbornRegistry reg = GameComponent_DragonbornRegistry.Get;
+            if (reg != null)
+            {
+                reg.NotifyPuppetRaised(victim);
+            }
+
+            Messages.Message(
+                "Dovahkiin_SoulTear_Raised".Translate(victim.LabelShortCap.Named("PAWN")),
+                victim, MessageTypeDefOf.PositiveEvent, false);
+        }
+    }
+
+    // ------------------------------------------------------------------
     // Storm Call - Strun Bah Qo. SPEC.md 4.4e.
     //
     // The comp only spawns the storm and hands it its parameters. All the targeting rules -

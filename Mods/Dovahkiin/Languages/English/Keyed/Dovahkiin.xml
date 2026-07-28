@@ -38,4 +38,12 @@
   <Dovahkiin_StormCall_OutOfRange>The storm gathers, but your enemies are too far off for it to reach. Storm Call only answers near the one who called it.</Dovahkiin_StormCall_OutOfRange>
   <Dovahkiin_StormCall_NoEnemies>The storm gathers, and finds nothing to strike.</Dovahkiin_StormCall_NoEnemies>
 
+  <!--
+    SPEC.md 4.4f - Soul Tear's dead puppet. The inspect line is a REQUIREMENT, not decoration:
+    the spec says a puppet must be visibly marked and show how long it has left, so the player
+    never mistakes it for a real ally or plans around keeping it.
+  -->
+  <Dovahkiin_SoulTear_Raised>{PAWN} rises, soul torn, and will fight for you until the body gives out.</Dovahkiin_SoulTear_Raised>
+  <Dovahkiin_SoulTear_InspectLine>Torn soul: collapses in {DURATION}. Cannot be healed, recruited or saved.</Dovahkiin_SoulTear_InspectLine>
+
 </LanguageData>

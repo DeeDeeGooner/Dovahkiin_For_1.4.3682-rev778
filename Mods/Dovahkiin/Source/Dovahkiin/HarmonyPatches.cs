@@ -297,6 +297,39 @@ namespace Dovahkiin
         }
     }
 
+    /// <summary>
+    /// SPEC.md 4.4f: a puppet must be "visibly marked - a distinct overlay/tint AND an
+    /// inspect-string line saying how long it has left - so the player never mistakes it for a
+    /// real ally or plans around keeping it."
+    ///
+    /// The tint is an attached fleck emitted by the hediff. This is the other half. It runs only
+    /// for the pawn currently selected, when the inspect pane is drawn, so it is not a hot path
+    /// despite touching a common method.
+    /// </summary>
+    [HarmonyPatch(typeof(Pawn), "GetInspectString")]
+    public static class Patch_Pawn_GetInspectString
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Pawn __instance, ref string __result)
+        {
+            if (__instance == null || __instance.health == null
+                || DovahkiinDefOf.Dovahkiin_DeadPuppet == null)
+            {
+                return;
+            }
+            Hediff_DeadPuppet puppet = __instance.health.hediffSet
+                .GetFirstHediffOfDef(DovahkiinDefOf.Dovahkiin_DeadPuppet) as Hediff_DeadPuppet;
+            if (puppet == null)
+            {
+                return;
+            }
+            string line = "Dovahkiin_SoulTear_InspectLine".Translate(
+                puppet.TicksRemaining.ToStringTicksToPeriod(true, false, true, true, false)
+                    .Named("DURATION"));
+            __result = string.IsNullOrEmpty(__result) ? line : __result + "\n" + line;
+        }
+    }
+
     internal static class DragonbloodInheritance
     {
         internal static void TryInherit(Pawn child, Pawn parent)

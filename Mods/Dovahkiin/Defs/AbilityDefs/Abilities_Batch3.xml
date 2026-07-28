@@ -524,4 +524,104 @@
     </comps>
   </AbilityDef>
 
+  <!-- ================= Soul Tear ================= -->
+  <!--
+    SPEC.md 4.4f. SINGLE TARGET ONLY - canTargetLocations is false so it cannot be thrown at
+    empty ground, and the comp re-checks legality on cast. Never colonists, never player
+    faction, never a pawn already puppeted.
+
+    Level 1 is damage only. The puppet chance lives in DovahkiinTuningDef
+    (soulTearPuppetChanceByLevel 0 / 0.25 / 0.45) with a deliberate 0 in the first slot, and
+    the puppet's lifetime in soulTearPuppetHoursByLevel (0 / 6 / 12).
+  -->
+
+  <AbilityDef Name="Dovahkiin_SoulTearBase" Abstract="True">
+    <cooldownTicksRange>0</cooldownTicksRange>
+    <hostile>true</hostile>
+    <targetRequired>true</targetRequired>
+    <showWhenDrafted>true</showWhenDrafted>
+    <displayGizmoWhileUndrafted>true</displayGizmoWhileUndrafted>
+    <disableGizmoWhileUndrafted>false</disableGizmoWhileUndrafted>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_SoulTear</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>18</range>
+      <warmupTime>1.8</warmupTime>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetPawns>true</canTargetPawns>
+        <canTargetLocations>false</canTargetLocations>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetAnimals>true</canTargetAnimals>
+        <canTargetSelf>false</canTargetSelf>
+      </targetParams>
+    </verbProperties>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_SoulTearBase">
+    <defName>Dovahkiin_Ability_SoulTear_1</defName>
+    <label>rii</label>
+    <description>Essence. A single enemy's soul is torn at. Heavy damage, and nothing rises - not yet.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_SoulTear</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutSoulTear">
+        <level>1</level>
+        <damageAmount>40</damageAmount>
+        <damageInstances>3</damageInstances>
+        <damageDef>Dovahkiin_SoulWither</damageDef>
+        <fleckDef>Dovahkiin_Fleck_SoulTearWave</fleckDef>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_SoulTearBase">
+    <defName>Dovahkiin_Ability_SoulTear_2</defName>
+    <label>rii vaaz</label>
+    <description>Essence, Tear. The soul comes loose, and what is left may rise to serve you for a while.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_SoulTear</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutSoulTear">
+        <level>2</level>
+        <damageAmount>65</damageAmount>
+        <damageInstances>4</damageInstances>
+        <damageDef>Dovahkiin_SoulWither</damageDef>
+        <fleckDef>Dovahkiin_Fleck_SoulTearWave</fleckDef>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_SoulTearBase">
+    <defName>Dovahkiin_Ability_SoulTear_3</defName>
+    <label>rii vaaz zol</label>
+    <description>Essence, Tear, Zombie. The soul is ripped out whole, and the body rises facing the wrong way - yours, until it falls apart.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_SoulTear</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutSoulTear">
+        <level>3</level>
+        <damageAmount>95</damageAmount>
+        <damageInstances>5</damageInstances>
+        <damageDef>Dovahkiin_SoulWither</damageDef>
+        <fleckDef>Dovahkiin_Fleck_SoulTearWave</fleckDef>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
 </Defs>

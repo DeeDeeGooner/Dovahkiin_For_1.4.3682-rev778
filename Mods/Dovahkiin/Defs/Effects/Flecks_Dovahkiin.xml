@@ -180,6 +180,37 @@
     </graphicData>
   </FleckDef>
 
+  <!-- Soul Tear's wave: deep blood-crimson bleeding toward black. -->
+  <FleckDef ParentName="FleckBase">
+    <defName>Dovahkiin_Fleck_SoulTearWave</defName>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+    <fadeInTime>0.04</fadeInTime>
+    <solidTime>0.22</solidTime>
+    <fadeOutTime>0.60</fadeOutTime>
+    <graphicData>
+      <texPath>Things/Mote/DustPuff</texPath>
+      <shaderType>MoteGlow</shaderType>
+      <color>(0.75, 0.10, 0.14, 1.0)</color>
+    </graphicData>
+  </FleckDef>
+
+  <!--
+    The mark on a dead puppet. SPEC.md 4.4f requires a puppet be visibly distinct so the player
+    never mistakes it for a real ally - this is that mark, pulsing while it serves.
+  -->
+  <FleckDef ParentName="FleckBase">
+    <defName>Dovahkiin_Fleck_PuppetGlow</defName>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+    <fadeInTime>0.18</fadeInTime>
+    <solidTime>0.40</solidTime>
+    <fadeOutTime>0.85</fadeOutTime>
+    <graphicData>
+      <texPath>Things/Mote/ExplosionFlash</texPath>
+      <shaderType>MoteGlow</shaderType>
+      <color>(0.80, 0.08, 0.12, 0.80)</color>
+    </graphicData>
+  </FleckDef>
+
   <!--
     Cyclone. Asked for a transparent grey, even less visible than Whirlwind Sprint's trail,
     which is (0.92, 0.94, 0.98). This is greyer and darker; the ability also sets alphaScale

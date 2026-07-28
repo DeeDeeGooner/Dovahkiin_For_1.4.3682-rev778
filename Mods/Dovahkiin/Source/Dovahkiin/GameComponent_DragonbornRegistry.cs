@@ -306,6 +306,83 @@ namespace Dovahkiin
         {
             base.FinalizeInit();
             RepairDovahkiinIdentity();
+            SweepDeadPuppets();
+        }
+
+        // --- SPEC.md 4.4f / RISKS.md section 9: the dead puppets -----------------------------
+
+        private List<Pawn> deadPuppets = new List<Pawn>();
+
+        /// <summary>Records a pawn raised by Soul Tear, so the load sweep can find it later.</summary>
+        public void NotifyPuppetRaised(Pawn p)
+        {
+            if (p == null)
+            {
+                return;
+            }
+            if (deadPuppets == null)
+            {
+                deadPuppets = new List<Pawn>();
+            }
+            if (!deadPuppets.Contains(p))
+            {
+                deadPuppets.Add(p);
+            }
+        }
+
+        /// <summary>Drops a puppet from tracking once it has died. Safe to call twice.</summary>
+        public void NotifyPuppetGone(Pawn p)
+        {
+            if (p != null && deadPuppets != null)
+            {
+                deadPuppets.Remove(p);
+            }
+        }
+
+        /// <summary>
+        /// SPEC.md 4.4f's safety sweep. **This should never fire.**
+        ///
+        /// A puppet is meant to be impossible to strand: the hediff is non-removable and kills
+        /// on expiry, so every exit path ends in death. But RISKS.md section 9 is explicit that
+        /// the failure this guards against - a player-faction pawn that kept the puppet marker
+        /// and lost its hediff - is an unremovable pseudo-colonist nobody can arrest, banish or
+        /// kill cleanly. That is bad enough to warrant a check that costs nothing on load.
+        ///
+        /// If it ever does fire, something upstream is wrong and the log says so loudly.
+        /// </summary>
+        private void SweepDeadPuppets()
+        {
+            if (deadPuppets == null || deadPuppets.Count == 0)
+            {
+                return;
+            }
+            HediffDef puppetDef = DovahkiinDefOf.Dovahkiin_DeadPuppet;
+            for (int i = deadPuppets.Count - 1; i >= 0; i--)
+            {
+                Pawn p = deadPuppets[i];
+                if (p == null || p.Dead || p.Destroyed)
+                {
+                    deadPuppets.RemoveAt(i);
+                    continue;
+                }
+                bool stillPuppet = puppetDef != null && p.health != null
+                    && p.health.hediffSet.GetFirstHediffOfDef(puppetDef) != null;
+                if (stillPuppet)
+                {
+                    continue; // Normal: alive, doomed, still counting down.
+                }
+
+                Log.Error("[Dovahkiin] SAFETY SWEEP: " + p.LabelShortCap + " is tracked as a "
+                    + "Soul Tear puppet but no longer carries Dovahkiin_DeadPuppet. That should "
+                    + "be impossible - the hediff is non-removable. Killing it rather than "
+                    + "leaving an unremovable pseudo-colonist. See RISKS.md section 9.");
+                if (p.Faction != null && p.Faction.IsPlayer)
+                {
+                    p.SetFaction(null, null);
+                }
+                p.Kill(null, null);
+                deadPuppets.RemoveAt(i);
+            }
         }
 
         private void RepairDovahkiinIdentity()
@@ -341,6 +418,10 @@ namespace Dovahkiin
             Scribe_Values.Look(ref alduinState, "alduinState", AlduinState.Unspawned);
             Scribe_Values.Look(ref alduinRevivalTick, "alduinRevivalTick", -1);
             Scribe_Values.Look(ref alduinFirstAppearanceDone, "alduinFirstAppearanceDone", false);
+
+            // LookMode.Reference: puppets are pawns that live elsewhere in the save and must not
+            // be deep-copied into the registry. SPEC.md 4.4f / RISKS.md section 9.
+            Scribe_Collections.Look(ref deadPuppets, "deadPuppets", LookMode.Reference);
 
             Scribe_Values.Look(ref strangerQuestFired, "strangerQuestFired", false);
             Scribe_Collections.Look(ref wordsDiscoveredWorld, "wordsDiscoveredWorld", LookMode.Value);

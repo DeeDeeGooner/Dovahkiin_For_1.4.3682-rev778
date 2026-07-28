@@ -92,6 +92,9 @@ namespace Dovahkiin
             if (DovahkiinDefOf.Dovahkiin_Dismayed == null) missing.Add("Dovahkiin_Dismayed");
             if (DovahkiinDefOf.Dovahkiin_TimeSlowed == null) missing.Add("Dovahkiin_TimeSlowed");
             if (DovahkiinDefOf.Dovahkiin_StormCall == null) missing.Add("Dovahkiin_StormCall");
+            // Read by the registry's puppet safety sweep - a null would disable that guard
+            // silently, which RISKS.md section 9 specifically warns against.
+            if (DovahkiinDefOf.Dovahkiin_DeadPuppet == null) missing.Add("Dovahkiin_DeadPuppet");
 
             if (missing.Count > 0)
             {
