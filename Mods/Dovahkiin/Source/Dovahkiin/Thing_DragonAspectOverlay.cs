@@ -61,8 +61,12 @@ namespace Dovahkiin
 
         private const float LoopSeconds = 3.4f;   // one full pass of the particle cycle
 
-        private static readonly Color Ember = new Color(1f, 0.588f, 0.220f);
-        private static readonly Color Azure = new Color(0.470f, 0.745f, 1f);
+        // Must stay in step with the palette at the top of Tools/GenerateDragonAspect.ps1 -
+        // these tint the aura, that generates the armour, and the two are meant to read as one
+        // object. Deepened from (255,150,56) and (120,190,255) after the first playtest, where
+        // the lighter pair washed out against lit terrain.
+        private static readonly Color Ember = new Color(240f / 255f, 118f / 255f, 28f / 255f);
+        private static readonly Color Azure = new Color(72f / 255f, 152f / 255f, 238f / 255f);
 
         // --- cached graphics. Built on first draw, never at def-load: GraphicDatabase is not
         // safe to touch before the game has loaded its content. ---

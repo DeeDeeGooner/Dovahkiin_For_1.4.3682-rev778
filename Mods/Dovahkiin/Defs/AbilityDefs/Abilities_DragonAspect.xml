@@ -57,7 +57,7 @@
         <soundOnCamera>true</soundOnCamera>
         <ringRadius>10</ringRadius>
         <!-- the armour's own ember, (255,150,56) -->
-        <ringTint>(1.0, 0.59, 0.22)</ringTint>
+        <ringTint>(0.94, 0.463, 0.11)</ringTint>
         <ringAlpha>0.55</ringAlpha>
         <ringFleck>Dovahkiin_Fleck_TimeRing</ringFleck>
         <ringFleckScale>2.0</ringFleckScale>
@@ -88,7 +88,7 @@
         <castSound>PsychicPulseGlobal</castSound>
         <soundOnCamera>true</soundOnCamera>
         <ringRadius>14</ringRadius>
-        <ringTint>(1.0, 0.59, 0.22)</ringTint>
+        <ringTint>(0.94, 0.463, 0.11)</ringTint>
         <ringAlpha>0.65</ringAlpha>
         <ringFleck>Dovahkiin_Fleck_TimeRing</ringFleck>
         <ringFleckScale>2.2</ringFleckScale>
@@ -119,7 +119,7 @@
         <castSound>PsychicPulseGlobal</castSound>
         <soundOnCamera>true</soundOnCamera>
         <ringRadius>18</ringRadius>
-        <ringTint>(1.0, 0.59, 0.22)</ringTint>
+        <ringTint>(0.94, 0.463, 0.11)</ringTint>
         <ringAlpha>0.75</ringAlpha>
         <ringFleck>Dovahkiin_Fleck_TimeRing</ringFleck>
         <ringFleckScale>2.4</ringFleckScale>

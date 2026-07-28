@@ -65,17 +65,17 @@ $PARTICLE_SHAPE = "ess"
 $VERSION = "B"
 
 # ---------------------------------------------------------------------------------
-#  PLATE OPACITY - one knob, raised after the first in-game playtest.
+#  PLATE OPACITY - deliberately 1.0, which is the ORIGINAL signed-off art.
 #
-#  The scale plates were authored at alpha 26 (centre) to 88 (edge) and judged against a
-#  DARK preview background with a plain untextured pawn. In the actual game, over the
-#  pawn's own apparel and lit terrain, that read as "barely visible".
+#  When the first playtest reported the armour as "barely visible" this was raised to 1.85.
+#  That was the wrong fix: opacity is what makes the plates translucent, and cranking it made
+#  the armour darker and heavier than the design that had been agreed. The visibility problem
+#  was solved by DEEPENING THE COLOURS instead - see the palette below - which reads against
+#  lit ground without touching the transparency at all.
 #
-#  The lesson is about the review, not the number: a translucent overlay must be judged
-#  over a REAL pawn on REAL terrain, because a dark flat backdrop flatters low alpha.
-#  1.0 is the original art. Raise or lower this rather than editing the call sites.
+#  Leave this at 1.0. If the armour needs to read harder, saturate the palette further.
 # ---------------------------------------------------------------------------------
-$PLATE_ALPHA = 1.85
+$PLATE_ALPHA = 1.0
 
 if (-not (Test-Path $DEST)) { New-Item -ItemType Directory -Path $DEST -Force | Out-Null }
 
@@ -93,25 +93,39 @@ function RGB($r,$g,$b,$a=255) {
   if ($a -lt 0) { $a = 0 } elseif ($a -gt 255) { $a = 255 }
   return [System.Drawing.Color]::FromArgb([int]$a,[int]$r,[int]$g,[int]$b)
 }
-$C_DEEP  = @(104, 62, 18)    # deep bronze - a scale's shadowed body
-$C_MID   = @(178,124, 42)    # burnished bronze
-$C_GOLD  = @(232,178, 74)    # lit gold
-$C_HOT   = @(255,228,150)    # hot edge
-$C_EMBER = @(255,150, 56)    # ember amber - rim light
-$C_ORANGE= @(255,138, 42)    # TES5 circle chain
-$C_OCORE = @(255,222,170)    # circle chain hot centre
-$C_AZURE = @(120,190,255)    # L3 aura, second colour
+# DEEPER than the first pass, at the user's request after seeing it in game.
+#
+# The armour was reading as washed-out over lit terrain. The first attempt at fixing that
+# raised the plates' OPACITY, which made them darker and heavier and lost the translucent
+# design that had been agreed. Saturating the palette instead makes the colour hold against
+# a bright background while the alpha - and so the whole look - stays exactly as signed off.
+#
+# Each stop is pushed towards saturation, not towards black: red stays high while green and
+# blue drop. Deepening by darkening all three channels equally would just have produced the
+# muddy result the opacity change did.
+$C_DEEP  = @( 88, 46, 12)    # deep bronze - a scale's shadowed body
+$C_MID   = @(168,104, 28)    # burnished bronze
+$C_GOLD  = @(228,152, 44)    # lit gold
+$C_HOT   = @(255,206,120)    # hot edge
+$C_EMBER = @(240,118, 28)    # ember amber - rim light
+$C_ORANGE= @(238,104, 20)    # TES5 crest
+$C_OCORE = @(255,206,150)    # crest hot centre
+$C_AZURE = @( 72,152,238)    # L3 aura, second colour
 $C_WHITE = @(255,255,255)    # a no-op tint, for art that carries its own colour
 $C_BLEND_MID = @(252,222,198)  # the hot midtone the crescents' ember-to-azure blend passes
                                # through, instead of the grey a direct RGB lerp would give
 
-# The cool half of the armour. Built around Unrelenting Force's EXACT blue, which is what
-# Dragon Aspect's own shout icon already uses at its head (see GenerateShoutIcons.ps1's
-# $HEAD_GRADIENT) - the armour borrows the icon's blue rather than inventing a third one.
-$C_BLUE_LIT  = @( 95,165,240)  # Unrelenting Force's blue, unchanged
-$C_BLUE_MID  = @( 56,106,172)
-$C_BLUE_DEEP = @( 20, 44, 84)
-$C_BLUE_HOT  = @(175,215,255)
+# The cool half of the armour, deepened alongside the warm half.
+#
+# NOTE, and it is a real trade: this was originally Unrelenting Force's EXACT blue
+# (95,165,240), chosen because Dragon Aspect's own shout ICON uses that blue at its head - the
+# overlay matched its own icon rather than inventing a third blue. Deepening to (58,124,216)
+# breaks that exact match. It is still recognisably the same blue, a shade down, and the
+# in-game readability was judged worth it. If the icon link matters more, put these back.
+$C_BLUE_LIT  = @( 58,124,216)  # was Unrelenting Force's (95,165,240)
+$C_BLUE_MID  = @( 36, 80,150)
+$C_BLUE_DEEP = @( 14, 32, 66)
+$C_BLUE_HOT  = @(132,186,246)
 # How far towards blue the bottom of the armour goes. 1.0 would drop the bronze entirely.
 $COOL_MAX = 0.92
 
