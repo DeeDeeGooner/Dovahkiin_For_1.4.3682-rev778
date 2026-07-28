@@ -1,5 +1,38 @@
 # CHANGELOG
 
+## Balance — Drain Vitality heals more per victim when draining few (2026-07-28)
+
+Follow-up: the raised healing was good against four victims but still thin against **one**.
+
+A flat raise would have been wrong — it would overshoot the multi-target case that was already
+judged good. So the boost is now **per victim count**: largest for a lone target, smaller for
+two, gone by five.
+
+**The rule this must always keep**, and the reason it is stated in three places (the C# summary,
+the XML comment, and here): *count × multiplier must never fall as the count rises*, or the
+shout would perversely pay less for hitting more people.
+
+| victims | multiplier | heal/interval (lvl 1) | total | change |
+|---|---|---|---|---|
+| 1 | 1.80 | 3.6 | 3.6 | **+80%** |
+| 2 | 1.35 | 2.7 | 5.4 | **+35%** |
+| 3 | 1.15 | 2.3 | 6.9 | +15% |
+| 4 | 1.05 | 2.1 | 8.4 | +5% |
+| 5+ | 1.00 | 2.0 | 10, 12, 14… | unchanged |
+
+Totals are strictly increasing, and the four-victim case that already worked barely moves.
+
+**Implementation:** a hediff comp only ever knows its own pawn, so the victim count is taken by
+scanning for other pawns carrying the same hediff with the same caster recorded on it. That is
+one pass over the spawned-pawn list, run **only on the drain interval, never per tick** — which
+is also why it is counted live rather than cached, since a cache would have to stay correct as
+victims die and new ones are struck.
+
+Verified after the edit by reading the multipliers back out of the XML and checking the
+monotonic rule numerically, rather than trusting the arithmetic in the comment.
+
+---
+
 ## Balance — Drain Vitality's healing raised, and it now clears blood loss (2026-07-28)
 
 Reported: a bleeding Dovahkiin "barely recovered his wound over time despite hitting 4 raiders

@@ -100,6 +100,33 @@ namespace Dovahkiin
         public float casterBloodLossFraction = 0.5f;
 
         /// <summary>
+        /// Per-victim healing multiplier, indexed by HOW MANY victims this caster is draining
+        /// at once. Entry 0 is one victim, entry 1 is two, and so on; counts past the end of the
+        /// list use the last entry.
+        ///
+        /// DIMINISHING PER TARGET, ALWAYS RISING IN TOTAL. Playtest found a single victim healed
+        /// far too little, while four at once already felt right - so a flat raise was wrong, it
+        /// would have overshot the case that worked. Instead the boost is largest for one
+        /// victim, smaller for two, and fades to nothing by five.
+        ///
+        /// THE RULE ANY EDIT MUST KEEP: count x multiplier must never fall as the count rises,
+        /// or the shout would perversely pay less for hitting more people. With these defaults:
+        ///
+        ///   victims   multiplier   relative total
+        ///     1          1.80          1.80
+        ///     2          1.35          2.70
+        ///     3          1.15          3.45
+        ///     4          1.05          4.20
+        ///     5+         1.00          5.00, then linear
+        ///
+        /// Strictly increasing. Against the previous flat behaviour that is +80% for a lone
+        /// victim, +35% for two, and only +5% at four - which deliberately leaves the
+        /// multi-target case that was already judged good almost exactly where it was.
+        /// </summary>
+        public List<float> casterHealCountMultipliers =
+            new List<float> { 1.8f, 1.35f, 1.15f, 1.05f, 1.0f };
+
+        /// <summary>
         /// Fraction of the drained stamina and mana handed to the caster. 1.0 means the caster
         /// gains exactly what the victim lost. Only ever transfers what was actually taken.
         /// </summary>
@@ -196,6 +223,56 @@ namespace Dovahkiin
                 return;
             }
             need.CurLevel = Mathf.Min(need.MaxLevel, need.CurLevel + amount);
+        }
+
+        /// <summary>
+        /// How many pawns this caster is draining right now, this one included.
+        ///
+        /// A hediff comp only ever knows its own pawn, so the count has to be taken by looking
+        /// for other victims carrying the same hediff with the same caster recorded on it.
+        ///
+        /// That is one pass over the spawned-pawn list - dozens of entries - and it runs only on
+        /// the drain interval, never per tick. CLAUDE.md forbids avoidable per-tick work; this
+        /// is not per-tick, and it is why the count is taken here rather than cached somewhere
+        /// that would have to be kept correct as victims die and new ones are struck.
+        /// </summary>
+        private int VictimCountForCaster(Pawn casterPawn)
+        {
+            Pawn self = parent.pawn;
+            if (casterPawn == null || self == null || self.Map == null)
+            {
+                return 1;
+            }
+            int count = 0;
+            List<Pawn> all = self.Map.mapPawns.AllPawnsSpawned;
+            for (int i = 0; i < all.Count; i++)
+            {
+                Pawn p = all[i];
+                if (p == null || p.Dead || p.health == null)
+                {
+                    continue;
+                }
+                Hediff_VitalityDrained other =
+                    p.health.hediffSet.GetFirstHediffOfDef(parent.def) as Hediff_VitalityDrained;
+                if (other != null && other.drainedBy == casterPawn)
+                {
+                    count++;
+                }
+            }
+            // Never below one - this pawn is itself a victim, and zero would zero the healing.
+            return Mathf.Max(1, count);
+        }
+
+        /// <summary>Multiplier for the current victim count, clamped to the table's last entry.</summary>
+        private float HealCountMultiplier(Pawn casterPawn)
+        {
+            List<float> table = Props.casterHealCountMultipliers;
+            if (table == null || table.Count == 0)
+            {
+                return 1f;
+            }
+            int index = Mathf.Clamp(VictimCountForCaster(casterPawn) - 1, 0, table.Count - 1);
+            return table[index];
         }
 
         /// <summary>Whoever cast the shout. Null is normal - dead, gone, or a pre-feature save.</summary>
@@ -303,7 +380,10 @@ namespace Dovahkiin
                 BodyPartRecord part = DovahkiinDamageUtility.SelectSpreadTarget(pawn);
                 pawn.TakeDamage(new DamageInfo(def, amount, 0f, -1f, null, part));
 
-                HealCaster(amount * Props.casterHealFraction);
+                // Scaled by how many victims share this caster: biggest boost for a lone
+                // victim, fading to nothing by five, while the TOTAL still rises with every
+                // extra target. See casterHealCountMultipliers.
+                HealCaster(amount * Props.casterHealFraction * HealCountMultiplier(Caster));
             }
 
         }

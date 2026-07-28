@@ -495,6 +495,17 @@
         <!-- Also clears blood loss, which closing a wound never does on its own. That gap is
              why a bleeding caster kept reading as badly hurt while his wounds visibly healed. -->
         <casterBloodLossFraction>0.5</casterBloodLossFraction>
+        <!--
+          Per-victim healing multiplier by how many victims are being drained at once.
+          Biggest boost for a lone target, smaller for two, gone by five.
+
+          THE RULE ANY EDIT MUST KEEP: count x multiplier must never fall as the count rises,
+          or the shout would pay less for hitting more people. These give relative totals of
+          1.80 / 2.70 / 3.45 / 4.20 / 5.00 - strictly increasing.
+        -->
+        <casterHealCountMultipliers>
+          <li>1.8</li><li>1.35</li><li>1.15</li><li>1.05</li><li>1.0</li>
+        </casterHealCountMultipliers>
         <!-- A drain transfers: stamina and mana taken off the victim are handed to the caster,
              1.0 meaning exactly what was lost. Only what is ACTUALLY taken moves - a classless
              victim has no stamina bar, so nothing is drained and nothing is given. -->
