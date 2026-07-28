@@ -1,5 +1,54 @@
 # CHANGELOG
 
+## Polish — Slow Time goes map-wide, breath weapons up again (2026-07-28)
+
+Storm Call confirmed working after the range fix. Four changes from that session.
+
+### Slow Time now affects the WHOLE MAP
+
+Reported: raiders slightly outside the radius carried on at normal speed while their neighbours
+crawled, and it looked wrong. It is — **time does not have an edge.** A visible boundary makes
+the effect read as a bug rather than as slowed time.
+
+`bystanderRadius` **0 or less now means the entire map**, and all three levels use it. Cost is
+one pass over the spawned-pawn list, a few dozen entries, not a cell scan. Allies are still
+slowed too, deliberately, and it is still applied as a bare hediff with no `DamageInfo` and no
+instigator, so no faction takes offence.
+
+### Breath weapons raised again
+
+Reported as feeling like "a poke attack rather than a heavy power move" — fair, given these are
+devastating in TES5 even on Legendary.
+
+| Shout | Phase 2a | +35% | Now |
+|---|---|---|---|
+| Fire Breath | 16 / 30 / 46 | 22 / 41 / 62 | **26 / 49 / 74** (+20%) |
+| Frost Breath | 14 / 28 / 44 | 19 / 38 / 59 | **22 / 44 / 68** (+15%) |
+
+Fire's `reburnFraction` puts its effective totals near **32 / 61 / 92**. Frost was raised at the
+slightly lower rate on purpose, keeping the relationship settled over eight rounds in Phase 2b:
+fire is deadlier by **behaviour** — re-burn concentrates hits on existing wounds and destroys
+parts — not merely by carrying a bigger number.
+
+### Fire and Frost already had identical range — but both had a 1-tile flaw
+
+Asked to check whether their ranges differ and match them if so. **They did not differ**: both
+run cone 40/45/55 and range 7/10/13 at every level. The impression of a difference is most
+likely fire's ignition and re-burn making its reach *look* longer.
+
+But the check turned up a genuine bug affecting **both equally**: at level 1 the abstract base
+grants verb range **8** while the cone reached only **7**, leaving a one-tile band that could be
+aimed at but never hit. Both now use 8.
+
+### Storm Call range 38 -> 46 (+20%)
+
+Third range change across two playtests: 25 -> 38 -> 46.
+
+Builds clean, 0 warnings; all XML parses. Verified after the edits that Unrelenting Force's
+3 / 7 / 12 is untouched — it shares a file and a field name with Fire Breath.
+
+---
+
 ## Phase 2g-fix — Storm Call reported "no targets" with enemies plainly outdoors (2026-07-28)
 
 Playtest: Storm Call worked, but once claimed there was nothing under open sky while **more than

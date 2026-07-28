@@ -151,10 +151,14 @@
       </li>
       <li Class="Dovahkiin.CompProperties_ShoutCone">
         <coneAngle>40</coneAngle>
-        <range>7</range>
-        <!-- +35% on playtest feedback: 16 -> 22. Frost raised by the same 35%, so the two
-             keep the relationship balanced over eight rounds in Phase 2b. -->
-        <damageAmount>22</damageAmount>
+        <!-- 7 -> 8 so the cone reaches as far as the ability can be aimed. The abstract base
+             grants verb range 8, so a 7-cell cone left a one-tile band you could target but
+             never actually hit. Frost Breath had the identical mismatch. -->
+        <range>8</range>
+        <!-- 16 -> 22 (+35%) -> 26 (+20%). Playtest: these should land like a heavy power move,
+             not a poke. Frost tracks alongside at a slightly lower rate - fire stays deadlier
+             by BEHAVIOUR (reburn concentrates hits on wounds), not just by a bigger number. -->
+        <damageAmount>26</damageAmount>
         <damageInstances>6</damageInstances>
         <reburnFraction>0.25</reburnFraction>
         <damageDef>Flame</damageDef>
@@ -192,7 +196,7 @@
       <li Class="Dovahkiin.CompProperties_ShoutCone">
         <coneAngle>45</coneAngle>
         <range>10</range>
-        <damageAmount>41</damageAmount>
+        <damageAmount>49</damageAmount>
         <damageInstances>9</damageInstances>
         <reburnFraction>0.25</reburnFraction>
         <damageDef>Flame</damageDef>
@@ -231,7 +235,7 @@
       <li Class="Dovahkiin.CompProperties_ShoutCone">
         <coneAngle>55</coneAngle>
         <range>13</range>
-        <damageAmount>62</damageAmount>
+        <damageAmount>74</damageAmount>
         <damageInstances>12</damageInstances>
         <reburnFraction>0.25</reburnFraction>
         <damageDef>Flame</damageDef>

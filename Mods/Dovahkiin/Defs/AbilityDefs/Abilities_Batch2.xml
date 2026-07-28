@@ -94,7 +94,9 @@
         <ringDistortion>true</ringDistortion>
         <bystanderHediff>Dovahkiin_TimeSlowed</bystanderHediff>
         <bystanderSeverity>1</bystanderSeverity>
-        <bystanderRadius>14</bystanderRadius>
+        <!-- 0 = THE WHOLE MAP. A finite radius looked wrong in playtest: raiders just outside
+             it walked normally while their neighbours crawled. Time has no edge. -->
+        <bystanderRadius>0</bystanderRadius>
         <bystanderDurationTicks>900</bystanderDurationTicks>
       </li>
       <li Class="CompProperties_AbilityRequiresCapacity">
@@ -137,7 +139,7 @@
         <ringDistortion>true</ringDistortion>
         <bystanderHediff>Dovahkiin_TimeSlowed</bystanderHediff>
         <bystanderSeverity>2</bystanderSeverity>
-        <bystanderRadius>17</bystanderRadius>
+        <bystanderRadius>0</bystanderRadius>
         <bystanderDurationTicks>1800</bystanderDurationTicks>
       </li>
       <li Class="CompProperties_AbilityRequiresCapacity">
@@ -180,7 +182,7 @@
         <ringDistortion>true</ringDistortion>
         <bystanderHediff>Dovahkiin_TimeSlowed</bystanderHediff>
         <bystanderSeverity>3</bystanderSeverity>
-        <bystanderRadius>20</bystanderRadius>
+        <bystanderRadius>0</bystanderRadius>
         <bystanderDurationTicks>2700</bystanderDurationTicks>
       </li>
       <li Class="CompProperties_AbilityRequiresCapacity">

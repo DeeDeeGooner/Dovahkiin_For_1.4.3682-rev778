@@ -42,7 +42,7 @@
     <!-- Raised 25 -> 38 (+50%) on playtest. Measured from the CASTER'S CURRENT POSITION, not
          from where the storm was cast, so walking during a storm no longer pulls enemies out
          of reach. -->
-    <stormCallRadius>38</stormCallRadius>
+    <stormCallRadius>46</stormCallRadius>
 
     <!-- Soul Tear / dead puppet - SPEC.md 4.4f. Level 1 is damage only. -->
     <soulTearPuppetChanceByLevel><li>0</li><li>0.25</li><li>0.45</li></soulTearPuppetChanceByLevel>

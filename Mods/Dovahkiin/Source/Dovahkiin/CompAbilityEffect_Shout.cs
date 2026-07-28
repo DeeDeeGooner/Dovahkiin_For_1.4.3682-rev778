@@ -378,6 +378,13 @@ namespace Dovahkiin
         /// </summary>
         public HediffDef bystanderHediff;
         public float bystanderSeverity = 1f;
+
+        /// <summary>
+        /// Radius of the slow. **ZERO OR LESS MEANS THE ENTIRE MAP**, which is what Slow Time
+        /// uses. A finite radius produced a visibly wrong result in playtest: raiders a little
+        /// way outside it carried on at normal speed while their neighbours crawled, which reads
+        /// as a bug rather than as an effect. Time does not have an edge.
+        /// </summary>
         public float bystanderRadius = 0f;
         public int bystanderDurationTicks = 0;
 
@@ -453,7 +460,7 @@ namespace Dovahkiin
                     Props.ringFleck, Props.ringFleckScale, Props.ringCellsPerSecond,
                     Props.ringDistortion, Props.ringAlpha);
             }
-            if (Props.bystanderHediff != null && Props.bystanderRadius > 0f)
+            if (Props.bystanderHediff != null)
             {
                 SlowBystanders(caster);
             }
@@ -491,7 +498,11 @@ namespace Dovahkiin
             {
                 return;
             }
+            // Zero or less means the WHOLE MAP - see the field comment. Cost is one pass over
+            // the spawned-pawn list, which is dozens of entries, not a cell scan.
+            bool wholeMap = Props.bystanderRadius <= 0f;
             float radiusSq = Props.bystanderRadius * Props.bystanderRadius;
+
             List<Pawn> all = map.mapPawns.AllPawnsSpawned;
             for (int i = 0; i < all.Count; i++)
             {
@@ -500,7 +511,8 @@ namespace Dovahkiin
                 {
                     continue;
                 }
-                if ((p.Position - caster.Position).LengthHorizontalSquared > radiusSq)
+                if (!wholeMap
+                    && (p.Position - caster.Position).LengthHorizontalSquared > radiusSq)
                 {
                     continue;
                 }

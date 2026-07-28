@@ -77,9 +77,9 @@ namespace Dovahkiin
         /// <summary>
         /// Radius the shout searches for legal targets, measured from the caster's CURRENT
         /// position each strike - the storm follows the Dragonborn rather than staying where
-        /// it was cast. Raised from 25 to 38 (+50%) after playtest.
+        /// it was cast. Raised 25 -> 38 (+50%) then 38 -> 46 (+20%) over two playtests.
         /// </summary>
-        public float stormCallRadius = 38f;
+        public float stormCallRadius = 46f;
 
         // --- Phase 2: Soul Tear and the dead puppet (SPEC.md 4.4f) ---
 

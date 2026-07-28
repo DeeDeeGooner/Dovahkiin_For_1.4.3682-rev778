@@ -21,9 +21,11 @@
       </li>
       <li Class="Dovahkiin.CompProperties_ShoutCone">
         <coneAngle>40</coneAngle>
-        <range>7</range>
-        <!-- +35% on playtest feedback: 14 -> 19. Fire raised by the same 35%. -->
-        <damageAmount>19</damageAmount>
+        <!-- 7 -> 8, matching Fire Breath: the base grants verb range 8, so a 7-cell cone left a
+             one-tile band that could be aimed at but never hit. -->
+        <range>8</range>
+        <!-- 14 -> 19 (+35%) -> 22 (+15%). Raised alongside fire, at a slightly lower rate. -->
+        <damageAmount>22</damageAmount>
         <damageInstances>6</damageInstances>
         <snowDepth>0.12</snowDepth>
         <damageDef>Frostbite</damageDef>
@@ -63,7 +65,7 @@
       <li Class="Dovahkiin.CompProperties_ShoutCone">
         <coneAngle>45</coneAngle>
         <range>10</range>
-        <damageAmount>38</damageAmount>
+        <damageAmount>44</damageAmount>
         <damageInstances>9</damageInstances>
         <snowDepth>0.22</snowDepth>
           <stunTicks>180</stunTicks>
@@ -106,7 +108,7 @@
       <li Class="Dovahkiin.CompProperties_ShoutCone">
         <coneAngle>55</coneAngle>
         <range>13</range>
-        <damageAmount>59</damageAmount>
+        <damageAmount>68</damageAmount>
         <damageInstances>12</damageInstances>
         <snowDepth>0.35</snowDepth>
           <stunTicks>300</stunTicks>
