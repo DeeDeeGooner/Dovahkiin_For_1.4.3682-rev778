@@ -240,6 +240,54 @@ namespace Dovahkiin
     }
 
     /// <summary>
+    /// Dragon Aspect's heavier blows - SPEC.md 4.4d, word one.
+    ///
+    /// There is no data-only route. Core has no pawn-side melee DAMAGE stat at all:
+    /// MeleeDamageFactor is defined in Biotech/Defs/Stats/Stats_Pawns_Combat.xml, and
+    /// CLAUDE.md invariant 5 requires the mod to run without Biotech. Core offers only
+    /// MeleeHitChance, MeleeDodgeChance, MeleeArmorPenetration and the MeleeDPS readout.
+    ///
+    /// DamageInfosToApply is an ITERATOR (verified: it carries IteratorStateMachineAttribute),
+    /// so the body cannot usefully be patched. Wrapping the returned sequence in a postfix is
+    /// the correct shape - each DamageInfo is a struct, so it is copied, scaled and yielded.
+    ///
+    /// Like every other combat-path patch here, it opens with the registry reference compare
+    /// inside DragonAspectMeleeFactor, which at most one pawn per save can pass.
+    /// </summary>
+    [HarmonyPatch(typeof(Verb_MeleeAttackDamage), "DamageInfosToApply")]
+    public static class Patch_Verb_MeleeAttackDamage_DamageInfosToApply
+    {
+        [HarmonyPostfix]
+        public static void Postfix(Verb_MeleeAttackDamage __instance,
+            ref IEnumerable<DamageInfo> __result)
+        {
+            if (__instance == null || __result == null)
+            {
+                return;
+            }
+            float factor = ShoutSelfBuffUtility.DragonAspectMeleeFactor(__instance.CasterPawn);
+            if (factor == 1f)
+            {
+                return;
+            }
+            __result = ScaleAll(__result, factor);
+        }
+
+        private static IEnumerable<DamageInfo> ScaleAll(IEnumerable<DamageInfo> source,
+            float factor)
+        {
+            foreach (DamageInfo info in source)
+            {
+                // DamageInfo is a struct: this is already our own copy, so mutating it here
+                // cannot reach back into whatever produced the sequence.
+                DamageInfo scaled = info;
+                scaled.SetAmount(scaled.Amount * factor);
+                yield return scaled;
+            }
+        }
+    }
+
+    /// <summary>
     /// Shared lookups for the two self-buff shouts. Both sit on paths that run during combat -
     /// every attack start, every cooldown calculation - so both begin with the registry
     /// reference compare and leave immediately for anyone who is not the Dovahkiin.
@@ -249,6 +297,32 @@ namespace Dovahkiin
         internal static bool IsEthereal(Pawn p)
         {
             return SelfBuffOn(p, DovahkiinDefOf.Dovahkiin_Ethereal) != null;
+        }
+
+        /// <summary>
+        /// Dragon Aspect's melee damage multiplier, 1 meaning no change.
+        ///
+        /// This exists as a patch rather than a statOffset because RimWorld has no Core stat
+        /// for it: MeleeDamageFactor is defined in Biotech, and CLAUDE.md invariant 5 requires
+        /// the mod to run on Core + Royalty + Ideology alone. Core's pawn-combat stats are hit
+        /// chance, dodge, armour penetration and a DPS readout - none of them an input for
+        /// outgoing damage.
+        ///
+        /// Flat across all three levels by design: the user specified heavier blows at word
+        /// ONE, with the later words adding armour, resistances and the summon instead.
+        /// </summary>
+        internal static float DragonAspectMeleeFactor(Pawn p)
+        {
+            if (SelfBuffOn(p, DovahkiinDefOf.Dovahkiin_DragonAspect) == null)
+            {
+                return 1f;
+            }
+            DovahkiinTuningDef tuning = DovahkiinTuningDef.Current;
+            if (tuning == null)
+            {
+                return 1f;
+            }
+            return tuning.dragonAspectMeleeDamageFactor;
         }
 
         /// <summary>

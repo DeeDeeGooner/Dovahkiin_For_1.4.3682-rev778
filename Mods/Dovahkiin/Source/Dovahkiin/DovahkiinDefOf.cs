@@ -20,6 +20,12 @@ namespace Dovahkiin
         /// <summary>Become Ethereal. Read on the attack-start path. SPEC.md 4.4a.</summary>
         public static HediffDef Dovahkiin_Ethereal;
 
+        /// <summary>
+        /// Dragon Aspect. Read on the MELEE DAMAGE path, because no Core stat can carry a
+        /// pawn-side melee damage bonus - MeleeDamageFactor is Biotech. SPEC.md 4.4d.
+        /// </summary>
+        public static HediffDef Dovahkiin_DragonAspect;
+
         /// <summary>Drain Vitality and Dismay - promoted from SPEC.md 4.4c at the user's request.</summary>
         public static HediffDef Dovahkiin_VitalityDrained;
         public static HediffDef Dovahkiin_Dismayed;
@@ -49,6 +55,12 @@ namespace Dovahkiin
 
         /// <summary>The Storm Call storm. Ticks only while the shout is active. SPEC.md 4.4e.</summary>
         public static ThingDef Dovahkiin_StormCall;
+
+        /// <summary>
+        /// The Dragon Aspect spectral overlay - SPEC.md 4.4d. A picture only; it carries no
+        /// game state, so its absence costs the visual and nothing else.
+        /// </summary>
+        public static ThingDef Dovahkiin_DragonAspectOverlay;
 
         /// <summary>Tintable cone particles. Vanilla's are renderInstanced and ignore colour.</summary>
         public static FleckDef Dovahkiin_Fleck_ForceWave;

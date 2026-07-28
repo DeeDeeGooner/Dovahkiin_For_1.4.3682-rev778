@@ -368,6 +368,17 @@ namespace Dovahkiin
         public float ringAlpha = 1f;
 
         /// <summary>
+        /// Spawns Dovahkiin_DragonAspectOverlay on the caster - the spectral armour, helm and
+        /// aura of SPEC.md 4.4d. Only Dragon Aspect sets this.
+        ///
+        /// The overlay is purely a picture. It owns no game state, takes the level from the
+        /// hediff's severity, and deletes itself when that hediff ends. If it failed to spawn
+        /// the shout would still work and simply be invisible - which is exactly why it is a
+        /// separate Thing rather than something the hediff depends on.
+        /// </summary>
+        public bool spawnOverlay = false;
+
+        /// <summary>
         /// Slow Time's other half: a slow laid on EVERY other pawn in range, allies included,
         /// so the world appears to crawl while the caster does not.
         ///
@@ -460,6 +471,10 @@ namespace Dovahkiin
                     Props.ringFleck, Props.ringFleckScale, Props.ringCellsPerSecond,
                     Props.ringDistortion, Props.ringAlpha);
             }
+            if (Props.spawnOverlay)
+            {
+                SpawnDragonAspectOverlay(caster, Mathf.RoundToInt(Props.severity));
+            }
             if (Props.bystanderHediff != null)
             {
                 SlowBystanders(caster);
@@ -475,6 +490,47 @@ namespace Dovahkiin
                     Props.castSound.PlayOneShot(new TargetInfo(caster.Position, caster.Map, false));
                 }
             }
+        }
+
+        /// <summary>
+        /// SPEC.md 4.4d. Puts the spectral armour on the caster, replacing any overlay already
+        /// there so recasting at a different level cannot leave two stacked pictures.
+        ///
+        /// Every failure here is survivable and silent by design: the overlay is only a
+        /// picture, and the shout's armour, resistances and melee bonus all live on the hediff,
+        /// which is already applied by this point. A missing def logs and moves on rather than
+        /// throwing mid-cast.
+        /// </summary>
+        private static void SpawnDragonAspectOverlay(Pawn caster, int level)
+        {
+            ThingDef def = DovahkiinDefOf.Dovahkiin_DragonAspectOverlay;
+            if (def == null)
+            {
+                DovahkiinMod.VerboseLog("Dragon Aspect: overlay ThingDef missing, "
+                    + "shout applied without its visual.");
+                return;
+            }
+            // Clear any earlier overlay on this pawn first. Recasting refreshes the hediff
+            // rather than stacking it, and the picture has to follow the same rule.
+            List<Thing> here = caster.Map.thingGrid.ThingsListAtFast(caster.Position);
+            for (int i = here.Count - 1; i >= 0; i--)
+            {
+                Thing_DragonAspectOverlay old = here[i] as Thing_DragonAspectOverlay;
+                if (old != null && !old.Destroyed)
+                {
+                    old.Destroy(DestroyMode.Vanish);
+                }
+            }
+
+            Thing spawned = ThingMaker.MakeThing(def, null);
+            Thing_DragonAspectOverlay overlay = spawned as Thing_DragonAspectOverlay;
+            if (overlay == null)
+            {
+                DovahkiinMod.VerboseLog("Dragon Aspect: overlay def has the wrong thingClass.");
+                return;
+            }
+            overlay.Attach(caster, level);
+            GenSpawn.Spawn(overlay, caster.Position, caster.Map, WipeMode.Vanish);
         }
 
         /// <summary>

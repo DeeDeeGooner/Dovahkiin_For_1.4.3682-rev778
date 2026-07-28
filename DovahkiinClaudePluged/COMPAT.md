@@ -318,3 +318,35 @@ Framework → Dragons Descent → (everything else) → Medieval Overhaul family
 
 Dovahkiin after Rimedieval so our patches sit on top of its filtering; before RocketMan so its
 optimisation layer sees our finished defs.
+
+## 10. Frost damage across the modlist — what actually resists it
+
+Read off disk 2026-07-29 while designing Dragon Aspect's word-2 "fire and frost resistance".
+Every frost/ice damage source in the active modlist, with the `<armorCategory>` it declares:
+
+| Source | DamageDef | armorCategory | Therefore resisted by |
+|---|---|---|---|
+| RimWorld of Magic — blizzards | `TM_Blizzard_Small`, `TM_Blizzard_Large` | **Heat** | `ArmorRating_Heat` |
+| RimWorld of Magic — frost ray | `FrostRay` | **Heat** | `ArmorRating_Heat` |
+| RimWorld of Magic — snowball | `Snowball` | **Heat** | `ArmorRating_Heat` |
+| RimWorld of Magic — enchanted ice | `TM_Enchanted_Ice` | **Heat** | `ArmorRating_Heat` |
+| RimWorld of Magic — freezing winds | `TM_FreezingWindsDD` | **Heat** | `ArmorRating_Heat` |
+| RimWorld of Magic — iceshard | `Iceshard` | **Sharp** | `ArmorRating_Sharp` |
+| Dragon's Descent — frost breath | `DD_Frost_Breath` | **Sharp** | `ArmorRating_Sharp` |
+| The Profaned — ice shards | `BotchJob_IceShardsDamage` | **Blunt** | `ArmorRating_Blunt` |
+| Vanilla — weather frostbite | `Frostbite` | **none** | nothing; see below |
+
+**The headline: RimWorld of Magic files frost under the HEAT armour category.** Five of its
+seven frost damages are Heat, so `ArmorRating_Heat` — the obvious "fire resistance" stat —
+already buys most of the modlist's frost resistance as well. That is a coincidence of RWoM's
+authoring, not a rule; re-check it if RWoM ever updates.
+
+**Vanilla `Frostbite` cannot be resisted by armour at all.** It has no `armorCategory`, sets
+`externalViolence: false`, and runs through `DamageWorker_Frostbite` — it is the environmental
+cold-weather injury, not a weapon. The only defences are `Insulation_Cold` and
+`ComfyTemperatureMin`. So anything billed as frost resistance must include cold insulation or
+it will not stop frostbite or hypothermia.
+
+**Consequence for Dragon Aspect:** no Harmony damage hook and no list of foreign defNames is
+needed. Four Core stats cover every entry in the table —
+`ArmorRating_Heat`, `ArmorRating_Sharp`, `ArmorRating_Blunt`, `Insulation_Cold`.

@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 4.4d - Dragon Aspect, the last of the fourteen core shouts.
+
+  The three words do this, as settled with the user on 2026-07-29:
+
+    Mul           armour, and heavier melee blows
+    Mul Qah       armour x4, plus fire and frost resistance
+    Mul Qah Diiv  armour x6, plus reduced shout cooldown, plus the Ancient Dragonborn
+
+  Two of those needed checking against the real game before any number was chosen, and both
+  came back differently from how they were asked for. See COMPAT.md section 10.
+
+    - "increased melee damage" has NO Core stat. MeleeDamageFactor is defined in
+      Biotech/Defs/Stats/Stats_Pawns_Combat.xml, and CLAUDE.md invariant 5 says the mod must
+      run without Biotech. It is applied by a Harmony patch on the melee damage path instead,
+      gated on the registry like every other combat-path patch here.
+
+    - "frost resistance" has no stat at all. RimWorld of Magic files its frost damage under
+      the HEAT armour category (5 of its 7 frost defs), Dragon's Descent and RWoM's Iceshard
+      use Sharp, The Profaned uses Blunt - so ArmorRating_Heat/Sharp/Blunt between them cover
+      every frost source in the modlist. Vanilla's own Frostbite has no armour category and
+      cannot be resisted by armour at all, only by Insulation_Cold, which is why the hediff
+      carries insulation as well.
+
+  Costs and cooldowns: this is the showpiece, and SPEC 4.4d asks for a "once-per-fight feel".
+  It is priced just under Storm Call (10/16/24) but with by far the longest cooldown of any
+  shout - a minute at one word, two minutes at three.
+-->
+<Defs>
+
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Mul</defName>
+    <label>Mul</label>
+    <word>Mul</word>
+    <meaning>Strength</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Qah</defName>
+    <label>Qah</label>
+    <word>Qah</word>
+    <meaning>Armor</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Diiv</defName>
+    <label>Diiv</label>
+    <word>Diiv</word>
+    <meaning>Wyrm</meaning>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_DragonAspect</defName>
+    <label>Dragon Aspect</label>
+    <description>The oldest and mightiest of Shouts. Spectral dragon armour closes over you, and for a while you are less a mortal than a wyrm wearing one.</description>
+    <words>
+      <li>Dovahkiin_Word_Mul</li>
+      <li>Dovahkiin_Word_Qah</li>
+      <li>Dovahkiin_Word_Diiv</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_DragonAspect_1</li>
+      <li>Dovahkiin_Ability_DragonAspect_2</li>
+      <li>Dovahkiin_Ability_DragonAspect_3</li>
+    </abilitiesByLevel>
+    <thuumCostByLevel><li>9</li><li>15</li><li>22</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>3600</li><li>5400</li><li>7200</li></cooldownTicksByLevel>
+    <!-- SPEC.md 4.5 / 4.6: dragons and draugr get only Force, Fire and Frost. Never this. -->
+    <availableToDragons>false</availableToDragons>
+    <availableToUndead>false</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
+</Defs>

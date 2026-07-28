@@ -1,5 +1,91 @@
 # CHANGELOG
 
+## Phase 2i — Dragon Aspect, everything but the summon (2026-07-29)
+
+The fourteenth and last core shout. Builds clean, 0 warnings. Not yet playtested.
+Test script: `TESTS/phase2i.md`. The Ancient Dragonborn is deliberately **not** in this
+build — see the end of this entry.
+
+**Effects, as specified by the user:** word 1 armour and heavier melee; word 2 armour ×4 plus
+fire and frost resistance; word 3 armour ×6 plus a shorter shout cooldown plus the summon.
+Armour resolves to **+0.10 / +0.40 / +0.60** on Sharp and Blunt.
+
+### Two of the three effects had no vanilla stat, and both were found by checking
+
+**Melee damage: `MeleeDamageFactor` is BIOTECH-ONLY.** It appears in `StatDefOf`, which is
+exactly the trap `RangedCooldownFactor` set earlier in this project — being in a `DefOf` class
+proves the field exists, never that the def does. It is defined in
+`Biotech/Defs/Stats/Stats_Pawns_Combat.xml`, and `CLAUDE.md` invariant 5 requires the mod to
+run without Biotech. Listing Core's own pawn-combat stats settles it: hit chance, dodge,
+armour penetration and a DPS *readout* — **no melee damage multiplier exists in Core at all**.
+
+*Fix, and why this one over the alternatives:* a Harmony postfix on
+`Verb_MeleeAttackDamage.DamageInfosToApply`. Verified by reflection that the method exists and
+carries `IteratorStateMachineAttribute` — it is a compiler-generated iterator, so its body
+cannot usefully be patched and wrapping the returned sequence is the correct shape. Rejected:
+`MeleeArmorPenetration` (Core, but penetration is not damage and would read differently in
+play), and `MayRequire`-gating the Biotech stat (leaves baseline players with a word-1 effect
+that silently does nothing).
+
+**Frost resistance does not exist as a concept in RimWorld.** There is no cold-damage armour
+category. Rather than invent one, every frost source in the active modlist was read off disk —
+full table in `COMPAT.md` section 10. The result was better than expected:
+
+- **RimWorld of Magic files its frost damage under the `Heat` armour category** (5 of its 7
+  frost defs), so `ArmorRating_Heat` — the obvious "fire resistance" — buys most of the
+  modlist's frost resistance too.
+- `Iceshard` and Dragon's Descent's `DD_Frost_Breath` are **Sharp**; The Profaned's ice is
+  **Blunt**. Both already raised from word 1.
+- Vanilla `Frostbite` has **no armour category**, `externalViolence: false`, and runs through
+  `DamageWorker_Frostbite`. Armour cannot touch it at any value — only `Insulation_Cold` can.
+
+*Fix:* four Core stats cover the whole table. No Harmony damage hook and no list of foreign
+defNames, both of which were considered and are now unnecessary. The user specifically asked
+for cold insulation on the suspicion that frost hazards apply frostbite; that instinct was
+right and is the only reason weather-driven frostbite is covered.
+
+**Shout cooldown reduction** needed no stat at all — the shared Thu'um cooldown is this mod's
+own number. Applied in `ShoutUtility` *after* strain, deliberately: strain should still
+lengthen the cooldown and then be discounted. Dragon Aspect makes shouting easier; it does not
+make the Voice tireless. Three words only.
+
+### The overlay — SPEC 4.4d's stop-and-report clause
+
+`Thing_DragonAspectOverlay`, a follower Thing with `drawerType RealtimeOnly` that reads
+`pawn.Drawer.DrawPos` and `pawn.Rotation` each frame. **No render patch anywhere.**
+
+Two routes were checked against the real assembly and rejected:
+
+- `RimWorld.PawnOverlayDrawer` **does** exist in 1.4 and is exactly the right machinery — it
+  is how firefoam and wounds paint onto a pawn's body mesh. But `PawnRenderer` only ever calls
+  the two instances it owns, from the private `RenderPawnInternal`. A third means patching pawn
+  rendering, which is the single thing RocketMan is most likely to break.
+- Invisible apparel needs **15 textures, not 3** — `ApparelGraphicRecordGetter` resolves
+  body-layer apparel per `BodyTypeDef` — and is a real item that shows in the Gear tab, can be
+  removed, and drops on death.
+
+The helm is positioned from `PawnRenderer.BaseHeadOffsetAt`, which is public, so it follows the
+head rather than sitting at a guessed offset. The overlay holds **no game state**: if it failed
+to spawn the shout would still work and simply be invisible, which is why it is a separate
+Thing rather than something the hediff depends on.
+
+### The cast ring is not new art
+
+A bespoke expanding-ring texture was built for this and **thrown away**. The mod already has
+the machinery: `SpawnRingBurst` spawns the ordinary `Thing_ShoutWave` at `coneAngle 360` with
+no payload — the same call Slow Time and Clear Skies make. Dragon Aspect just passes the
+armour's ember tint. When a shout needs a stock effect, check `CompAbilityEffect_Shout` before
+drawing anything.
+
+### Deliberately not in this build
+
+**The Ancient Dragonborn**, the ghostly ally at three words, and the gradient axe he carries.
+Temporary pawns are the top save-corruption risk in `RISKS.md` section 9, and Soul Tear's
+puppet only became safe by being *always doomed*. That deserves its own build and its own test
+round rather than being bundled in behind fourteen other checks.
+
+---
+
 ## Art — five icons now use head-to-tip gradients (2026-07-28)
 
 Soul Tear's tip changed from crimson to **bright clear purple**, giving it one hue running dark

@@ -1,0 +1,136 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  SPEC.md 4.4d - Dragon Aspect. A SELF-BUFF: the caster is the target and the player is never
+  asked to aim, so this follows the same shape as Slow Time and Become Ethereal.
+
+  THE THREE THINGS A NO-TARGET ABILITY NEEDS - do not "simplify" these away:
+    1. targetRequired false
+    2. targetParams / canTargetSelf true      (THE CRITICAL ONE)
+    3. a POSITIVE range, never -1
+  Miss the second and the gizmo appears, is clickable, and does nothing at all - no error, no
+  log line. That silently broke Clear Skies for three phases and both Phase 2c shouts.
+
+  verbProperties is replaced wholesale by a child def, never merged, so a level that overrides
+  it must repeat the entire block including targetParams. None of these override it.
+
+  The cast ring is the ordinary shout wave at coneAngle 360 with no payload - the same
+  SpawnRingBurst that Slow Time and Clear Skies already use. It is tinted with the armour's
+  own ember. No bespoke art: the machinery already existed.
+-->
+<Defs>
+
+  <AbilityDef Name="Dovahkiin_DragonAspectBase" Abstract="True">
+    <cooldownTicksRange>0</cooldownTicksRange>
+    <hostile>false</hostile>
+    <targetRequired>false</targetRequired>
+    <showWhenDrafted>true</showWhenDrafted>
+    <displayGizmoWhileUndrafted>true</displayGizmoWhileUndrafted>
+    <disableGizmoWhileUndrafted>false</disableGizmoWhileUndrafted>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_DragonAspect</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>3.9</range>
+      <warmupTime>1.1</warmupTime>
+      <drawAimPie>false</drawAimPie>
+      <requireLineOfSight>false</requireLineOfSight>
+      <targetParams>
+        <canTargetSelf>true</canTargetSelf>
+      </targetParams>
+    </verbProperties>
+  </AbilityDef>
+
+  <!-- ===================== Mul - one word ===================== -->
+  <AbilityDef ParentName="Dovahkiin_DragonAspectBase">
+    <defName>Dovahkiin_Ability_DragonAspect_1</defName>
+    <label>mul</label>
+    <description>Strength. Spectral plate closes over your arms, and your blows fall heavier.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_DragonAspect</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutSelfBuff">
+        <hediffDef>Dovahkiin_DragonAspect</hediffDef>
+        <severity>1</severity>
+        <durationTicks>1200</durationTicks>
+        <castSound>PsychicPulseGlobal</castSound>
+        <soundOnCamera>true</soundOnCamera>
+        <ringRadius>10</ringRadius>
+        <!-- the armour's own ember, (255,150,56) -->
+        <ringTint>(1.0, 0.59, 0.22)</ringTint>
+        <ringAlpha>0.55</ringAlpha>
+        <ringFleck>Dovahkiin_Fleck_TimeRing</ringFleck>
+        <ringFleckScale>2.0</ringFleckScale>
+        <ringCellsPerSecond>26</ringCellsPerSecond>
+        <ringDistortion>true</ringDistortion>
+        <spawnOverlay>true</spawnOverlay>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <!-- ===================== Mul Qah - two words ===================== -->
+  <AbilityDef ParentName="Dovahkiin_DragonAspectBase">
+    <defName>Dovahkiin_Ability_DragonAspect_2</defName>
+    <label>mul qah</label>
+    <description>Strength, Armour. The plates spread across your chest and shoulders, and fire and frost lose their bite.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_DragonAspect</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutSelfBuff">
+        <hediffDef>Dovahkiin_DragonAspect</hediffDef>
+        <severity>2</severity>
+        <durationTicks>1800</durationTicks>
+        <castSound>PsychicPulseGlobal</castSound>
+        <soundOnCamera>true</soundOnCamera>
+        <ringRadius>14</ringRadius>
+        <ringTint>(1.0, 0.59, 0.22)</ringTint>
+        <ringAlpha>0.65</ringAlpha>
+        <ringFleck>Dovahkiin_Fleck_TimeRing</ringFleck>
+        <ringFleckScale>2.2</ringFleckScale>
+        <ringCellsPerSecond>28</ringCellsPerSecond>
+        <ringDistortion>true</ringDistortion>
+        <spawnOverlay>true</spawnOverlay>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <!-- ===================== Mul Qah Diiv - three words ===================== -->
+  <AbilityDef ParentName="Dovahkiin_DragonAspectBase">
+    <defName>Dovahkiin_Ability_DragonAspect_3</defName>
+    <label>mul qah diiv</label>
+    <description>Strength, Armour, Wyrm. The full aspect of a dragon settles over you - and an older Dragonborn steps out of the air to fight at your side.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_DragonAspect</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutSelfBuff">
+        <hediffDef>Dovahkiin_DragonAspect</hediffDef>
+        <severity>3</severity>
+        <durationTicks>2700</durationTicks>
+        <castSound>PsychicPulseGlobal</castSound>
+        <soundOnCamera>true</soundOnCamera>
+        <ringRadius>18</ringRadius>
+        <ringTint>(1.0, 0.59, 0.22)</ringTint>
+        <ringAlpha>0.75</ringAlpha>
+        <ringFleck>Dovahkiin_Fleck_TimeRing</ringFleck>
+        <ringFleckScale>2.4</ringFleckScale>
+        <ringCellsPerSecond>30</ringCellsPerSecond>
+        <ringDistortion>true</ringDistortion>
+        <spawnOverlay>true</spawnOverlay>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+</Defs>

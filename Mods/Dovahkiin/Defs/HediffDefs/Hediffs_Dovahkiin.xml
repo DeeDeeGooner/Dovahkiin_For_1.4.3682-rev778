@@ -666,4 +666,80 @@
     </stages>
   </HediffDef>
 
+  <!-- ============================================================================
+       Dragon Aspect - SPEC.md 4.4d. One hediff, three stages by severity = words known.
+
+       Armour follows the rule settled with the user on 2026-07-29: word 1 yields X, word 2
+       yields 4X, word 3 yields 4X plus half again - so X / 4X / 6X. X is 0.10, putting word
+       three at +0.60, roughly a suit of plate again on top of whatever is already worn.
+       Deliberately large; this is the showpiece with a two-minute cooldown.
+
+       ArmorRating_Heat arrives at word 2 as "fire resistance" and quietly does most of the
+       FROST work too, because RimWorld of Magic files its frost damage under Heat. Sharp and
+       Blunt cover the rest of the modlist's frost (Dragon's Descent, RWoM's Iceshard, The
+       Profaned) and are already raised from word 1.
+
+       Insulation_Cold is here because vanilla Frostbite has NO armour category and cannot be
+       resisted by armour at any value - only insulation stops frostbite and hypothermia.
+       Full table in COMPAT.md section 10.
+
+       NOT here, and deliberately:
+         - melee damage: no Core stat exists for it. MeleeDamageFactor ships in Biotech, and
+           the mod must run without Biotech, so it is a Harmony patch on the melee damage
+           path reading its number from DovahkiinTuningDef.
+         - shout cooldown reduction: the shared shout cooldown is this mod's own number, not
+           a vanilla stat, so CompAbilityEffect_Shout applies it directly.
+       ============================================================================ -->
+  <HediffDef>
+    <defName>Dovahkiin_DragonAspect</defName>
+    <hediffClass>HediffWithComps</hediffClass>
+    <label>dragon aspect</label>
+    <description>Spectral dragon armour has closed over this pawn - burnished plates, spurred shoulders, and a crest of jagged light down the chest. Blows land harder, and steel finds less purchase.</description>
+    <defaultLabelColor>(0.91, 0.70, 0.36)</defaultLabelColor>
+    <isBad>false</isBad>
+    <initialSeverity>1</initialSeverity>
+    <maxSeverity>3</maxSeverity>
+    <everCurableByItem>false</everCurableByItem>
+    <scenarioCanAdd>false</scenarioCanAdd>
+    <comps>
+      <li Class="HediffCompProperties_Disappears">
+        <disappearsAfterTicks>1200</disappearsAfterTicks>
+        <showRemainingTime>true</showRemainingTime>
+      </li>
+    </comps>
+    <stages>
+      <li>
+        <minSeverity>0</minSeverity>
+        <label>Mul</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <ArmorRating_Sharp>0.10</ArmorRating_Sharp>
+          <ArmorRating_Blunt>0.10</ArmorRating_Blunt>
+        </statOffsets>
+      </li>
+      <li>
+        <minSeverity>2</minSeverity>
+        <label>Mul Qah</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <ArmorRating_Sharp>0.40</ArmorRating_Sharp>
+          <ArmorRating_Blunt>0.40</ArmorRating_Blunt>
+          <ArmorRating_Heat>0.40</ArmorRating_Heat>
+          <Insulation_Cold>20</Insulation_Cold>
+        </statOffsets>
+      </li>
+      <li>
+        <minSeverity>3</minSeverity>
+        <label>Mul Qah Diiv</label>
+        <becomeVisible>true</becomeVisible>
+        <statOffsets>
+          <ArmorRating_Sharp>0.60</ArmorRating_Sharp>
+          <ArmorRating_Blunt>0.60</ArmorRating_Blunt>
+          <ArmorRating_Heat>0.60</ArmorRating_Heat>
+          <Insulation_Cold>30</Insulation_Cold>
+        </statOffsets>
+      </li>
+    </stages>
+  </HediffDef>
+
 </Defs>

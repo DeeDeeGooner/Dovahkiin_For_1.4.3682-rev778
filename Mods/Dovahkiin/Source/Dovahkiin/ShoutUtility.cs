@@ -1,6 +1,7 @@
 // Implements: SPEC.md 4.1 (levels), 4.2 (shared cooldown + strain), 5.4 (witnessing a shout).
 using System.Collections.Generic;
 using RimWorld;
+using UnityEngine;
 using Verse;
 
 namespace Dovahkiin
@@ -132,9 +133,46 @@ namespace Dovahkiin
             // shout just used - not a per-shout timer. Strain lengthens it when shouting repeatedly.
             int baseTicks = shout.CooldownTicks(level);
             float strainMult = voice.RegisterStrainAndGetMultiplier();
-            voice.StartThuumCooldown((int)(baseTicks * strainMult));
+
+            // SPEC.md 4.4d: three-word Dragon Aspect shortens the shared cooldown while it is
+            // up. Applied here rather than as a statFactor because the shared cooldown is this
+            // mod's own number and no vanilla stat touches it.
+            //
+            // Deliberately AFTER strain: strain should still lengthen the cooldown normally and
+            // then be discounted, not be bypassed. Dragon Aspect makes shouting easier, it does
+            // not make the Voice tireless.
+            float aspectMult = DragonAspectCooldownFactor(pawn);
+            voice.StartThuumCooldown((int)(baseTicks * strainMult * aspectMult));
 
             NotifyWitnesses(pawn);
+        }
+
+        /// <summary>
+        /// SPEC.md 4.4d: the shared shout cooldown is shortened while THREE-word Dragon Aspect
+        /// is active. Returns 1 otherwise.
+        ///
+        /// Three words only. One and two words buy armour and resistances; the cooldown cut is
+        /// what the third word adds, alongside the Ancient Dragonborn.
+        /// </summary>
+        private static float DragonAspectCooldownFactor(Pawn pawn)
+        {
+            if (pawn == null || pawn.health == null || pawn.health.hediffSet == null
+                || DovahkiinDefOf.Dovahkiin_DragonAspect == null)
+            {
+                return 1f;
+            }
+            Hediff aspect = pawn.health.hediffSet
+                .GetFirstHediffOfDef(DovahkiinDefOf.Dovahkiin_DragonAspect);
+            if (aspect == null || Mathf.RoundToInt(aspect.Severity) < 3)
+            {
+                return 1f;
+            }
+            DovahkiinTuningDef tuning = DovahkiinTuningDef.Current;
+            if (tuning == null)
+            {
+                return 1f;
+            }
+            return Mathf.Clamp(tuning.dragonAspectShoutCooldownFactor, 0.1f, 1f);
         }
 
         /// <summary>SPEC.md 5.4: witnessing a shout is a temporary colony mood lift.</summary>

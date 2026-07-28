@@ -68,4 +68,29 @@
     <altitudeLayer>Skyfaller</altitudeLayer>
   </ThingDef>
 
+  <!--
+    SPEC.md 4.4d - the Dragon Aspect overlay.
+
+    Unlike the two above, this one DOES draw, so it is the only ethereal Thing here with
+    drawerType RealtimeOnly rather than None: Thing.DrawAt is called only for a Thing whose
+    drawer runs in real time.
+
+    It rides the PAWN rather than its own cell - DrawAt ignores the position it is handed and
+    reads pawn.Drawer.DrawPos instead - so it follows movement, facing, drafting and downing
+    without touching PawnRenderer, which is what RocketMan would fight. See the file header of
+    Thing_DragonAspectOverlay.cs for the two routes that were rejected and why.
+
+    tickerType Rare because it only has to notice that the hediff has ended, which is not a
+    per-tick question. It holds no game state: destroying it loses the picture and nothing else.
+  -->
+  <ThingDef ParentName="EtherealThingBase">
+    <defName>Dovahkiin_DragonAspectOverlay</defName>
+    <label>dragon aspect</label>
+    <thingClass>Dovahkiin.Thing_DragonAspectOverlay</thingClass>
+    <tickerType>Rare</tickerType>
+    <useHitPoints>false</useHitPoints>
+    <drawerType>RealtimeOnly</drawerType>
+    <altitudeLayer>PawnState</altitudeLayer>
+  </ThingDef>
+
 </Defs>

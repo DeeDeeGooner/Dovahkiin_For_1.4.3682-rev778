@@ -72,6 +72,13 @@
     <akatoshMitigationBase>0.05</akatoshMitigationBase>
     <akatoshMitigationPerSoul>0.02</akatoshMitigationPerSoul>
     <akatoshMitigationCap>0.30</akatoshMitigationCap>
+
+    <!-- Dragon Aspect - SPEC.md 4.4d. The armour and resistance numbers are statOffsets on
+         the hediff itself; these two cannot be, because neither has a usable vanilla stat.
+         Melee damage: MeleeDamageFactor is Biotech-only, so a Harmony patch applies this.
+         Shout cooldown: the shared shout cooldown is our own number, not a stat. -->
+    <dragonAspectMeleeDamageFactor>1.25</dragonAspectMeleeDamageFactor>
+    <dragonAspectShoutCooldownFactor>0.65</dragonAspectShoutCooldownFactor>
   </Dovahkiin.DovahkiinTuningDef>
 
 </Defs>

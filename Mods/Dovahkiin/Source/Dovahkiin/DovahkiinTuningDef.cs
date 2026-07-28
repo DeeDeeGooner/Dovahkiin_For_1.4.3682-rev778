@@ -131,6 +131,29 @@ namespace Dovahkiin
         public float akatoshMitigationPerSoul = 0.02f;
         public float akatoshMitigationCap = 0.30f;
 
+        // --- Dragon Aspect (SPEC.md 4.4d) ---
+
+        /// <summary>
+        /// Melee damage multiplier while Dragon Aspect is up.
+        ///
+        /// This lives here rather than in the hediff because there is NO Core stat for
+        /// pawn-side melee damage: MeleeDamageFactor ships in Biotech, and CLAUDE.md
+        /// invariant 5 requires the mod to run without it. A Harmony postfix on
+        /// Verb_MeleeAttackDamage.DamageInfosToApply scales each DamageInfo by this instead.
+        ///
+        /// Flat across all three levels, on purpose - the user specified heavier blows at
+        /// word ONE only, with words two and three adding armour, resistances and the
+        /// summon rather than more damage.
+        /// </summary>
+        public float dragonAspectMeleeDamageFactor = 1.25f;
+
+        /// <summary>
+        /// Shout cooldown multiplier at THREE words of Dragon Aspect. The shared shout
+        /// cooldown is this mod's own number, not a vanilla stat, so it is applied directly
+        /// rather than through statFactors. 0.65 = cooldowns run 35% shorter.
+        /// </summary>
+        public float dragonAspectShoutCooldownFactor = 0.65f;
+
         private static DovahkiinTuningDef cached;
 
         /// <summary>
