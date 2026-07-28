@@ -33,6 +33,9 @@ namespace Dovahkiin
         /// <summary>The crimson mark on a puppet, so it is never mistaken for a real ally.</summary>
         public static FleckDef Dovahkiin_Fleck_PuppetGlow;
 
+        /// <summary>Soul Tear's travelling bolt.</summary>
+        public static FleckDef Dovahkiin_Fleck_SoulTearWave;
+
         /// <summary>Slow Time's slow on everyone who is not the caster. SPEC.md 4.4a.</summary>
         public static HediffDef Dovahkiin_TimeSlowed;
 

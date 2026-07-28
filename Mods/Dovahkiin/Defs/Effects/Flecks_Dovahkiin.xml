@@ -180,17 +180,22 @@
     </graphicData>
   </FleckDef>
 
-  <!-- Soul Tear's wave: deep blood-crimson bleeding toward black. -->
+  <!--
+    Soul Tear's travelling bolt. PURPLE, as asked - and a brighter, more magenta violet than
+    Drain Vitality's (0.38, 0.13, 0.62), so the two purple shouts stay distinguishable at a
+    glance. Longer solid/fade times than the other waves, because this one is drawn with a long
+    trail and the tail should linger rather than blink out.
+  -->
   <FleckDef ParentName="FleckBase">
     <defName>Dovahkiin_Fleck_SoulTearWave</defName>
     <altitudeLayer>MoteOverhead</altitudeLayer>
-    <fadeInTime>0.04</fadeInTime>
-    <solidTime>0.22</solidTime>
-    <fadeOutTime>0.60</fadeOutTime>
+    <fadeInTime>0.03</fadeInTime>
+    <solidTime>0.30</solidTime>
+    <fadeOutTime>0.75</fadeOutTime>
     <graphicData>
       <texPath>Things/Mote/DustPuff</texPath>
       <shaderType>MoteGlow</shaderType>
-      <color>(0.75, 0.10, 0.14, 1.0)</color>
+      <color>(0.68, 0.15, 0.90, 1.0)</color>
     </graphicData>
   </FleckDef>
 

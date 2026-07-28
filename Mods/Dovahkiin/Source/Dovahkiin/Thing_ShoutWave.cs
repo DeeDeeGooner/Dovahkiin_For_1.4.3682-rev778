@@ -154,16 +154,42 @@ namespace Dovahkiin
         private MentalStateDef mentalState;
         private float mentalStateChance;
 
+        /// <summary>
+        /// Armour penetration for the payload's damage.
+        ///
+        /// ZERO IS A REAL CHOICE AND IT BIT US: Soul Tear shipped with 0 and a heavily armoured
+        /// modded raider shrugged the whole shout off, because Dovahkiin_SoulWither is
+        /// Blunt-parented and therefore fully reduced by blunt armour. A breath weapon may
+        /// reasonably be stopped by plate; the mod's most powerful shout may not.
+        /// </summary>
+        private float armorPenetration;
+
+        /// <summary>
+        /// Stop the wave dead once it reaches ANY pawn. Soul Tear: a single-target bolt that
+        /// halts at the first body it meets, exactly as it does in TES5 - never a cone, never a
+        /// line that carries on through the rank behind.
+        /// </summary>
+        private bool stopOnFirstPawn;
+        private bool hasStruckSomeone;
+
+        /// <summary>Shout level for Soul Tear's puppet roll. Zero means "not a Soul Tear".</summary>
+        private int soulTearLevel;
+
+        /// <summary>How many bands of fading trail follow the front. Higher is a longer tail.</summary>
+        private int trailBands = 2;
+
         public void SetPayload(DamageDef damageDef, float damageAmount, float knockbackCells,
             int stunTicks, bool ignitePawns, bool igniteGround,
             HediffDef appliedHediff = null, float appliedHediffSeverity = 1f,
             int damageInstances = 1, float snowDepth = 0f,
             HediffDef secondaryHediff = null, float secondaryHediffSeverity = 1f,
             bool spreadDamage = false, float reburnFraction = 0f,
-            MentalStateDef mentalState = null, float mentalStateChance = 0f)
+            MentalStateDef mentalState = null, float mentalStateChance = 0f,
+            float armorPenetration = 0f)
         {
             this.mentalState = mentalState;
             this.mentalStateChance = mentalStateChance;
+            this.armorPenetration = armorPenetration;
             this.secondaryHediff = secondaryHediff;
             this.secondaryHediffSeverity = secondaryHediffSeverity;
             this.spreadDamage = spreadDamage;
@@ -261,7 +287,8 @@ namespace Dovahkiin
                             BodyPartRecord part = spreadDamage
                                 ? DovahkiinDamageUtility.SelectSpreadTarget(p)
                                 : null;
-                            p.TakeDamage(new DamageInfo(damageDef, per, 0f, -1f, instigator, part));
+                            p.TakeDamage(new DamageInfo(
+                                damageDef, per, armorPenetration, -1f, instigator, part));
                         }
 
                         // Fire burns the same wound deeper rather than finding fresh skin.
@@ -275,7 +302,7 @@ namespace Dovahkiin
                             {
                                 BodyPartRecord deep = DovahkiinDamageUtility.SelectDeepenTarget(p);
                                 p.TakeDamage(new DamageInfo(
-                                    damageDef, per, 0f, -1f, instigator, deep));
+                                    damageDef, per, armorPenetration, -1f, instigator, deep));
                             }
                         }
                     }
@@ -314,6 +341,16 @@ namespace Dovahkiin
                     {
                         p.jobs.StopAll();
                     }
+
+                    // Soul Tear's roll happens where the bolt LANDS, not on cast, so the puppet
+                    // rises at the moment of impact rather than a second before the effect
+                    // arrives. Same reasoning as every other payload in this class.
+                    if (soulTearLevel > 0)
+                    {
+                        SoulTearUtility.Resolve(instigator, p, soulTearLevel);
+                    }
+
+                    hasStruckSomeone = true;
                 }
             }
         }
@@ -426,10 +463,29 @@ namespace Dovahkiin
             }
         }
 
+        /// <summary>
+        /// Soul Tear only: a single-target bolt that halts at the first body it meets, as it
+        /// does in TES5. Set immediately after Spawn, alongside SetPayload.
+        /// </summary>
+        public void SetSoulTear(int level, bool stopAtFirstPawn, int trail)
+        {
+            soulTearLevel = level;
+            stopOnFirstPawn = stopAtFirstPawn;
+            trailBands = Mathf.Clamp(trail, 1, 12);
+        }
+
         public override void Tick()
         {
             age++;
             if (rings == null || age > lifespanTicks)
+            {
+                Destroy(DestroyMode.Vanish);
+                return;
+            }
+            // Stopped dead by the first body it reached. The trail is left to fade naturally on
+            // the tick after impact rather than vanishing mid-air, which would read as the bolt
+            // being deleted rather than landing.
+            if (stopOnFirstPawn && hasStruckSomeone)
             {
                 Destroy(DestroyMode.Vanish);
                 return;
@@ -449,7 +505,7 @@ namespace Dovahkiin
                 StrikeBand(b);
             }
             lastStruckBand = Mathf.Max(lastStruckBand, head);
-            for (int back = 0; back <= 2; back++)
+            for (int back = 0; back <= trailBands; back++)
             {
                 int band = head - back;
                 if (band < 0 || band > bands)
@@ -457,8 +513,11 @@ namespace Dovahkiin
                     continue;
                 }
                 // Alpha falls off behind the front, so the wave visibly passes and dissipates.
-                float alpha = Mathf.Clamp01(1f - (back * 0.33f)) * Mathf.Clamp01(1.15f - progress)
-                    * alphaScale;
+                // Falloff is scaled to the trail LENGTH, not a fixed 0.33 per band. Hard-coding
+                // it meant anything longer than three bands faded to nothing before it was
+                // drawn, so a longer trail was silently invisible.
+                float alpha = Mathf.Clamp01(1f - (back / (float)(trailBands + 1)))
+                    * Mathf.Clamp01(1.15f - progress) * alphaScale;
                 if (alpha <= 0.02f)
                 {
                     continue;

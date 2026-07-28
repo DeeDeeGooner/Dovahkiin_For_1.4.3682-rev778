@@ -566,9 +566,27 @@ namespace Dovahkiin
         public int damageInstances = 3;
         public DamageDef damageDef;
 
+        /// <summary>
+        /// ARMOUR PENETRATION. Zero is what made this shout useless in playtest: a heavily
+        /// armoured modded raider shrugged the whole thing off, because Dovahkiin_SoulWither is
+        /// Blunt-parented and therefore fully reduced by blunt armour. A breath weapon may
+        /// reasonably be stopped by plate; the mod's most powerful shout may not.
+        /// </summary>
+        public float armorPenetration = 0.75f;
+
+        // --- the visible bolt -----------------------------------------------------------
+        // Narrow lane, not a cone: TES5's Soul Tear is a single bolt that stops at the first
+        // body it meets. laneWidth keeps it to a line, stopOnFirstPawn (set in code) halts it,
+        // and a long trail makes it read as something thrown rather than a puff.
+        public float range = 18f;
+        public float laneWidth = 1.4f;
+        public float waveCellsPerSecond = 22f;
+        public int trailBands = 7;
+        public float fleckScale = 1.9f;
+
         public SoundDef castSound;
         public FleckDef fleckDef;
-        public Color tint = new Color(0.75f, 0.10f, 0.14f);
+        public Color tint = new Color(0.62f, 0.16f, 0.85f);
 
         public CompProperties_ShoutSoulTear()
         {
@@ -583,13 +601,63 @@ namespace Dovahkiin
             get { return (CompProperties_ShoutSoulTear)props; }
         }
 
+        public override bool CanApplyOn(LocalTargetInfo target, LocalTargetInfo dest)
+        {
+            return base.CanApplyOn(target, dest)
+                && SoulTearUtility.IsLegalTarget(target.Pawn, parent.pawn);
+        }
+
+        public override void Apply(LocalTargetInfo target, LocalTargetInfo dest)
+        {
+            base.Apply(target, dest);
+            Pawn caster = parent.pawn;
+            if (caster == null || caster.Map == null)
+            {
+                return;
+            }
+
+            // A VISIBLE BOLT, not an instant hit. Playtest asked for a seen projectile that
+            // stops at the first body, as it does in TES5 - so this uses the same travelling
+            // wave as every other shout, in a narrow lane, with a long trail, and set to halt
+            // on the first pawn it reaches.
+            //
+            // Damage and the puppet roll ride ALONG with the front and land on arrival, which
+            // is the rule this class has followed since Phase 2a: cause and effect must line up
+            // on screen. Applying them on cast would resolve the tear a second before the bolt
+            // visibly got there.
+            Thing_ShoutWave wave = Thing_ShoutWave.Spawn(caster, target.Cell,
+                Props.range, 0f, Props.tint,
+                Props.fleckDef ?? DovahkiinDefOf.Dovahkiin_Fleck_SoulTearWave,
+                Props.fleckScale, Props.waveCellsPerSecond, Props.laneWidth);
+            if (wave != null)
+            {
+                wave.SetPayload(Props.damageDef ?? DamageDefOf.Blunt, Props.damageAmount, 0f,
+                    0, false, false, null, 1f,
+                    Mathf.Max(1, Props.damageInstances), 0f, null, 1f,
+                    true, 0f, null, 0f, Props.armorPenetration);
+                wave.SetSoulTear(Props.level, true, Props.trailBands);
+            }
+
+            SoundDef sound = Props.castSound ?? SoundDefOf.Thunder_OnMap;
+            sound.PlayOneShot(new TargetInfo(caster.Position, caster.Map, false));
+        }
+    }
+
+    /// <summary>
+    /// Soul Tear's rules and its puppet roll, in one place.
+    ///
+    /// Static because the roll is resolved by Thing_ShoutWave when the bolt arrives, not by the
+    /// ability comp on cast - the comp no longer has the victim at the moment it matters.
+    /// </summary>
+    internal static class SoulTearUtility
+    {
         /// <summary>
         /// SPEC.md 4.4f: valid only on hostile pawns. Never colonists, never player-faction,
         /// never tamed animals, never a pawn already puppeted.
         /// </summary>
-        private bool IsLegalTarget(Pawn victim, Pawn caster)
+        internal static bool IsLegalTarget(Pawn victim, Pawn caster)
         {
-            if (victim == null || victim == caster || victim.Destroyed)
+            if (victim == null || caster == null || victim == caster || victim.Destroyed)
             {
                 return false;
             }
@@ -610,42 +678,15 @@ namespace Dovahkiin
             return true;
         }
 
-        public override bool CanApplyOn(LocalTargetInfo target, LocalTargetInfo dest)
+        /// <summary>Roll for the puppet and raise it, at the moment the bolt lands.</summary>
+        internal static void Resolve(Pawn caster, Pawn victim, int level)
         {
-            return base.CanApplyOn(target, dest)
-                && IsLegalTarget(target.Pawn, parent.pawn);
-        }
-
-        public override void Apply(LocalTargetInfo target, LocalTargetInfo dest)
-        {
-            base.Apply(target, dest);
-            Pawn caster = parent.pawn;
-            Pawn victim = target.Pawn;
-            if (caster == null || caster.Map == null || !IsLegalTarget(victim, caster))
+            if (!IsLegalTarget(victim, caster))
             {
                 return;
             }
-
-            if (Props.fleckDef != null)
-            {
-                FleckMaker.AttachedOverlay(victim, Props.fleckDef, Vector3.zero, 1.6f, -1f);
-            }
-            SoundDef sound = Props.castSound ?? SoundDefOf.Thunder_OnMap;
-            sound.PlayOneShot(new TargetInfo(victim.Position, caster.Map, false));
-
-            // --- the tear itself -----------------------------------------------------------
-            DamageDef def = Props.damageDef ?? DamageDefOf.Blunt;
-            int instances = Mathf.Max(1, Props.damageInstances);
-            float per = Props.damageAmount / instances;
-            for (int i = 0; i < instances && !victim.Destroyed && !victim.Dead; i++)
-            {
-                BodyPartRecord part = DovahkiinDamageUtility.SelectSpreadTarget(victim);
-                victim.TakeDamage(new DamageInfo(def, per, 0f, -1f, caster, part));
-            }
-
-            // --- the roll ------------------------------------------------------------------
             DovahkiinTuningDef t = DovahkiinTuningDef.Current;
-            int index = Mathf.Clamp(Props.level - 1, 0, 2);
+            int index = Mathf.Clamp(level - 1, 0, 2);
 
             float chance = 0f;
             if (t != null && t.soulTearPuppetChanceByLevel != null
@@ -653,9 +694,22 @@ namespace Dovahkiin
             {
                 chance = t.soulTearPuppetChanceByLevel[index];
             }
-            if (chance <= 0f || !Rand.Chance(chance))
+            if (chance <= 0f)
             {
-                return; // Level 1 is damage only by design - the chance there is zero.
+                return; // Level 1 is damage only by design - its chance is zero.
+            }
+            if (!Rand.Chance(chance))
+            {
+                // Say so. A failed roll is otherwise indistinguishable from a broken shout,
+                // which is exactly the confusion Storm Call's silent misses caused.
+                if (caster.Faction != null && caster.Faction.IsPlayer)
+                {
+                    Messages.Message(
+                        "Dovahkiin_SoulTear_Held".Translate(
+                            victim.LabelShortCap.Named("PAWN")),
+                        victim, MessageTypeDefOf.NeutralEvent, false);
+                }
+                return;
             }
 
             float hours = 0f;
@@ -668,8 +722,7 @@ namespace Dovahkiin
             {
                 return;
             }
-
-            RaisePuppet(victim, caster, Mathf.RoundToInt(hours * GenDate.TicksPerHour));
+            RaisePuppet(victim, Mathf.RoundToInt(hours * GenDate.TicksPerHour));
         }
 
         /// <summary>
@@ -677,15 +730,15 @@ namespace Dovahkiin
         ///
         /// If the tear killed it, it is resurrected first - which is also what makes the puppet
         /// combat-worthy, since resurrection clears the wounds the shout just inflicted. If it
-        /// survived, it is torn into service alive. Both read correctly and, more importantly,
-        /// both end at the same place: carrying Hediff_DeadPuppet, which kills it on expiry.
+        /// survived, it is torn into service alive. Both end in the same place: carrying
+        /// Hediff_DeadPuppet, which kills it on expiry.
         /// </summary>
-        private void RaisePuppet(Pawn victim, Pawn caster, int lifetimeTicks)
+        private static void RaisePuppet(Pawn victim, int lifetimeTicks)
         {
             if (DovahkiinDefOf.Dovahkiin_DeadPuppet == null)
             {
                 Log.Error("[Dovahkiin] Soul Tear rolled a puppet but Dovahkiin_DeadPuppet is "
-                    + "missing, so nothing was raised. Check the log for an XML error.");
+                    + "missing, so nothing was raised. Look for an XML error above.");
                 return;
             }
 
@@ -693,7 +746,7 @@ namespace Dovahkiin
             {
                 // Resurrect, not ResurrectWithSideEffects: the side-effect version can inflict
                 // brain damage and resurrection sickness, which would leave a puppet that
-                // cannot fight - and the puppet's whole purpose is to fight for its short life.
+                // cannot fight - and fighting for its short life is the whole point.
                 ResurrectionUtility.Resurrect(victim);
                 if (victim.Dead || victim.Destroyed)
                 {

@@ -569,10 +569,15 @@
       </li>
       <li Class="Dovahkiin.CompProperties_ShoutSoulTear">
         <level>1</level>
-        <damageAmount>40</damageAmount>
+        <!-- Raised 40 -> 50 AND given armour penetration after playtest, where a heavily
+             armoured raider took the whole shout and stayed on its feet. AP is the real fix:
+             Dovahkiin_SoulWither is Blunt-parented and was fully reduced by blunt armour. -->
+        <damageAmount>50</damageAmount>
         <damageInstances>3</damageInstances>
+        <armorPenetration>0.50</armorPenetration>
         <damageDef>Dovahkiin_SoulWither</damageDef>
         <fleckDef>Dovahkiin_Fleck_SoulTearWave</fleckDef>
+        <range>18</range>
       </li>
       <li Class="CompProperties_AbilityRequiresCapacity">
         <capacity>Talking</capacity>
@@ -591,10 +596,12 @@
       </li>
       <li Class="Dovahkiin.CompProperties_ShoutSoulTear">
         <level>2</level>
-        <damageAmount>65</damageAmount>
+        <damageAmount>80</damageAmount>
         <damageInstances>4</damageInstances>
+        <armorPenetration>0.65</armorPenetration>
         <damageDef>Dovahkiin_SoulWither</damageDef>
         <fleckDef>Dovahkiin_Fleck_SoulTearWave</fleckDef>
+        <range>18</range>
       </li>
       <li Class="CompProperties_AbilityRequiresCapacity">
         <capacity>Talking</capacity>
@@ -613,10 +620,12 @@
       </li>
       <li Class="Dovahkiin.CompProperties_ShoutSoulTear">
         <level>3</level>
-        <damageAmount>95</damageAmount>
+        <damageAmount>115</damageAmount>
         <damageInstances>5</damageInstances>
+        <armorPenetration>0.80</armorPenetration>
         <damageDef>Dovahkiin_SoulWither</damageDef>
         <fleckDef>Dovahkiin_Fleck_SoulTearWave</fleckDef>
+        <range>18</range>
       </li>
       <li Class="CompProperties_AbilityRequiresCapacity">
         <capacity>Talking</capacity>

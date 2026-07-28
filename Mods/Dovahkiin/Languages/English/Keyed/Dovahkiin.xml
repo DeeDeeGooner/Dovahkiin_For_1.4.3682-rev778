@@ -45,5 +45,8 @@
   -->
   <Dovahkiin_SoulTear_Raised>{PAWN} rises, soul torn, and will fight for you until the body gives out.</Dovahkiin_SoulTear_Raised>
   <Dovahkiin_SoulTear_InspectLine>Torn soul: collapses in {DURATION}. Cannot be healed, recruited or saved.</Dovahkiin_SoulTear_InspectLine>
+  <!-- A failed roll must SAY it failed. Otherwise "nothing rose" is indistinguishable from a
+       broken shout - the same confusion Storm Call's silent misses caused. -->
+  <Dovahkiin_SoulTear_Held>{PAWN}'s soul holds. Nothing rises.</Dovahkiin_SoulTear_Held>
 
 </LanguageData>

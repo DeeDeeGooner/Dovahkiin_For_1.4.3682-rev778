@@ -1,5 +1,63 @@
 # CHANGELOG
 
+## Phase 2h-fix — Soul Tear had no armour penetration, and is now a visible bolt (2026-07-28)
+
+Playtest: cast on a **Profaned Legion** (a heavy elite from The Profaned), which was "still
+alive and kicking and still hostile".
+
+### Root cause: zero armour penetration on the mod's most powerful shout
+
+`Dovahkiin_SoulWither` is **Blunt-parented** — its own def comment says so, and says plainly
+that it "is still reduced by armour". The comp passed `armorPenetration = 0f`, so against a
+heavily armoured target most of the damage was simply absorbed. Fine for a breath weapon; wrong
+for the shout the spec calls the most powerful in the mod.
+
+**Fixed:** armour penetration **0.50 / 0.65 / 0.80** by level, and damage raised alongside it
+(40/65/95 → **50/80/115**). AP is the actual fix; the damage bump is because the shout should
+also simply hit harder than it did.
+
+Worth noting for later: **every other shout still has zero AP**, which is deliberate for the
+breath weapons but should be revisited if armoured enemies start shrugging those off too.
+
+### Still hostile is not necessarily a bug — but it was unreadable
+
+The puppet chance is **0 at level 1 by design**, 0.25 at two words, 0.45 at three. So "still
+hostile" can be a correct failed roll. But there was no way to tell that from a broken shout,
+which is exactly the confusion Storm Call's silent misses caused.
+
+A failed roll now says so: *"{PAWN}'s soul holds. Nothing rises."*
+
+### A visible purple bolt that stops at the first body
+
+Asked for: a seen projectile, purple, stopping at the first target as it does in TES5 — a narrow
+travelling line like Cyclone's rather than a cone, with a longer trail.
+
+Soul Tear now spawns the ordinary `Thing_ShoutWave` in **lane mode**, and three capabilities
+were added to that class to support it:
+
+- **`armorPenetration`** on the payload, applied to both the normal and re-burn damage paths.
+- **`stopOnFirstPawn`** — the wave destroys itself the moment it reaches any pawn, so the bolt
+  halts at the first body instead of carrying on through the rank behind.
+- **`trailBands`** — trail length, defaulting to the previous 2. Soul Tear uses 7.
+
+**The alpha falloff had to change with it.** It was hard-coded at `1 - back * 0.33`, which
+reaches zero at three bands — so any trail longer than three was *silently invisible*. It now
+scales to the configured trail length.
+
+**Damage and the puppet roll ride with the front and land on arrival**, not on cast. That is the
+rule this class has followed since Phase 2a: cause and effect must line up on screen. Resolving
+the tear on cast would have raised the puppet a second before the bolt visibly arrived.
+
+The puppet logic moved out of the ability comp into a static `SoulTearUtility`, because the comp
+no longer holds the victim at the moment that matters — the wave does.
+
+Colour is a brighter, more magenta violet than Drain Vitality's deep purple, so the two purple
+shouts stay distinguishable at a glance.
+
+Builds clean, 0 warnings; all XML parses, all translate keys resolve. **Awaiting retest.**
+
+---
+
 ## Phase 2h — Soul Tear and the dead puppet (2026-07-28)
 
 `SPEC.md §4.4f`, `RISKS.md §9`. **13 of 14 core shouts built.** Only Dragon Aspect remains.
