@@ -482,12 +482,19 @@
           Marked for Death deals 1.6 per interval per severity over 10 applications; this is
           0.8 over 10, literally half, and it carries NO armour penalty (that is Marked for
           Death's identity, and the two shouts should not collapse into each other).
-          casterHealFraction 1.0 heals the caster by exactly the health drained.
+          The DAMAGE stays pinned at that half; only the healing yield below has been raised.
         -->
         <healthDrainMinSeverity>1</healthDrainMinSeverity>
         <healthDrainPerInterval>0.8</healthDrainPerInterval>
         <maxHealthApplications>10</maxHealthApplications>
-        <casterHealFraction>1.0</casterHealFraction>
+        <!-- Raised 1.0 -> 2.5 on playtest: at parity the drain healed 0.8 per victim every two
+             seconds, so even four victims closed a fresh arrow wound barely faster than natural
+             healing. The DAMAGE is deliberately left alone - it is pinned at half of Marked for
+             Death's - so the yield moves instead. A drain may draw more than the wound costs. -->
+        <casterHealFraction>2.5</casterHealFraction>
+        <!-- Also clears blood loss, which closing a wound never does on its own. That gap is
+             why a bleeding caster kept reading as badly hurt while his wounds visibly healed. -->
+        <casterBloodLossFraction>0.5</casterBloodLossFraction>
         <!-- A drain transfers: stamina and mana taken off the victim are handed to the caster,
              1.0 meaning exactly what was lost. Only what is ACTUALLY taken moves - a classless
              victim has no stamina bar, so nothing is drained and nothing is given. -->

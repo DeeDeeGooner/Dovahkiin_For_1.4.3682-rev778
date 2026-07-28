@@ -1,5 +1,40 @@
 # CHANGELOG
 
+## Balance — Drain Vitality's healing raised, and it now clears blood loss (2026-07-28)
+
+Reported: a bleeding Dovahkiin "barely recovered his wound over time despite hitting 4 raiders
+at the same time". Two separate causes, and the second is the interesting one.
+
+### 1. The yield really was thin
+
+At `casterHealFraction` 1.0 the caster got back exactly what each victim lost: **0.8 HP per
+victim every 2 seconds**, capped at 10 applications. Four victims at level 1 is 3.2 HP per
+2 seconds — **32 HP over 20 seconds**. Against a fresh arrow wound that is barely distinguishable
+from natural healing.
+
+Raised to **2.5**. Four victims at level 1 now return ~80 HP across the drain.
+
+**The damage was deliberately NOT raised to compensate.** It is pinned at exactly half of Marked
+for Death's by an earlier decision, and raising it would collapse the two shouts together. The
+*yield* moves instead — this is a drain, and a Thu'um that steals life may reasonably draw more
+than the wound cost its victim.
+
+### 2. Healing a wound never touched the blood already lost
+
+The real gap. `Hediff_Injury.Heal` lowers a wound's severity, which slows the bleed — but blood
+loss is a **separate hediff** and nothing was reducing it. So the caster's wounds visibly closed
+while they carried on reading as badly hurt, which is precisely what was described.
+
+`HealCaster` now also drains the caster's `BloodLoss` severity, at
+`casterBloodLossFraction` (0.5) of the healing, scaled down because blood loss severity runs on a
+much smaller 0–1 scale than injury severity.
+
+Both numbers are in `Hediffs_Dovahkiin.xml` and retune without a rebuild.
+
+Builds clean, 0 warnings; all XML parses. **Awaiting playtest.**
+
+---
+
 ## Polish — Slow Time goes map-wide, breath weapons up again (2026-07-28)
 
 Storm Call confirmed working after the range fix. Four changes from that session.

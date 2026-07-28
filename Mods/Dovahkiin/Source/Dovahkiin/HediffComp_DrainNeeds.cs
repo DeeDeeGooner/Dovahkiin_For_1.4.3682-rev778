@@ -79,10 +79,25 @@ namespace Dovahkiin
         public int maxHealthApplications = 12;
 
         /// <summary>
-        /// Fraction of the health taken that is given back to the caster as healing.
-        /// 1.0 means the caster recovers exactly what the victim lost.
+        /// Multiplier on the health returned to the caster. 1.0 gives back exactly what the
+        /// victim lost.
+        ///
+        /// Raised above 1 after playtest: at 1.0 the drain healed 0.8 per victim every two
+        /// seconds, so even four victims at once closed a fresh arrow wound barely faster than
+        /// natural healing. The damage itself is deliberately NOT raised to compensate - it is
+        /// pinned at half of Marked for Death's by design - so the yield is what moves instead.
+        /// This shout steals life; it is allowed to draw more than the wound costs.
         /// </summary>
-        public float casterHealFraction = 1f;
+        public float casterHealFraction = 2.5f;
+
+        /// <summary>
+        /// Share of the healing that also goes into clearing the caster's BLOOD LOSS.
+        ///
+        /// Healing an injury lowers its severity, which slows the bleed - but blood already lost
+        /// is a separate hediff and was never touched, so a bleeding caster kept reading as badly
+        /// hurt while their wounds visibly closed. That was the exact playtest report.
+        /// </summary>
+        public float casterBloodLossFraction = 0.5f;
 
         /// <summary>
         /// Fraction of the drained stamina and mana handed to the caster. 1.0 means the caster
@@ -318,10 +333,17 @@ namespace Dovahkiin
             }
 
             Hediff_Injury worst = null;
+            Hediff bloodLoss = null;
             List<Hediff> hediffs = caster.health.hediffSet.hediffs;
             for (int i = 0; i < hediffs.Count; i++)
             {
-                Hediff_Injury injury = hediffs[i] as Hediff_Injury;
+                Hediff h = hediffs[i];
+                if (h.def == HediffDefOf.BloodLoss)
+                {
+                    bloodLoss = h;
+                    continue;
+                }
+                Hediff_Injury injury = h as Hediff_Injury;
                 if (injury == null || injury.Severity <= 0f)
                 {
                     continue;
@@ -331,9 +353,23 @@ namespace Dovahkiin
                     worst = injury;
                 }
             }
+
             if (worst != null)
             {
                 worst.Heal(amount);
+            }
+
+            // Blood already lost is a separate hediff and closing a wound does not restore it.
+            // A caster who is bleeding should feel the drain putting life back, not just sealing
+            // the hole - that gap was the playtest complaint.
+            if (bloodLoss != null && Props.casterBloodLossFraction > 0f)
+            {
+                bloodLoss.Severity = Mathf.Max(0f,
+                    bloodLoss.Severity - amount * Props.casterBloodLossFraction * 0.02f);
+            }
+
+            if (worst != null || bloodLoss != null)
+            {
                 DovahkiinMod.VerboseLog("Drain Vitality healed " + caster.LabelShortCap
                     + " for " + amount.ToString("F1"));
             }
