@@ -36,6 +36,23 @@ namespace Dovahkiin
         private int ticksToGlow;
 
         /// <summary>
+        /// Whether the colony should mourn when this puppet dies.
+        ///
+        /// FALSE for a torn enemy - the colony has no reason to grieve a raider, and suppressing
+        /// it is why the puppet leaves the player faction a tick before dying.
+        ///
+        /// TRUE when the victim was already one of ours. Soul Tear may now be turned on your own
+        /// colonists, and doing so is an execution: it must be mourned exactly as any other
+        /// colonist death, or the shout becomes a way to murder someone that nobody notices.
+        /// </summary>
+        private bool grieveOnDeath;
+
+        public void SetGrieveOnDeath(bool value)
+        {
+            grieveOnDeath = value;
+        }
+
+        /// <summary>
         /// NEVER removable. SPEC.md 4.4f: the puppet cannot be healed, cured or tended out of
         /// this state. The default implementation would drop the hediff at severity <= 0, which
         /// would strand a player-faction pawn with no timer - precisely the broken pawn that
@@ -91,13 +108,16 @@ namespace Dovahkiin
             ticksRemaining--;
 
             // The faction is dropped ONE TICK BEFORE the kill, deliberately, for two reasons:
-            //   - SPEC.md 4.4f: the puppet's death must not trigger colonist-death mood. A pawn
-            //     that is no longer player-faction when it dies raises no such thought.
+            //   - SPEC.md 4.4f: a torn ENEMY's death must not trigger colonist-death mood, and a
+            //     pawn that is no longer player-faction when it dies raises no such thought.
             //   - it splits two mutations of the pawn across separate ticks rather than doing
             //     both while the health tracker is mid-iteration.
+            //
+            // NOT done when the victim was one of ours to begin with. Soul Tear can now be
+            // turned on your own colonists, and that is an execution - it should be mourned.
             if (ticksRemaining == 1)
             {
-                if (p.Faction != null && p.Faction.IsPlayer)
+                if (!grieveOnDeath && p.Faction != null && p.Faction.IsPlayer)
                 {
                     p.SetFaction(null, null);
                 }
@@ -121,9 +141,15 @@ namespace Dovahkiin
             // appearing as an unexplained collapse.
             p.Kill(null, this);
 
-            // Belt and braces on the mood rule: even though the pawn left the player faction a
-            // tick ago, scrub any death thoughts that may have been raised about it.
-            PawnDiedOrDownedThoughtsUtility.RemoveDiedThoughts(p);
+            // Belt and braces on the mood rule for a torn ENEMY: even though it left the player
+            // faction a tick ago, scrub any death thoughts raised about it.
+            //
+            // Deliberately skipped when the victim was one of ours - there the grief is the
+            // point, and scrubbing it would hide the cost of executing a colonist.
+            if (!grieveOnDeath)
+            {
+                PawnDiedOrDownedThoughtsUtility.RemoveDiedThoughts(p);
+            }
         }
 
         public override void PostRemoved()
@@ -148,6 +174,7 @@ namespace Dovahkiin
         {
             base.ExposeData();
             Scribe_Values.Look(ref ticksRemaining, "ticksRemaining", 60000);
+            Scribe_Values.Look(ref grieveOnDeath, "grieveOnDeath", false);
         }
     }
 }

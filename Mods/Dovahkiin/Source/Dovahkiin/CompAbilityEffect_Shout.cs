@@ -652,20 +652,26 @@ namespace Dovahkiin
     internal static class SoulTearUtility
     {
         /// <summary>
-        /// SPEC.md 4.4f: valid only on hostile pawns. Never colonists, never player-faction,
-        /// never tamed animals, never a pawn already puppeted.
+        /// Who Soul Tear may be used on.
+        ///
+        /// AMENDED 2026-07-28, at the user's explicit request. SPEC.md 4.4f originally read
+        /// "only valid on hostile pawns - never colonists, never player-faction, never tamed
+        /// animals". That restriction is lifted: the Thu'um does not care whose soul it is, and
+        /// the shout may now be turned on allies, neutrals and your own colonists.
+        ///
+        /// Two exclusions REMAIN, and they are not stylistic:
+        ///   - the caster themselves, which is simply nonsense;
+        ///   - a pawn already carrying the puppet hediff, because re-tearing one would stack a
+        ///     second doomed timer on a pawn that is already dying on a schedule.
+        ///
+        /// Everything else that made the old rule safe is unchanged. Damage still goes through
+        /// TakeDamage with the caster as instigator, so tearing a neutral or an ally angers
+        /// their faction exactly as any other attack would - that consequence is RimWorld's,
+        /// not ours, and it is correct.
         /// </summary>
         internal static bool IsLegalTarget(Pawn victim, Pawn caster)
         {
             if (victim == null || caster == null || victim == caster || victim.Destroyed)
-            {
-                return false;
-            }
-            if (victim.Faction != null && victim.Faction.IsPlayer)
-            {
-                return false;
-            }
-            if (!victim.HostileTo(caster))
             {
                 return false;
             }
@@ -742,6 +748,12 @@ namespace Dovahkiin
                 return;
             }
 
+            // Captured BEFORE the faction change below. This decides whether the colony grieves
+            // when the puppet finally dies: tearing a raider should cost you nothing, but
+            // tearing one of your OWN people is an execution and must be mourned like one.
+            // Without this the shout would be a way to murder a colonist that nobody noticed.
+            bool wasOurs = victim.Faction != null && victim.Faction.IsPlayer;
+
             if (victim.Dead)
             {
                 // Resurrect, not ResurrectWithSideEffects: the side-effect version can inflict
@@ -754,13 +766,17 @@ namespace Dovahkiin
                 }
             }
 
-            victim.SetFaction(Faction.OfPlayer, null);
+            if (!wasOurs)
+            {
+                victim.SetFaction(Faction.OfPlayer, null);
+            }
 
             Hediff h = HediffMaker.MakeHediff(DovahkiinDefOf.Dovahkiin_DeadPuppet, victim);
             Hediff_DeadPuppet puppet = h as Hediff_DeadPuppet;
             if (puppet != null)
             {
                 puppet.SetLifetime(lifetimeTicks);
+                puppet.SetGrieveOnDeath(wasOurs);
             }
             victim.health.AddHediff(h);
 

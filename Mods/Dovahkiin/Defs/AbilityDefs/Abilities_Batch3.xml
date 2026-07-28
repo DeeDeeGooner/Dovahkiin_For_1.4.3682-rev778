@@ -548,6 +548,15 @@
       <range>18</range>
       <warmupTime>1.8</warmupTime>
       <requireLineOfSight>true</requireLineOfSight>
+      <!--
+        AMENDED 2026-07-28 at the user's request: Soul Tear may be turned on ANYONE - allies,
+        neutrals and your own colonists included. SPEC.md 4.4f originally restricted it to
+        hostiles; that restriction is lifted and the spec has been amended to match.
+
+        canTargetSelf stays false (tearing your own soul is nonsense) and the comp still
+        refuses a pawn that is already a puppet. Tearing a neutral or an ally angers their
+        faction through the normal damage path, which is correct and is RimWorld's doing.
+      -->
       <targetParams>
         <canTargetPawns>true</canTargetPawns>
         <canTargetLocations>false</canTargetLocations>

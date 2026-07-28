@@ -1,5 +1,47 @@
 # CHANGELOG
 
+## SPEC CHANGE — Soul Tear may be used on anyone (2026-07-28)
+
+Requested: it should work on allies and neutrals too. **This overrules `SPEC.md §4.4f`**, which
+read *"only valid on hostile pawns — never colonists, never player-faction, never tamed
+animals"*. The spec has been amended in place rather than left contradicting the build, because
+a future session reading it as the contract would otherwise "fix" the code back.
+
+**Technically trivial** — the restriction was three checks. The consequence was the real work.
+
+### Two exclusions remain, and they are not stylistic
+
+- **The caster.** Tearing your own soul is nonsense.
+- **A pawn already puppeted.** Re-tearing would stack a second doomed timer on a pawn already
+  dying to one.
+
+### Tearing your own is an execution, and is now mourned as one
+
+The puppet normally leaves the player faction one tick before dying, *specifically* to suppress
+colonist-death grief — correct for a raider, badly wrong for a colonist. Left as it was, Soul
+Tear would have been a way to murder one of your own people that **nobody in the colony
+noticed**.
+
+`Hediff_DeadPuppet` now carries `grieveOnDeath`, captured at the moment of tearing from whether
+the victim was already player-faction:
+
+| Victim | Faction dropped before death | `RemoveDiedThoughts` | Result |
+|---|---|---|---|
+| Enemy, neutral, ally | yes | yes | no grief, as before |
+| Your own colonist or animal | **no** | **no** | mourned normally |
+
+It serialises, so the distinction survives a reload.
+
+### Not special-cased, deliberately
+
+Tearing a neutral or an ally angers their faction. That happens through the ordinary
+`TakeDamage` path with the caster as instigator — it is RimWorld's own behaviour, it is correct,
+and adding handling to soften it would be inventing a rule nobody asked for.
+
+Builds clean, 0 warnings; all XML parses.
+
+---
+
 ## Phase 2h-fix — Soul Tear had no armour penetration, and is now a visible bolt (2026-07-28)
 
 Playtest: cast on a **Profaned Legion** (a heavy elite from The Profaned), which was "still

@@ -307,8 +307,20 @@ its hediff gone, is a permanently broken pawn nobody can arrest, banish or kill 
 
 Consequences to enforce:
 
-- Only valid on **hostile** pawns. Never colonists, never player-faction, never tamed animals,
-  never a pawn already puppeted.
+- ~~Only valid on **hostile** pawns. Never colonists, never player-faction, never tamed animals,
+  never a pawn already puppeted.~~
+  **AMENDED 2026-07-28 by the user, and built this way.** Soul Tear may be turned on **anyone** —
+  hostiles, neutrals, allies and your own colonists. Only two exclusions remain: the caster
+  themselves, and a pawn **already puppeted** (which would stack a second doomed timer on a pawn
+  already dying to one).
+
+  Consequences that follow, and are implemented:
+  - Tearing a neutral or an ally angers their faction through the normal damage path. That is
+    RimWorld's own behaviour and is correct — no special handling.
+  - **Tearing one of your own is an execution and is mourned as one.** The puppet normally drops
+    out of the player faction a tick before dying precisely to suppress colonist-death grief;
+    that suppression is skipped when the victim was already yours. Without it the shout would be
+    a way to murder a colonist that nobody noticed.
 - Never recruitable, never arrestable, never rescuable, never healable out of the state. It
   cannot be traded, married, or converted, and its death must not trigger colonist-death mood.
 - Visibly marked — a distinct tint and an inspect-string line saying how long it has left — so
