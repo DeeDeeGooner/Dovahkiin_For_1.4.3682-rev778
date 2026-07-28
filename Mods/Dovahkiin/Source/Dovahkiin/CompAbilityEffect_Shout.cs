@@ -684,6 +684,25 @@ namespace Dovahkiin
             return true;
         }
 
+        /// <summary>
+        /// SPEC.md 4.4f - the terror of surviving a soul-tear.
+        ///
+        /// Only for pawns that LIVE and were not puppeted: a corpse has no mood, and a puppet is
+        /// dying on a clock anyway. Requires a mood need at all, which rules out most animals
+        /// and mechs without needing a species check.
+        /// </summary>
+        private static void GiveSoulTornThought(Pawn victim)
+        {
+            if (victim == null || victim.Dead || victim.needs == null
+                || victim.needs.mood == null || victim.needs.mood.thoughts == null
+                || DovahkiinDefOf.Dovahkiin_Thought_SoulTorn == null)
+            {
+                return;
+            }
+            victim.needs.mood.thoughts.memories.TryGainMemory(
+                DovahkiinDefOf.Dovahkiin_Thought_SoulTorn);
+        }
+
         /// <summary>Roll for the puppet and raise it, at the moment the bolt lands.</summary>
         internal static void Resolve(Pawn caster, Pawn victim, int level)
         {
@@ -702,12 +721,20 @@ namespace Dovahkiin
             }
             if (chance <= 0f)
             {
-                return; // Level 1 is damage only by design - its chance is zero.
+                // Level 1 raises nothing by design - but the tear still happened, so anyone who
+                // lives through it carries the terror.
+                GiveSoulTornThought(victim);
+                return;
             }
             if (!Rand.Chance(chance))
             {
-                // Say so. A failed roll is otherwise indistinguishable from a broken shout,
-                // which is exactly the confusion Storm Call's silent misses caused.
+                // The soul held - so they LIVE WITH IT. Something reached inside them and did
+                // not finish. SPEC.md 4.4f's terror thought is the price of a failed tear, and
+                // it is what stops a missed roll being a pure non-event.
+                GiveSoulTornThought(victim);
+
+                // Say so as well. A failed roll is otherwise indistinguishable from a broken
+                // shout, which is exactly the confusion Storm Call's silent misses caused.
                 if (caster.Faction != null && caster.Faction.IsPlayer)
                 {
                     Messages.Message(

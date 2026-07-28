@@ -578,11 +578,20 @@
       </li>
       <li Class="Dovahkiin.CompProperties_ShoutSoulTear">
         <level>1</level>
-        <!-- Raised 40 -> 50 AND given armour penetration after playtest, where a heavily
-             armoured raider took the whole shout and stayed on its feet. AP is the real fix:
-             Dovahkiin_SoulWither is Blunt-parented and was fully reduced by blunt armour. -->
-        <damageAmount>50</damageAmount>
-        <damageInstances>3</damageInstances>
+        <!--
+          40 -> 50 (+AP, when armour was shrugging it off) -> 60, and CONCENTRATED.
+
+          It must out-kill Marked for Death, which delivers 48 total at three words spread over
+          forty seconds while also softening armour. Soul Tear is single-target, instant, and
+          the most expensive shout in the mod, so it should win decisively on a single body.
+
+          Fewer instances is the important half. DovahkiinDamageUtility.SelectSpreadTarget
+          weights core and head, so concentrating the same total into fewer, bigger hits makes
+          it destroy vital parts instead of leaving a dozen survivable bruises. That is what
+          turns it into an execute rather than a heavy poke.
+        -->
+        <damageAmount>60</damageAmount>
+        <damageInstances>2</damageInstances>
         <armorPenetration>0.50</armorPenetration>
         <damageDef>Dovahkiin_SoulWither</damageDef>
         <fleckDef>Dovahkiin_Fleck_SoulTearWave</fleckDef>
@@ -605,8 +614,8 @@
       </li>
       <li Class="Dovahkiin.CompProperties_ShoutSoulTear">
         <level>2</level>
-        <damageAmount>80</damageAmount>
-        <damageInstances>4</damageInstances>
+        <damageAmount>95</damageAmount>
+        <damageInstances>3</damageInstances>
         <armorPenetration>0.65</armorPenetration>
         <damageDef>Dovahkiin_SoulWither</damageDef>
         <fleckDef>Dovahkiin_Fleck_SoulTearWave</fleckDef>
@@ -629,9 +638,9 @@
       </li>
       <li Class="Dovahkiin.CompProperties_ShoutSoulTear">
         <level>3</level>
-        <damageAmount>115</damageAmount>
-        <damageInstances>5</damageInstances>
-        <armorPenetration>0.80</armorPenetration>
+        <damageAmount>140</damageAmount>
+        <damageInstances>3</damageInstances>
+        <armorPenetration>0.85</armorPenetration>
         <damageDef>Dovahkiin_SoulWither</damageDef>
         <fleckDef>Dovahkiin_Fleck_SoulTearWave</fleckDef>
         <range>18</range>

@@ -38,6 +38,22 @@ $TABLE = @(
   @("Dragonrend",       228,228,218,  150,160,172, 1.00)
 )
 
+# ---------------------------------------------------------------------------------------------
+# HEAD-TO-TIP GRADIENT (optional, per shout)
+# ---------------------------------------------------------------------------------------------
+# name -> head colour. Where present, the body colour is blended ALONG THE COMET: this colour at
+# the head, the table's body colour by the tip. The blend curve is deliberately the same one the
+# Thu'um bar uses - smoothstepped across the middle 40% - so each colour still owns roughly half
+# the shape rather than smearing into mud through the centre. That is what "50/50 blend" means
+# here, and it is why the numbers 0.30/0.70 appear in both places.
+#
+# "Along the comet" is measured as distance from the HEAD, and the head is found automatically as
+# the centroid of the brightest pixels - the hot core the master already draws there. No
+# hard-coded coordinates, so it survives the master being redrawn.
+$HEAD_GRADIENT = @{
+  "SoulTear" = @(46, 10, 78)   # deep dark purple at the head, into the table's colour at the tip
+}
+
 $src = [System.Drawing.Bitmap]::FromFile($MASTER)
 $W = $src.Width; $H = $src.Height
 $rect = New-Object System.Drawing.Rectangle -ArgumentList ([int]0),([int]0),([int]$W),([int]$H)
@@ -51,6 +67,35 @@ $src.Dispose()
 $RIM_MAX  = 0.22   # below this luminance a pixel is the dark rim
 $CORE_MIN = 0.86   # above this it is the hot core
 
+# --- locate the comet's HEAD, for the head-to-tip gradient ------------------------------------
+# The head is where the master's hot core sits, so it is simply the centroid of the brightest
+# pixels. Found rather than hard-coded, so redrawing the master cannot silently misplace it.
+[double]$hx = 0; [double]$hy = 0; [double]$hw = 0
+for ($y = 0; $y -lt $H; $y++) {
+  $row = $y * $sd.Stride
+  for ($x = 0; $x -lt $W; $x++) {
+    $i = $row + $x*4
+    if ($sBuf[$i+3] -lt 40) { continue }
+    $l = (0.299*$sBuf[$i+2] + 0.587*$sBuf[$i+1] + 0.114*$sBuf[$i]) / 255.0
+    if ($l -gt $CORE_MIN) { $hx += $x; $hy += $y; $hw++ }
+  }
+}
+if ($hw -gt 0) { $hx = $hx / $hw; $hy = $hy / $hw } else { $hx = $W/2; $hy = $H/2 }
+
+# Longest distance from the head to any visible pixel - the far tip of the tail. Normalising by
+# this makes the gradient span the whole shape whatever size the master is.
+[double]$maxDist = 1
+for ($y = 0; $y -lt $H; $y++) {
+  $row = $y * $sd.Stride
+  for ($x = 0; $x -lt $W; $x++) {
+    if ($sBuf[$row + $x*4 + 3] -lt 40) { continue }
+    $dx = $x - $hx; $dy = $y - $hy
+    $d = [Math]::Sqrt($dx*$dx + $dy*$dy)
+    if ($d -gt $maxDist) { $maxDist = $d }
+  }
+}
+Write-Output ("head at {0:N0},{1:N0}   tail reach {2:N0}px" -f $hx, $hy, $maxDist)
+
 foreach ($row in $TABLE) {
   $name = $row[0]
   $br=[double]$row[1]; $bg=[double]$row[2]; $bb=[double]$row[3]
@@ -61,21 +106,47 @@ foreach ($row in $TABLE) {
   $od = $res.LockBits($rect, [System.Drawing.Imaging.ImageLockMode]::WriteOnly, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
   $oBuf = New-Object byte[] $n
 
-  for ($i = 0; $i -lt $n; $i += 4) {
+  # Optional head-to-tip gradient for this shout.
+  $grad = $HEAD_GRADIENT[$name]
+  $hasGrad = ($grad -ne $null)
+  if ($hasGrad) { $gr=[double]$grad[0]; $gg0=[double]$grad[1]; $gb=[double]$grad[2] }
+
+  # Nested x/y rather than a flat byte walk: the gradient needs each pixel's POSITION, which a
+  # raw index does not give without recovering it anyway.
+  for ($y = 0; $y -lt $H; $y++) {
+   for ($x = 0; $x -lt $W; $x++) {
+    $i = $y * $sd.Stride + $x * 4
     $a = $sBuf[$i+3]
     if ($a -eq 0) { continue }
     $l = (0.299*$sBuf[$i+2] + 0.587*$sBuf[$i+1] + 0.114*$sBuf[$i]) / 255.0
 
+    # This pixel's body colour. Normally flat; with a gradient it runs from the head colour at
+    # the comet's head to the table colour at the tail tip, using the SAME smoothstep across
+    # 0.30..0.70 that the Thu'um bar uses, so each colour owns about half the shape.
+    $pr = $br; $pg = $bg; $pb = $bb
+    if ($hasGrad) {
+      $dx = $x - $hx; $dy = $y - $hy
+      $t = [Math]::Sqrt($dx*$dx + $dy*$dy) / $maxDist
+      if ($t -gt 1.0) { $t = 1.0 }
+      $f = ($t - 0.30) / 0.40
+      if ($f -lt 0.0) { $f = 0.0 }
+      if ($f -gt 1.0) { $f = 1.0 }
+      $f = $f * $f * (3.0 - 2.0 * $f)
+      $pr = $gr + ($br - $gr) * $f
+      $pg = $gg0 + ($bg - $gg0) * $f
+      $pb = $gb + ($bb - $gb) * $f
+    }
+
     if ($l -lt $RIM_MAX) {
       # The rim: a very dark version of the body hue, never pure black - that is what keeps
       # it looking drawn rather than cut out.
-      $oBuf[$i]   = [byte]($bb * $l * 0.45)
-      $oBuf[$i+1] = [byte]($bg * $l * 0.45)
-      $oBuf[$i+2] = [byte]($br * $l * 0.45)
+      $oBuf[$i]   = [byte]($pb * $l * 0.45)
+      $oBuf[$i+1] = [byte]($pg * $l * 0.45)
+      $oBuf[$i+2] = [byte]($pr * $l * 0.45)
     }
     else {
       $k = 0.42 + 0.58 * $l
-      $rr = $br * $k; $gg = $bg * $k; $bl = $bb * $k
+      $rr = $pr * $k; $gg = $pg * $k; $bl = $pb * $k
       if ($l -gt $CORE_MIN) {
         # Blend toward the CORE colour, not white. This is the third lever.
         $hot = ($l - $CORE_MIN) / (1.0 - $CORE_MIN)
@@ -89,6 +160,7 @@ foreach ($row in $TABLE) {
       $oBuf[$i+2] = [byte][Math]::Min(255, [Math]::Max(0, $rr))
     }
     $oBuf[$i+3] = [byte][Math]::Min(255, $a * $op)
+   }
   }
 
   [System.Runtime.InteropServices.Marshal]::Copy($oBuf, 0, $od.Scan0, $n)

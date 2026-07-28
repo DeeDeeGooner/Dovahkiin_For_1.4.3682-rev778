@@ -57,6 +57,9 @@ namespace Dovahkiin
         public static ThoughtDef Dovahkiin_Thought_WitnessedSoulAbsorption;
         public static ThoughtDef Dovahkiin_Thought_WitnessedShout;
 
+        /// <summary>Surviving Soul Tear. SPEC.md 4.4f.</summary>
+        public static ThoughtDef Dovahkiin_Thought_SoulTorn;
+
         static DovahkiinDefOf()
         {
             DefOfHelper.EnsureInitializedInCtor(typeof(DovahkiinDefOf));

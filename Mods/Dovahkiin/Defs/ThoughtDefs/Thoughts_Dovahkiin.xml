@@ -55,6 +55,31 @@
     </stages>
   </ThoughtDef>
 
+  <!--
+    SPEC.md 4.4f - surviving Soul Tear.
+
+    Something reached into them and pulled, and it did not finish the job. This is deliberately
+    one of the harshest thoughts in the mod: -28 for twelve days, non-stacking. Surviving a
+    soul-tear should mark a pawn for a long time.
+
+    It matters more than it looks. Soul Tear can now be turned on your OWN colonists, so this is
+    the cost of using it on someone you keep - and of failing to finish an enemy you meant to
+    puppet, if you later capture them.
+  -->
+  <ThoughtDef>
+    <defName>Dovahkiin_Thought_SoulTorn</defName>
+    <thoughtClass>Thought_Memory</thoughtClass>
+    <durationDays>12</durationDays>
+    <stackLimit>1</stackLimit>
+    <stages>
+      <li>
+        <label>terrified soul</label>
+        <description>Something reached inside me and pulled. It very nearly came away in its hand. What kind of fate would have awaited me...?</description>
+        <baseMoodEffect>-28</baseMoodEffect>
+      </li>
+    </stages>
+  </ThoughtDef>
+
   <!-- SPEC.md 5.4: witnessing a shout is a TEMPORARY colony mood lift. Granted in Phase 2. -->
   <ThoughtDef>
     <defName>Dovahkiin_Thought_WitnessedShout</defName>

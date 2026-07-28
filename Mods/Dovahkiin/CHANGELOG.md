@@ -1,5 +1,67 @@
 # CHANGELOG
 
+## Polish — Soul Tear: gradient icon, execute-grade damage, and a terror thought (2026-07-28)
+
+Playtest passed. Three requested changes.
+
+### The icon now runs dark purple at the head into crimson at the tip
+
+The recolour pipeline could only apply a **flat** body colour. It now supports an optional
+**head-to-tip gradient**, and Soul Tear is the first shout to use it.
+
+Two details make it work rather than smear:
+
+- **The blend is the Thu'um bar's curve** — smoothstepped across the middle 40% — so each colour
+  still owns roughly half the shape. A straight linear ramp reads as mud through the centre.
+  That is what "50/50 blend" means here, and the numbers 0.30/0.70 now appear in both places
+  for the same reason.
+- **The head is found, not hard-coded.** It is the centroid of the master's brightest pixels —
+  the hot core the generator already draws there — so redrawing the master cannot silently
+  misplace the gradient. Reported at generation time: head at 87,108, tail reach 128px.
+
+The main pixel loop had to move from a flat byte walk to nested x/y, because a raw buffer index
+carries no position to measure a gradient against.
+
+Result: Soul Tear stays clearly distinct from Dismay's flat red and Drain Vitality's flat
+violet, which was the risk in giving it a purple.
+
+### Damage: it now out-kills Marked for Death decisively
+
+Asked for it to be deadlier than Marked for Death, given it is single-target and instant.
+Measured against the real numbers rather than by feel:
+
+| | Marked for Death | Soul Tear |
+|---|---|---|
+| Level 1 | 16 over 40s | **60 instant** |
+| Level 2 | 32 over 40s | **95 instant** |
+| Level 3 | 48 over 40s | **140 instant** |
+
+Raised 50/80/115 → **60/95/140**, and — the more important half — **concentrated** from 3/4/5
+hits down to **2/3/3**. `SelectSpreadTarget` weights core and head, so the same total split into
+fewer, bigger hits destroys vital parts instead of leaving a dozen survivable bruises. That is
+what turns it from a heavy poke into an execute. AP at level 3 raised 0.80 → 0.85.
+
+Marked for Death keeps its own identity: it softens armour and amplifies *all* incoming damage
+for 40 seconds, which Soul Tear does not. One is an opener, the other is a finisher.
+
+### Surviving it leaves a mark
+
+New `Dovahkiin_Thought_SoulTorn` — *"terrified soul"*, **−28 mood for 12 days**, non-stacking:
+
+> Something reached inside me and pulled. It very nearly came away in its hand. What kind of
+> fate would have awaited me...?
+
+Applied to anyone who **lives** through a tear and was not puppeted — a corpse has no mood and a
+puppet is dying on a clock anyway. Given on a failed roll *and* at level 1, so a held soul is no
+longer a pure non-event.
+
+It matters more than it looks now that Soul Tear can be turned on your own people: this is the
+standing cost of using it on someone you intend to keep.
+
+Builds clean, 0 warnings; all XML parses.
+
+---
+
 ## SPEC CHANGE — Soul Tear may be used on anyone (2026-07-28)
 
 Requested: it should work on allies and neutrals too. **This overrules `SPEC.md §4.4f`**, which

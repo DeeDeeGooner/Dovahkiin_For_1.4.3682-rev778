@@ -95,6 +95,10 @@ namespace Dovahkiin
             // Read by the registry's puppet safety sweep - a null would disable that guard
             // silently, which RISKS.md section 9 specifically warns against.
             if (DovahkiinDefOf.Dovahkiin_DeadPuppet == null) missing.Add("Dovahkiin_DeadPuppet");
+            // Null-guarded at the call site, so a missing thought would silently mean "Soul Tear
+            // has no mood effect" rather than an error. That is exactly the kind of quiet
+            // absence this check exists to catch.
+            if (DovahkiinDefOf.Dovahkiin_Thought_SoulTorn == null) missing.Add("Dovahkiin_Thought_SoulTorn");
 
             if (missing.Count > 0)
             {
