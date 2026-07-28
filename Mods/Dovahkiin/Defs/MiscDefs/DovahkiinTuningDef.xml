@@ -34,8 +34,11 @@
          melee cooldown stat at all, so it is applied by a Harmony postfix that reads this. -->
     <slowTimeCooldownFactorByLevel><li>0.75</li><li>0.55</li><li>0.40</li></slowTimeCooldownFactorByLevel>
 
-    <!-- Storm Call - SPEC.md 4.4e. Hostile AND outdoors only. -->
+    <!-- Storm Call - SPEC.md 4.4e. Hostile AND outdoors only.
+         Strikes are spread evenly across the duration, so raising the duration alone makes the
+         storm slower, not bigger. Raise both together to make it genuinely heavier. -->
     <stormCallStrikesByLevel><li>3</li><li>6</li><li>12</li></stormCallStrikesByLevel>
+    <stormCallDurationTicksByLevel><li>180</li><li>420</li><li>900</li></stormCallDurationTicksByLevel>
     <stormCallRadius>25</stormCallRadius>
 
     <!-- Soul Tear / dead puppet - SPEC.md 4.4f. Level 1 is damage only. -->

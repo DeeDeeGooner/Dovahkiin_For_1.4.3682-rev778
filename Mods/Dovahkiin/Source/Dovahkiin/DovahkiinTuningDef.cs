@@ -68,6 +68,12 @@ namespace Dovahkiin
         /// <summary>Lightning strikes per cast, indexed by shout level 1-3.</summary>
         public List<int> stormCallStrikesByLevel = new List<int> { 3, 6, 12 };
 
+        /// <summary>
+        /// How long the storm lasts, by level. Strikes are spread evenly across it, so raising
+        /// this without raising the strike count makes the storm slower rather than bigger.
+        /// </summary>
+        public List<int> stormCallDurationTicksByLevel = new List<int> { 180, 420, 900 };
+
         /// <summary>Radius the shout searches for legal targets.</summary>
         public float stormCallRadius = 25f;
 

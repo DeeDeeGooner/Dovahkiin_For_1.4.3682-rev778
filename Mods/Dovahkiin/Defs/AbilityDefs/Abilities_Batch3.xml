@@ -416,4 +416,112 @@
     </comps>
   </AbilityDef>
 
+  <!-- ================= Storm Call ================= -->
+  <!--
+    SPEC.md 4.4e. NO TARGET: the storm gathers over the Dovahkiin and seeks its own victims,
+    it is not artillery placed on a spot. So this uses the self-cast shape, which means it
+    needs canTargetSelf and a POSITIVE range - see the long note in Abilities_Batch2.xml
+    about why a no-target ability without those is a dead button.
+
+    Every targeting rule lives in Thing_StormCall, not here, because each strike re-checks
+    them: pawns move, die, and duck under roofs mid-storm.
+
+    Strike counts and durations come from DovahkiinTuningDef (stormCallStrikesByLevel,
+    stormCallDurationTicksByLevel, stormCallRadius) so they retune without a rebuild.
+  -->
+
+  <AbilityDef Name="Dovahkiin_StormCallBase" Abstract="True">
+    <cooldownTicksRange>0</cooldownTicksRange>
+    <hostile>true</hostile>
+    <targetRequired>false</targetRequired>
+    <showWhenDrafted>true</showWhenDrafted>
+    <displayGizmoWhileUndrafted>true</displayGizmoWhileUndrafted>
+    <disableGizmoWhileUndrafted>false</disableGizmoWhileUndrafted>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_StormCall</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>3.9</range>
+      <warmupTime>1.6</warmupTime>
+      <drawAimPie>false</drawAimPie>
+      <requireLineOfSight>false</requireLineOfSight>
+      <targetParams>
+        <canTargetSelf>true</canTargetSelf>
+      </targetParams>
+    </verbProperties>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_StormCallBase">
+    <defName>Dovahkiin_Ability_StormCall_1</defName>
+    <label>strun</label>
+    <description>Storm. A few bolts fall on enemies caught under open sky. Anyone under a roof is untouched.</description>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_StormCall</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutStormCall">
+        <level>1</level>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_StormCallBase">
+    <defName>Dovahkiin_Ability_StormCall_2</defName>
+    <label>strun bah</label>
+    <description>Storm, Wrath. The sky turns on your enemies in earnest - so long as they stand in the open.</description>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>3.9</range>
+      <warmupTime>1.9</warmupTime>
+      <drawAimPie>false</drawAimPie>
+      <requireLineOfSight>false</requireLineOfSight>
+      <targetParams>
+        <canTargetSelf>true</canTargetSelf>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_StormCall</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutStormCall">
+        <level>2</level>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <AbilityDef ParentName="Dovahkiin_StormCallBase">
+    <defName>Dovahkiin_Ability_StormCall_3</defName>
+    <label>strun bah qo</label>
+    <description>Storm, Wrath, Lightning. A killing storm gathers overhead and hunts everything that dares stand beneath open heaven.</description>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>3.9</range>
+      <warmupTime>2.2</warmupTime>
+      <drawAimPie>false</drawAimPie>
+      <requireLineOfSight>false</requireLineOfSight>
+      <targetParams>
+        <canTargetSelf>true</canTargetSelf>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_StormCall</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_ShoutStormCall">
+        <level>3</level>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
 </Defs>

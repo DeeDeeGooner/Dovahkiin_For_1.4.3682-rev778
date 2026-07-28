@@ -1,5 +1,68 @@
 # CHANGELOG
 
+## Phase 2g — Storm Call (2026-07-28)
+
+`SPEC.md §4.4e`. **12 of 14 core shouts built.** First of the three hard ones. Builds clean,
+0 warnings; all XML parses. **Awaiting playtest** — `TESTS/phase2g.md`.
+
+### The outdoor rule is the whole design
+
+`SPEC.md §4.4e` makes a cell a legal strike target only if **all three** hold: it contains a
+pawn hostile to the player; that pawn is not a colonist, player-faction, tamed or a neutral
+visitor; and **the cell is unroofed**.
+
+Rule 3 is what makes the shout useless indoors — thematically right for calling a storm — and it
+is also what **settles the fire question** the spec previously left open. Strikes cannot land
+inside a base, so they cannot ignite a stockpile, a wooden wall or a roofed corridor. Ignition
+on open outdoor terrain near enemies is acceptable and is deliberately left on.
+
+All three rules live in `Thing_StormCall.IsLegalTarget`, and there is a **second roof check
+immediately before the bolt is fired**. Redundant by construction, and deliberately so: `SPEC.md`
+states a strike must never land under a roof, and one extra grid lookup on a rare event is a
+cheap way to make that unconditional rather than merely likely.
+
+### Implementation
+
+- **`Thing_StormCall`** — an ethereal Thing that ticks only while the storm runs, same shape as
+  `Thing_ShoutWave`. One strike per interval, spread evenly across the duration.
+- **Targets are re-evaluated for every bolt**, never captured on cast. Pawns move, die and duck
+  under roofs mid-storm; a list taken at cast time would keep striking corpses and pawns who
+  have since taken cover.
+- **A strike is not consumed when no legal target exists.** If everyone happens to be roofed at
+  that instant the storm holds its bolt and retries, so stepping into the open mid-storm still
+  draws lightning. Casting with nothing outdoors therefore costs the shout but fires nothing —
+  which is correct.
+- **Selection walks the map's pawn list, not cells.** At radius 25 a radial cell scan is ~1,960
+  cells per bolt; the pawn list is a few dozen entries. `CLAUDE.md` forbids avoidable cost and
+  RocketMan is installed.
+- Lightning is vanilla's `WeatherEvent_LightningStrike(Map, IntVec3)` fired through
+  `map.weatherManager.eventHandler`, so the bolt visual, damage and ignition all come from the
+  game rather than being reimplemented. Only the *targeting* is ours, which is exactly what
+  `SPEC.md` asks for: "we write the strike rather than reusing the vanilla weather event."
+
+### No target, and a message when it finds nothing
+
+The ability takes **no target**: in TES5 the storm gathers over the Dragonborn, it is not
+artillery placed on a spot. It therefore uses the self-cast shape — `targetRequired false` plus
+`canTargetSelf` and a positive range — which is the shape that took two rounds to get right in
+Phase 2c. Getting it wrong again would have given another dead button.
+
+When a storm ends having landed **zero** bolts it posts a message explaining that nothing stood
+under open sky. Without it, casting indoors is indistinguishable from a broken shout — and doing
+nothing indoors is the entire point of the rule, which the player has no other way to learn.
+
+### Balance
+
+Most expensive shout in the mod, deliberately. Cost 10/16/24 thu'um and cooldown 2500/4000/6000
+ticks, both the highest of anything built. The outdoor rule is what stops it simply being the
+best option everywhere: it does nothing at all inside a base.
+
+Strikes 3/6/12 and durations 180/420/900 ticks live in `DovahkiinTuningDef`. Strikes are spread
+evenly across the duration, so raising the duration alone makes the storm slower rather than
+heavier — noted in the def comment, since that is a non-obvious interaction.
+
+---
+
 ## Balance — the two breath weapons up 35% (2026-07-28)
 
 Playtest signed off the Thu'um gradient bar and confirmed Drain Vitality's transfer working.

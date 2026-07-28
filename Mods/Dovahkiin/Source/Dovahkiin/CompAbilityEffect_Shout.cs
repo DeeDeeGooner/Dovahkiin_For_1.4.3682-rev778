@@ -533,6 +533,78 @@ namespace Dovahkiin
     }
 
     // ------------------------------------------------------------------
+    // Storm Call - Strun Bah Qo. SPEC.md 4.4e.
+    //
+    // The comp only spawns the storm and hands it its parameters. All the targeting rules -
+    // and in particular the OUTDOOR rule, which is a hard requirement - live in
+    // Thing_StormCall, because they have to be re-checked for every strike rather than once
+    // on cast. Pawns move and take cover mid-storm.
+    // ------------------------------------------------------------------
+
+    public class CompProperties_ShoutStormCall : CompProperties_AbilityEffect
+    {
+        /// <summary>Shout level, 1-3. Strike count and duration are read from the tuning def.</summary>
+        public int level = 1;
+
+        /// <summary>Overrides the tuning def's radius when above zero.</summary>
+        public float radiusOverride = 0f;
+
+        public SoundDef castSound;
+
+        public CompProperties_ShoutStormCall()
+        {
+            compClass = typeof(CompAbilityEffect_ShoutStormCall);
+        }
+    }
+
+    public class CompAbilityEffect_ShoutStormCall : CompAbilityEffect
+    {
+        public new CompProperties_ShoutStormCall Props
+        {
+            get { return (CompProperties_ShoutStormCall)props; }
+        }
+
+        public override void Apply(LocalTargetInfo target, LocalTargetInfo dest)
+        {
+            base.Apply(target, dest);
+            Pawn caster = parent.pawn;
+            if (caster == null || caster.Map == null)
+            {
+                return;
+            }
+
+            DovahkiinTuningDef t = DovahkiinTuningDef.Current;
+            int index = Mathf.Clamp(Props.level - 1, 0, 2);
+
+            int strikes = 3;
+            if (t != null && t.stormCallStrikesByLevel != null
+                && index < t.stormCallStrikesByLevel.Count)
+            {
+                strikes = t.stormCallStrikesByLevel[index];
+            }
+
+            int duration = 240;
+            if (t != null && t.stormCallDurationTicksByLevel != null
+                && index < t.stormCallDurationTicksByLevel.Count)
+            {
+                duration = t.stormCallDurationTicksByLevel[index];
+            }
+
+            float radius = Props.radiusOverride > 0f
+                ? Props.radiusOverride
+                : (t == null ? 25f : t.stormCallRadius);
+
+            // Centred on the CASTER, not on the targeted cell: Storm Call in TES5 is a storm
+            // gathering over the Dragonborn, not an artillery strike placed on a spot. The
+            // ability is deliberately no-target for the same reason.
+            Thing_StormCall.Spawn(caster, caster.Position, radius, strikes, duration);
+
+            SoundDef sound = Props.castSound ?? SoundDefOf.Thunder_OnMap;
+            sound.PlayOneShot(new TargetInfo(caster.Position, caster.Map, false));
+        }
+    }
+
+    // ------------------------------------------------------------------
 
     internal static class ShoutTargeting
     {

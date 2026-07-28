@@ -51,4 +51,21 @@
     <altitudeLayer>Skyfaller</altitudeLayer>
   </ThingDef>
 
+  <!--
+    SPEC.md 4.4e - Storm Call. The storm itself, carrying the strike schedule.
+
+    Same shape as the shout wave: ethereal, never drawn, never selectable, ticks only while
+    the shout is running and then vanishes. The lightning is drawn by vanilla's own
+    WeatherEvent_LightningStrike, so this Thing has nothing to render.
+  -->
+  <ThingDef ParentName="EtherealThingBase">
+    <defName>Dovahkiin_StormCall</defName>
+    <label>storm</label>
+    <thingClass>Dovahkiin.Thing_StormCall</thingClass>
+    <tickerType>Normal</tickerType>
+    <useHitPoints>false</useHitPoints>
+    <drawerType>None</drawerType>
+    <altitudeLayer>Skyfaller</altitudeLayer>
+  </ThingDef>
+
 </Defs>

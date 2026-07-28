@@ -145,4 +145,50 @@
     <availableToUndead>false</availableToUndead>
   </Dovahkiin.ShoutDef>
 
+  <!-- ============ Storm Call - Strun Bah Qo ============ -->
+  <!--
+    SPEC.md 4.4e. The most expensive shout in the mod so far, and deliberately so: at three
+    words it is twelve lightning strikes. Its cost and cooldown are the highest of any built
+    shout, and its OUTDOOR-ONLY rule is what keeps it from being simply the best option in
+    every situation - it does nothing at all inside a base.
+  -->
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Strun</defName>
+    <label>Strun</label>
+    <word>Strun</word>
+    <meaning>Storm</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Bah</defName>
+    <label>Bah</label>
+    <word>Bah</word>
+    <meaning>Wrath</meaning>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Qo</defName>
+    <label>Qo</label>
+    <word>Qo</word>
+    <meaning>Lightning</meaning>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_StormCall</defName>
+    <label>Storm Call</label>
+    <description>Call the sky itself to war. Lightning seeks out your enemies - but only those standing under open heaven.</description>
+    <words>
+      <li>Dovahkiin_Word_Strun</li>
+      <li>Dovahkiin_Word_Bah</li>
+      <li>Dovahkiin_Word_Qo</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_StormCall_1</li>
+      <li>Dovahkiin_Ability_StormCall_2</li>
+      <li>Dovahkiin_Ability_StormCall_3</li>
+    </abilitiesByLevel>
+    <thuumCostByLevel><li>10</li><li>16</li><li>24</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>2500</li><li>4000</li><li>6000</li></cooldownTicksByLevel>
+    <availableToDragons>false</availableToDragons>
+    <availableToUndead>false</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
 </Defs>

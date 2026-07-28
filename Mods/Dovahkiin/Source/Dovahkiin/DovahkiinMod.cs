@@ -91,6 +91,7 @@ namespace Dovahkiin
             if (DovahkiinDefOf.Dovahkiin_VitalityDrained == null) missing.Add("Dovahkiin_VitalityDrained");
             if (DovahkiinDefOf.Dovahkiin_Dismayed == null) missing.Add("Dovahkiin_Dismayed");
             if (DovahkiinDefOf.Dovahkiin_TimeSlowed == null) missing.Add("Dovahkiin_TimeSlowed");
+            if (DovahkiinDefOf.Dovahkiin_StormCall == null) missing.Add("Dovahkiin_StormCall");
 
             if (missing.Count > 0)
             {

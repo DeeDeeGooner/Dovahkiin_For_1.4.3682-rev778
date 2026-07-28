@@ -27,4 +27,11 @@
   <Dovahkiin_Shout_Reason_NeedWord>The word for level {LEVEL} has not been found yet.</Dovahkiin_Shout_Reason_NeedWord>
   <Dovahkiin_Shout_Reason_Maxed>This shout is already fully mastered.</Dovahkiin_Shout_Reason_Maxed>
 
+  <!--
+    SPEC.md 4.4e - Storm Call finding nothing to hit.
+    Without this the shout looks broken when cast indoors, when in fact doing nothing there is
+    the whole point of the outdoor rule. The player has no other way to learn that.
+  -->
+  <Dovahkiin_StormCall_NoTargets>The storm gathers, but finds no enemy under open sky. Storm Call cannot strike anything beneath a roof.</Dovahkiin_StormCall_NoTargets>
+
 </LanguageData>

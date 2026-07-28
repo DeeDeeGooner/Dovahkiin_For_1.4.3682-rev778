@@ -35,6 +35,9 @@ namespace Dovahkiin
         /// <summary>Carrier for the travelling shout cone. SPEC.md 4.3.</summary>
         public static ThingDef Dovahkiin_ShoutWave;
 
+        /// <summary>The Storm Call storm. Ticks only while the shout is active. SPEC.md 4.4e.</summary>
+        public static ThingDef Dovahkiin_StormCall;
+
         /// <summary>Tintable cone particles. Vanilla's are renderInstanced and ignore colour.</summary>
         public static FleckDef Dovahkiin_Fleck_ForceWave;
         public static FleckDef Dovahkiin_Fleck_FireWave;
