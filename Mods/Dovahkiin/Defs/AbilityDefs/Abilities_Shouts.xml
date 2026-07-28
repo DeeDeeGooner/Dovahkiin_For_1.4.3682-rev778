@@ -152,7 +152,9 @@
       <li Class="Dovahkiin.CompProperties_ShoutCone">
         <coneAngle>40</coneAngle>
         <range>7</range>
-        <damageAmount>16</damageAmount>
+        <!-- +35% on playtest feedback: 16 -> 22. Frost raised by the same 35%, so the two
+             keep the relationship balanced over eight rounds in Phase 2b. -->
+        <damageAmount>22</damageAmount>
         <damageInstances>6</damageInstances>
         <reburnFraction>0.25</reburnFraction>
         <damageDef>Flame</damageDef>
@@ -190,7 +192,7 @@
       <li Class="Dovahkiin.CompProperties_ShoutCone">
         <coneAngle>45</coneAngle>
         <range>10</range>
-        <damageAmount>30</damageAmount>
+        <damageAmount>41</damageAmount>
         <damageInstances>9</damageInstances>
         <reburnFraction>0.25</reburnFraction>
         <damageDef>Flame</damageDef>
@@ -229,7 +231,7 @@
       <li Class="Dovahkiin.CompProperties_ShoutCone">
         <coneAngle>55</coneAngle>
         <range>13</range>
-        <damageAmount>46</damageAmount>
+        <damageAmount>62</damageAmount>
         <damageInstances>12</damageInstances>
         <reburnFraction>0.25</reburnFraction>
         <damageDef>Flame</damageDef>

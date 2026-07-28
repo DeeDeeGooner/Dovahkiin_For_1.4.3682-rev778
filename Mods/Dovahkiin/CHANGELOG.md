@@ -1,5 +1,30 @@
 # CHANGELOG
 
+## Balance — the two breath weapons up 35% (2026-07-28)
+
+Playtest signed off the Thu'um gradient bar and confirmed Drain Vitality's transfer working.
+One balance change requested: **both breath weapons +35%**.
+
+| Shout | Was | Now |
+|---|---|---|
+| Fire Breath | 16 / 30 / 46 | **22 / 41 / 62** |
+| Frost Breath | 14 / 28 / 44 | **19 / 38 / 59** |
+
+Damage instances are unchanged (6 / 9 / 12 for both), so the extra lands as heavier hits on the
+same number of body parts rather than spreading wider — which keeps the blood-loss behaviour
+that Phase 2b-fix5 was careful to bound.
+
+**Both raised by the same 35%**, deliberately: Phase 2b-fix7 and fix8 spent eight rounds getting
+these two into the right relationship, where fire is decisively deadlier than frost by
+*behaviour* rather than by a bigger number. Fire's `reburnFraction` of 0.25 repeats a quarter of
+its hits on already-damaged parts, so its effective totals are now roughly **27 / 51 / 77**
+against frost's 19 / 38 / 59. Raising only one would have thrown that away.
+
+Unrelenting Force's spread blunt (3 / 7 / 12) is untouched and was explicitly verified after the
+edit — it lives in the same file as Fire Breath and shares the `damageAmount` field name.
+
+---
+
 ## Fix — Drain Vitality now actually transfers, and the Thu'um bar is a real gradient (2026-07-28)
 
 Two defects from playtest. Both were mine; both reports were exactly right.

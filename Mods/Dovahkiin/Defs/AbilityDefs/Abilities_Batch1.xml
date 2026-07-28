@@ -22,7 +22,8 @@
       <li Class="Dovahkiin.CompProperties_ShoutCone">
         <coneAngle>40</coneAngle>
         <range>7</range>
-        <damageAmount>14</damageAmount>
+        <!-- +35% on playtest feedback: 14 -> 19. Fire raised by the same 35%. -->
+        <damageAmount>19</damageAmount>
         <damageInstances>6</damageInstances>
         <snowDepth>0.12</snowDepth>
         <damageDef>Frostbite</damageDef>
@@ -62,7 +63,7 @@
       <li Class="Dovahkiin.CompProperties_ShoutCone">
         <coneAngle>45</coneAngle>
         <range>10</range>
-        <damageAmount>28</damageAmount>
+        <damageAmount>38</damageAmount>
         <damageInstances>9</damageInstances>
         <snowDepth>0.22</snowDepth>
           <stunTicks>180</stunTicks>
@@ -105,7 +106,7 @@
       <li Class="Dovahkiin.CompProperties_ShoutCone">
         <coneAngle>55</coneAngle>
         <range>13</range>
-        <damageAmount>44</damageAmount>
+        <damageAmount>59</damageAmount>
         <damageInstances>12</damageInstances>
         <snowDepth>0.35</snowDepth>
           <stunTicks>300</stunTicks>
