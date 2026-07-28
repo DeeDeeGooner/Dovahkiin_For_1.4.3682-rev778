@@ -47,8 +47,17 @@ namespace Dovahkiin
         private int strikesLanded;
         private int ticksToNext;
 
-        // Reused between strikes so the storm does not allocate a list per bolt.
-        private static readonly List<Pawn> legalTargets = new List<Pawn>();
+        // Sticky across the whole storm, so the "found nothing" message can name the ACTUAL
+        // reason rather than a generic one. Playtest reported "no targets" while enemies were
+        // visibly outdoors, and the old message gave no way to tell which rule had rejected
+        // them - out of range, or under a roof.
+        private bool sawRoofedHostile;
+        private bool sawOutOfRangeHostile;
+
+        // Instance, NOT static. A static scratch list is shared between concurrent storms, and
+        // two Storm Calls can overlap - the cooldown is shared but a second Dovahkiin, or a
+        // save loaded mid-storm, can produce two live instances.
+        private readonly List<Pawn> legalTargets = new List<Pawn>();
 
         public static Thing_StormCall Spawn(Pawn caster, IntVec3 centre, float radius,
             int strikes, int durationTicks)
@@ -73,50 +82,82 @@ namespace Dovahkiin
         }
 
         /// <summary>
-        /// SPEC.md 4.4e's three rules, in one place. Every one of them is a hard exclusion.
+        /// Where the storm is centred RIGHT NOW.
+        ///
+        /// The caster's current position, not the cell the storm spawned in. In TES5 the storm
+        /// follows the Dragonborn; here that also removes a real failure mode found in playtest,
+        /// where walking away after casting silently pulled enemies out of range while they were
+        /// still plainly visible and outdoors.
+        ///
+        /// Falls back to the storm's own cell if the caster has died or despawned mid-storm.
         /// </summary>
-        private bool IsLegalTarget(Pawn p)
+        private IntVec3 Centre
         {
-            if (p == null || p.Dead || !p.Spawned || p == caster || p.Map != Map)
+            get
             {
-                return false;
+                return (caster != null && caster.Spawned && caster.Map == Map)
+                    ? caster.Position
+                    : Position;
             }
+        }
 
-            // Rule 2, first half: never the player's own. Colonists, tamed animals and player
-            // mechs are all Faction.OfPlayer, so this one test covers all of them.
-            if (p.Faction != null && p.Faction.IsPlayer)
+        /// <summary>
+        /// SPEC.md 4.4e's three rules, in one place, plus range.
+        ///
+        /// The two rules that can legitimately reject an otherwise valid enemy - range and roof -
+        /// are counted separately, so the end-of-storm message can say which one applied.
+        /// </summary>
+        private void ScanTargets()
+        {
+            legalTargets.Clear();
+            IntVec3 centre = Centre;
+            float radiusSq = radius * radius;
+
+            List<Pawn> all = Map.mapPawns.AllPawnsSpawned;
+            for (int i = 0; i < all.Count; i++)
             {
-                return false;
-            }
+                Pawn p = all[i];
+                if (p == null || p.Dead || !p.Spawned || p == caster || p.Map != Map)
+                {
+                    continue;
+                }
 
-            // Rule 1 and the rest of rule 2: must be actively hostile. This excludes neutral
-            // visitors, traders and passive wildlife, while still catching manhunter animals,
-            // which are hostile but factionless.
-            if (!p.HostileTo(caster))
-            {
-                return false;
-            }
+                // Rule 2, first half: never the player's own. Colonists, tamed animals and
+                // player mechs are all Faction.OfPlayer, so this one test covers all of them.
+                if (p.Faction != null && p.Faction.IsPlayer)
+                {
+                    continue;
+                }
 
-            // Rule 3: OPEN SKY ONLY. The load-bearing rule - see the header.
-            if (p.Position.Roofed(Map))
-            {
-                return false;
-            }
+                // Rule 1 and the rest of rule 2: must be actively hostile. This excludes neutral
+                // visitors, traders and passive wildlife, while still catching manhunter
+                // animals, which are hostile but factionless.
+                if (!p.HostileTo(caster))
+                {
+                    continue;
+                }
 
-            return (p.Position - Position).LengthHorizontalSquared <= radius * radius;
+                // From here on it IS a valid enemy, so a rejection is worth reporting.
+                if ((p.Position - centre).LengthHorizontalSquared > radiusSq)
+                {
+                    sawOutOfRangeHostile = true;
+                    continue;
+                }
+
+                // Rule 3: OPEN SKY ONLY. The load-bearing rule - see the header.
+                if (p.Position.Roofed(Map))
+                {
+                    sawRoofedHostile = true;
+                    continue;
+                }
+
+                legalTargets.Add(p);
+            }
         }
 
         private void TryStrike()
         {
-            legalTargets.Clear();
-            List<Pawn> all = Map.mapPawns.AllPawnsSpawned;
-            for (int i = 0; i < all.Count; i++)
-            {
-                if (IsLegalTarget(all[i]))
-                {
-                    legalTargets.Add(all[i]);
-                }
-            }
+            ScanTargets();
             if (legalTargets.Count == 0)
             {
                 // No legal target this instant. The strike is NOT spent - everyone may simply be
@@ -167,18 +208,36 @@ namespace Dovahkiin
         }
 
         /// <summary>
-        /// Tell the player when the storm found nothing. Without this, casting Storm Call inside
-        /// a base looks identical to a broken shout - and the whole point of the outdoor rule is
-        /// that it SHOULD do nothing there, which the player has no other way to learn.
+        /// Tell the player when the storm found nothing, AND WHY.
+        ///
+        /// Without a message at all, casting Storm Call inside a base looks identical to a
+        /// broken shout - and doing nothing there is the whole point of the outdoor rule, which
+        /// the player has no other way to learn.
+        ///
+        /// But a single generic message is not enough either: playtest reported "no targets"
+        /// while enemies were visibly outdoors, and there was no way to tell whether they had
+        /// been rejected for being roofed or simply for being out of range. Naming the actual
+        /// rule turns a confusing non-event into an explanation.
         /// </summary>
         private void Finish()
         {
             if (strikesLanded == 0 && caster != null && caster.Faction != null
                 && caster.Faction.IsPlayer)
             {
-                Messages.Message(
-                    "Dovahkiin_StormCall_NoTargets".Translate(),
-                    caster, MessageTypeDefOf.RejectInput, false);
+                string key;
+                if (sawRoofedHostile)
+                {
+                    key = "Dovahkiin_StormCall_AllRoofed";
+                }
+                else if (sawOutOfRangeHostile)
+                {
+                    key = "Dovahkiin_StormCall_OutOfRange";
+                }
+                else
+                {
+                    key = "Dovahkiin_StormCall_NoEnemies";
+                }
+                Messages.Message(key.Translate(), caster, MessageTypeDefOf.RejectInput, false);
             }
             Destroy(DestroyMode.Vanish);
         }
@@ -195,6 +254,8 @@ namespace Dovahkiin
             Scribe_Values.Look(ref ticksToNext, "ticksToNext", 0);
             Scribe_Values.Look(ref radius, "radius", 25f);
             Scribe_Values.Look(ref strikesLanded, "strikesLanded", 0);
+            Scribe_Values.Look(ref sawRoofedHostile, "sawRoofedHostile", false);
+            Scribe_Values.Look(ref sawOutOfRangeHostile, "sawOutOfRangeHostile", false);
         }
     }
 }

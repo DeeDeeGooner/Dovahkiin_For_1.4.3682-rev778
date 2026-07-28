@@ -1,5 +1,52 @@
 # CHANGELOG
 
+## Phase 2g-fix — Storm Call reported "no targets" with enemies plainly outdoors (2026-07-28)
+
+Playtest: Storm Call worked, but once claimed there was nothing under open sky while **more than
+one unroofed target** was present. Also requested: range +50%.
+
+### The bug: range was measured from the wrong place
+
+The radius was checked against **the cell the storm spawned in**, fixed at cast. The storm did
+not follow the caster. Walk away after casting — which is the natural thing to do in a fight —
+and enemies silently fell out of reach while remaining visible and outdoors. At 25 tiles on a
+250-tile map that is easy to trigger without noticing.
+
+**Fixed:** range is now measured from the caster's **current position, re-read every strike**.
+That is also more faithful — in TES5 the storm follows the Dragonborn rather than hanging over
+the spot where it was called. Falls back to the storm's own cell if the caster dies or despawns
+mid-storm.
+
+### The deeper problem: the message could not say which rule rejected them
+
+One generic "no enemy under open sky" message covered three completely different situations, so
+a range failure read as a roof failure. **The report was impossible to act on**, which is the
+real defect here — worse than the range bug itself.
+
+Now three distinct messages, chosen from sticky flags recorded during the storm:
+
+| Situation | Message |
+|---|---|
+| Hostiles in range, all roofed | *"…every enemy in reach stands beneath a roof."* |
+| Hostiles present but outside the radius | *"…too far off for it to reach."* |
+| No hostile pawns at all | *"…finds nothing to strike."* |
+
+The counters are set only **after** a pawn has passed the hostility and faction tests, so a
+peaceful trade caravan across the map can never be reported as an out-of-range enemy.
+
+### Also
+
+- **Range 25 → 38** (+50%), in `DovahkiinTuningDef`.
+- **`legalTargets` was static; it is now an instance field.** A shared scratch list between
+  concurrent storms is a latent bug — two storms can coexist after a save is loaded mid-storm.
+  Not the cause of this report, but found while reading the code for it.
+- Added a check that every `"Dovahkiin_*".Translate()` key in C# exists in the keyed XML. All
+  resolve; it would have caught a stale reference to the old message key.
+
+Builds clean, 0 warnings; all XML parses. **Awaiting retest.**
+
+---
+
 ## Phase 2g — Storm Call (2026-07-28)
 
 `SPEC.md §4.4e`. **12 of 14 core shouts built.** First of the three hard ones. Builds clean,

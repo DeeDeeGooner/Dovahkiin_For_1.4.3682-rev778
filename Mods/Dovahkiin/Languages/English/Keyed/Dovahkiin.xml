@@ -28,10 +28,14 @@
   <Dovahkiin_Shout_Reason_Maxed>This shout is already fully mastered.</Dovahkiin_Shout_Reason_Maxed>
 
   <!--
-    SPEC.md 4.4e - Storm Call finding nothing to hit.
-    Without this the shout looks broken when cast indoors, when in fact doing nothing there is
-    the whole point of the outdoor rule. The player has no other way to learn that.
+    SPEC.md 4.4e - Storm Call finding nothing to hit, and WHICH RULE rejected them.
+
+    One generic message was not enough: playtest reported "no targets" while enemies were
+    visibly outdoors, with no way to tell whether they had been rejected for standing under a
+    roof or simply for being out of range. Each case now says so plainly.
   -->
-  <Dovahkiin_StormCall_NoTargets>The storm gathers, but finds no enemy under open sky. Storm Call cannot strike anything beneath a roof.</Dovahkiin_StormCall_NoTargets>
+  <Dovahkiin_StormCall_AllRoofed>The storm gathers, but every enemy in reach stands beneath a roof. Storm Call can only strike what is under open sky.</Dovahkiin_StormCall_AllRoofed>
+  <Dovahkiin_StormCall_OutOfRange>The storm gathers, but your enemies are too far off for it to reach. Storm Call only answers near the one who called it.</Dovahkiin_StormCall_OutOfRange>
+  <Dovahkiin_StormCall_NoEnemies>The storm gathers, and finds nothing to strike.</Dovahkiin_StormCall_NoEnemies>
 
 </LanguageData>

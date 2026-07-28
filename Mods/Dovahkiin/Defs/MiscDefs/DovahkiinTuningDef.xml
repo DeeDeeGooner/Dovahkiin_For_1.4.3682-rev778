@@ -39,7 +39,10 @@
          storm slower, not bigger. Raise both together to make it genuinely heavier. -->
     <stormCallStrikesByLevel><li>3</li><li>6</li><li>12</li></stormCallStrikesByLevel>
     <stormCallDurationTicksByLevel><li>180</li><li>420</li><li>900</li></stormCallDurationTicksByLevel>
-    <stormCallRadius>25</stormCallRadius>
+    <!-- Raised 25 -> 38 (+50%) on playtest. Measured from the CASTER'S CURRENT POSITION, not
+         from where the storm was cast, so walking during a storm no longer pulls enemies out
+         of reach. -->
+    <stormCallRadius>38</stormCallRadius>
 
     <!-- Soul Tear / dead puppet - SPEC.md 4.4f. Level 1 is damage only. -->
     <soulTearPuppetChanceByLevel><li>0</li><li>0.25</li><li>0.45</li></soulTearPuppetChanceByLevel>

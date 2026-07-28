@@ -41,8 +41,15 @@ About ten minutes.
      box and spawn them inside.
 2. Cast **strun** with only those roofed raiders in range.
    - ✅ **No lightning at all.** Not one bolt.
-   - ✅ A message appears: *"The storm gathers, but finds no enemy under open sky…"*
-   - The message matters — without it, "nothing happened" is indistinguishable from a bug.
+   - ✅ A message appears: *"…every enemy in reach stands beneath a roof."*
+   - **The message now names which rule rejected them**, which it did not before. You saw a
+     "no targets" message once while enemies were plainly outdoors — that was almost certainly
+     the range rule, and the old message could not tell you so. There are three now:
+     | You see | It means |
+     |---|---|
+     | *"…stands beneath a roof"* | The outdoor rule. Working as designed |
+     | *"…too far off for it to reach"* | They were outside the radius. Move closer |
+     | *"…finds nothing to strike"* | No hostile pawns on the map at all |
 3. Now have one raider **step outside** into the open and cast again.
    - ✅ Lightning hits **only** the one outdoors. The roofed ones stay untouched.
 
@@ -81,7 +88,14 @@ Tell me when you are done and I will read it.
 
 **The storm centres on the Dovahkiin, not on a spot you click.** In TES5 Storm Call is a storm
 gathering over the Dragonborn, not artillery placed on a target, so the ability takes no target
-at all. Radius is 25 tiles from the caster, tunable.
+at all.
+
+**The storm now FOLLOWS you.** Range is measured from wherever the Dovahkiin is at that instant,
+not from the cell you cast in — so walking during a storm no longer silently pulls enemies out
+of reach. That was a real bug and it is the most likely explanation for the "no targets" you saw
+while enemies were outdoors.
+
+**Range raised 25 → 38 tiles**, as asked (+50%).
 
 **Targets are re-checked for every single bolt**, not chosen once when you cast. Pawns move,
 die, and duck under roofs mid-storm — a list captured at cast time would keep striking corpses
