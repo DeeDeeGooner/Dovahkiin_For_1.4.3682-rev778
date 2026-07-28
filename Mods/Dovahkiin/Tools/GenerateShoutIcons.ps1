@@ -23,6 +23,7 @@ $TABLE = @(
   @("FireBreath",       255,140, 40,  255,255,255, 1.00),
   @("FrostBreath",      150,215,255,  255,255,255, 1.00),
   @("WhirlwindSprint",  225,228,235,  255,255,255, 1.00),
+  # Tip stays the cold blue-grey it already was; the head becomes blue lilac (see $HEAD_GRADIENT).
   @("MarkedForDeath",   150,160,175,  255,255,255, 1.00),
   @("ClearSkies",       170,215,245,  255,255,255, 1.00),
   # Slow Time: Unrelenting Force's OLD pale grey-white body, with a BLUE core.
@@ -32,10 +33,19 @@ $TABLE = @(
   @("Dismay",           220, 40, 40,  255,255,255, 1.00),
   @("Cyclone",          185,190,200,  255,255,255, 0.60),  # faintest of the family
   # Not built yet - icons generated anyway, they cost nothing and will be waiting.
-  @("StormCall",        140, 90,210,  255,255,255, 1.00),
-  @("SoulTear",         190, 25, 35,  255,255,255, 1.00),
-  @("DragonAspect",     215,165, 70,  255,255,255, 1.00),
-  @("Dragonrend",       228,228,218,  150,160,172, 1.00)
+  # Tip is THUNDER BLUE - the bright flash, with storm-cloud grey at the head.
+  @("StormCall",        105,180,255,  255,255,255, 1.00),
+  # Tip colour: BRIGHT CLEAR PURPLE, not the old crimson. With the dark-purple head below this
+  # makes the whole comet one hue running dark to bright, which also matches the shout's purple
+  # bolt in play. Kept distinctly lighter than Drain Vitality's (150,50,200) so the two purple
+  # shouts still read apart on the command bar.
+  @("SoulTear",         178,102,250,  255,255,255, 1.00),
+  # Tip is Fire Breath's EXACT orange, head is Unrelenting Force's EXACT blue - the shout is
+  # both at once, so it borrows both rather than inventing a third colour.
+  @("DragonAspect",     255,140, 40,  255,255,255, 1.00),
+  # Tip is clear light azure, head deep azure. Core lightened to match, since a grey core in an
+  # all-azure comet read as a smudge rather than a highlight.
+  @("Dragonrend",       135,205,250,  235,248,255, 1.00)
 )
 
 # ---------------------------------------------------------------------------------------------
@@ -51,7 +61,17 @@ $TABLE = @(
 # the centroid of the brightest pixels - the hot core the master already draws there. No
 # hard-coded coordinates, so it survives the master being redrawn.
 $HEAD_GRADIENT = @{
-  "SoulTear" = @(46, 10, 78)   # deep dark purple at the head, into the table's colour at the tip
+  # deep dark purple -> bright clear purple
+  "SoulTear"       = @( 46,  10,  78)
+  # blue lilac -> the cold blue-grey it already was
+  "MarkedForDeath" = @(140, 150, 225)
+  # Unrelenting Force's EXACT blue (95,165,240) -> Fire Breath's EXACT orange (255,140,40).
+  # Dragon Aspect is both shouts at once, so it borrows their colours rather than inventing one.
+  "DragonAspect"   = @( 95, 165, 240)
+  # storm-cloud dark grey -> thunder blue
+  "StormCall"      = @( 52,  56,  64)
+  # deep azure -> clear light azure
+  "Dragonrend"     = @( 18,  68, 148)
 }
 
 $src = [System.Drawing.Bitmap]::FromFile($MASTER)

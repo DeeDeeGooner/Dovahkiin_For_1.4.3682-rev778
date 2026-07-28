@@ -1,5 +1,39 @@
 # CHANGELOG
 
+## Art — five icons now use head-to-tip gradients (2026-07-28)
+
+Soul Tear's tip changed from crimson to **bright clear purple**, giving it one hue running dark
+to light — which also matches its purple bolt in play. Four more shouts then gained gradients:
+
+| Shout | Head | Tip |
+|---|---|---|
+| Soul Tear | deep dark purple | bright clear purple |
+| Marked for Death | blue lilac | its existing cold blue-grey |
+| Storm Call | storm-cloud dark grey | thunder blue |
+| Dragon Aspect | **Unrelenting Force's exact blue** | **Fire Breath's exact orange** |
+| Dragonrend | deep azure | clear light azure |
+
+**Dragon Aspect borrows the other two shouts' literal RGB values** rather than approximating
+them. It is the shout that makes you part dragon — being visibly the blue shout and the fire
+shout at once says that better than a third invented colour would.
+
+Two follow-on adjustments the change forced:
+
+- **Storm Call's tip is now thunder blue**, not the violet it was. With storm-cloud grey at the
+  head, keeping a violet tail would have read as two unrelated colours rather than a cloud
+  discharging.
+- **Dragonrend's core was lightened** from grey to near-white. A grey core inside an all-azure
+  comet read as a smudge instead of a highlight.
+
+### Gotcha found while doing it: `Select-Object -First` stops a pipeline
+
+Piping the generator into `Select-Object -First 2` to shorten its output **terminated the script
+after two of fifteen icons**. The preview then showed thirteen stale files with no error
+anywhere — it simply looked as though the colour changes had done nothing. Capture to a variable
+and index that instead. Recorded in the notebook.
+
+---
+
 ## Polish — Soul Tear: gradient icon, execute-grade damage, and a terror thought (2026-07-28)
 
 Playtest passed. Three requested changes.
