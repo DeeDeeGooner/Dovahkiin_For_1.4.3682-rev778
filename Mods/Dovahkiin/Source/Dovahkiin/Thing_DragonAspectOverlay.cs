@@ -99,7 +99,10 @@ namespace Dovahkiin
         /// </summary>
         public override void TickRare()
         {
-            base.TickRare();
+            // DO NOT call base.TickRare(). Verse.Thing.Tick, TickRare and TickLong are all
+            // six-byte stubs that THROW NotImplementedException - verified by reading their
+            // IL. Calling base here threw every 250 ticks, which spammed the log and, worse,
+            // meant this overlay never reached its own cleanup and outlived the hediff.
             if (!StillValid())
             {
                 Destroy(DestroyMode.Vanish);

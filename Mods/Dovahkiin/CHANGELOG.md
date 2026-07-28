@@ -1,5 +1,47 @@
 # CHANGELOG
 
+## Phase 2i fix — log spam on every tick, and near-invisible plates (2026-07-29)
+
+First playtest of Dragon Aspect. Two reports, both real.
+
+### "The logs kept appearing whenever I was moving"
+
+`Exception ticking Dovahkiin_DragonAspectOverlay: NotImplementedException`, repeating.
+
+*Root cause:* `Thing_DragonAspectOverlay.TickRare` opened with `base.TickRare()`.
+**`Verse.Thing.Tick`, `TickRare` and `TickLong` are all six-byte stubs containing a `throw`
+opcode** — confirmed by reading their IL rather than guessing. Calling base threw every 250
+ticks.
+
+*Why it mattered more than log noise:* the exception aborted the rest of the method, so the
+overlay never reached its own `StillValid` check and **outlived the hediff it follows**. The
+armour would have stayed on the pawn after the shout ended.
+
+*Fix:* do not call base. Checked the rest of the mod for the same shape —
+`Hediff_DeadPuppet.Tick` also calls base, but that is `HediffWithComps`, whose `Tick` is a
+real implementation, so it is correct there. The rule is class-specific, not general.
+
+### "The armor was barely visible"
+
+*Root cause:* not a rendering fault — the plates really are authored at alpha 26 (centre) to
+88 (edge). They were signed off against a **dark preview background with a plain untextured
+pawn**, which flatters low alpha enormously. Over real apparel on lit ground they disappear.
+
+*Fix:* one knob, `$PLATE_ALPHA` in the generator, at 1.85. Chosen over the alternatives:
+raising the authored numbers at each call site (three places to keep in sync), or switching
+the body to the `MoteGlow` shader (additive, so it would glow at night like light rather than
+sit on the pawn like a surface).
+
+*Second bug found by the first fix:* raising alpha threw 410 `FromArgb` exceptions. Alpha is
+multiplied downstream in several independent places — scale jitter, rim factor, highlight
+factor — so a value clamped in one place gets pushed back over 255 by the next. Clamped
+inside the `RGB` helper instead, which is the single point every colour is built through.
+
+*Process note:* the preview harness now paints rough lit ground under the pawn. Ten lines,
+and it would have caught this before it reached a playtest.
+
+---
+
 ## Phase 2i — Dragon Aspect, everything but the summon (2026-07-29)
 
 The fourteenth and last core shout. Builds clean, 0 warnings. Not yet playtested.

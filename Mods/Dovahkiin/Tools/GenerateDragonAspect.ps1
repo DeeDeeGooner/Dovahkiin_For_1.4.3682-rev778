@@ -64,12 +64,35 @@ $PARTICLE_SHAPE = "ess"
 # ---------------------------------------------------------------------------------
 $VERSION = "B"
 
+# ---------------------------------------------------------------------------------
+#  PLATE OPACITY - one knob, raised after the first in-game playtest.
+#
+#  The scale plates were authored at alpha 26 (centre) to 88 (edge) and judged against a
+#  DARK preview background with a plain untextured pawn. In the actual game, over the
+#  pawn's own apparel and lit terrain, that read as "barely visible".
+#
+#  The lesson is about the review, not the number: a translucent overlay must be judged
+#  over a REAL pawn on REAL terrain, because a dark flat backdrop flatters low alpha.
+#  1.0 is the original art. Raise or lower this rather than editing the call sites.
+# ---------------------------------------------------------------------------------
+$PLATE_ALPHA = 1.85
+
 if (-not (Test-Path $DEST)) { New-Item -ItemType Directory -Path $DEST -Force | Out-Null }
 
 # ---------------------------------------------------------------------------------
 # Palette
 # ---------------------------------------------------------------------------------
-function RGB($r,$g,$b,$a=255) { return [System.Drawing.Color]::FromArgb($a,$r,$g,$b) }
+# Every channel is CLAMPED here rather than at the call sites. FromArgb throws on anything
+# outside 0..255, and alpha is multiplied in several places downstream - by the scale jitter,
+# by rim and highlight factors, by $PLATE_ALPHA - so any one of them can overshoot. Clamping
+# once at the single place colours are built makes that whole class of error impossible.
+function RGB($r,$g,$b,$a=255) {
+  if ($r -lt 0) { $r = 0 } elseif ($r -gt 255) { $r = 255 }
+  if ($g -lt 0) { $g = 0 } elseif ($g -gt 255) { $g = 255 }
+  if ($b -lt 0) { $b = 0 } elseif ($b -gt 255) { $b = 255 }
+  if ($a -lt 0) { $a = 0 } elseif ($a -gt 255) { $a = 255 }
+  return [System.Drawing.Color]::FromArgb([int]$a,[int]$r,[int]$g,[int]$b)
+}
 $C_DEEP  = @(104, 62, 18)    # deep bronze - a scale's shadowed body
 $C_MID   = @(178,124, 42)    # burnished bronze
 $C_GOLD  = @(232,178, 74)    # lit gold
@@ -265,7 +288,8 @@ function FillScales($g, $prof, [double]$aCentre, [double]$aEdge) {
     for ($x = $CX*$SS - $hw - $scaleW; $x -le $CX*$SS + $hw + $scaleW; $x += $scaleW*0.86) {
       $px = $x + $offset
       $dx = [Math]::Abs($px - $CX*$SS) / [Math]::Max(1.0, $hw)
-      $alpha = [int]($aCentre + ($aEdge-$aCentre) * [Math]::Pow([Math]::Min(1.0,$dx), 1.35))
+      $alpha = [int](($aCentre + ($aEdge-$aCentre) * [Math]::Pow([Math]::Min(1.0,$dx), 1.35)) * $PLATE_ALPHA)
+      if ($alpha -gt 255) { $alpha = 255 }
       # Deterministic jitter: a perfectly regular grid of identical scales reads as a
       # waffle. A few percent of variation in size, position and brightness kills that.
       $h1 = (($row*73 + $col*151) % 17)/17.0 - 0.5
