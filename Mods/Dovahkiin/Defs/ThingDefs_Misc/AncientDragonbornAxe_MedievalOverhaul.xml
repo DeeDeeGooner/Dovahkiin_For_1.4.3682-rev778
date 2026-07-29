@@ -46,12 +46,30 @@
         <compClass>CompEquippable</compClass>
       </li>
     </comps>
-    <!-- Medieval Overhaul's own texture, REFERENCED not copied, tinted ember. CutoutComplex is
-         their shader and is what makes <color> take effect at all. -->
+    <!--
+      Medieval Overhaul's own texture, REFERENCED not copied, tinted ember.
+
+      SHADER IS Cutout, NOT THEIR CutoutComplex - and that is the whole reason the haft is
+      coloured. Measured on their mask (Greataxe_m.png, 256x256): the RED channel marks 70% of
+      the axe, the haft is the unmarked 30%, and the GREEN channel is entirely empty - mean 0 -
+      so colorTwo has nothing to act on. Under CutoutComplex the head took the ember and the
+      haft stayed wood, which is exactly what the user asked to fix.
+
+      Plain Cutout ignores the mask and multiplies the WHOLE texture by <color>, so haft and
+      head both take it.
+
+      KNOWN LIMIT OF MULTIPLYING: it cannot brighten. Their haft is dark brown, and dark brown
+      times ember is a dark ember-stained wood, not glowing orange. The head is bright because
+      it started bright. A uniformly luminous axe would need art of our own - which is what
+      Dovahkiin_AncientDragonbornAxe is for, and the user chose their shape over our gradient.
+
+      Modifying their PNG would give full control and is not an option: that is redistributing
+      another mod's art.
+    -->
     <graphicData>
       <texPath>WeaponMelee/Axes/Greataxe</texPath>
       <graphicClass>Graphic_Single</graphicClass>
-      <shaderType>CutoutComplex</shaderType>
+      <shaderType>Cutout</shaderType>
       <color>(240, 118, 28)</color>
     </graphicData>
     <uiIconScale>1.2</uiIconScale>
