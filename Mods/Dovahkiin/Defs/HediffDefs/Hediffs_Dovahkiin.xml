@@ -703,9 +703,10 @@
     <scenarioCanAdd>false</scenarioCanAdd>
     <comps>
       <li Class="HediffCompProperties_Disappears">
-        <!-- 12500 ticks = 5 in-game hours (GenDate.TicksPerHour is 2500). The comp's
-             durationTicks overrides this at cast time, but they are kept in step so the
-             hediff is still correct if it is ever added by any other route. -->
+        <!-- The real duration comes from the ability comp's durationTicks, which is per level:
+             5h / 7h / 9h = 12500 / 17500 / 22500 ticks (GenDate.TicksPerHour is 2500).
+             This default is the one-word value, used only if the hediff is ever added by some
+             other route than the shout. -->
         <disappearsAfterTicks>12500</disappearsAfterTicks>
         <showRemainingTime>true</showRemainingTime>
       </li>

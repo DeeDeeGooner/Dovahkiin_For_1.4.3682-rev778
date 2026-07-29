@@ -1,5 +1,31 @@
 # CHANGELOG
 
+## Phase 2i fix — the armour stopped drawing when the pawn walked away (2026-07-29)
+
+Reported as "the visual wears off way too soon, even though it still says the power lasts
+3 hours". The hediff was fine; the picture was being culled.
+
+*Root cause:* `Thing_DragonAspectOverlay` deliberately never moves - it stays on the cell it
+was cast on and draws at the pawn instead. But RimWorld culls dynamic drawing by the **Thing's
+own cell**, so once that cell left the view rect the overlay stopped rendering while the buff
+carried on running. Walking any distance from where you shouted made the armour disappear.
+
+*Fix:* `<drawOffscreen>true</drawOffscreen>` on the ThingDef. This is exactly what vanilla's
+other `RealtimeOnly` movers do - `Tornado` and `PawnFlyerBase` both set it, and for the same
+reason. Rejected the alternative of syncing the Thing's `Position` to the pawn each tick:
+it adds thing-grid churn on a per-tick path for no visible benefit once culling is disabled,
+and CLAUDE.md forbids per-tick work that has a cheaper form.
+
+*How it was found:* by reading the vanilla defs that already use `RealtimeOnly` and noticing
+what they all had that this one did not.
+
+### Duration now scales with words again
+
+5 / 7 / 9 in-game hours at one / two / three words (12500 / 17500 / 22500 ticks). The previous
+flat 5 hours had removed a progression axis, which was flagged at the time.
+
+---
+
 ## Phase 2i — Dragon Aspect becomes a once-per-day power (2026-07-29)
 
 Retuned at the user's request to TES5's rhythm: a daily power, not a combat shout.

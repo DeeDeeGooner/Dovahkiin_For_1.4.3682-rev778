@@ -123,7 +123,12 @@ This is the TES5 rhythm: a daily power, not a combat shout.
 
 1. Cast **Dragon Aspect** at any level.
 2. ✅ It cost **no thu'um** — the bar does not move.
-3. ✅ The buff lasts **5 in-game hours**. Check the countdown in the Health tab.
+3. ✅ The buff lasts **5 / 7 / 9 in-game hours** at one / two / three words. Check the
+   countdown in the Health tab.
+4. **Walk the pawn a long way from where you shouted, and off the screen edge and back.**
+   ✅ The armour is still drawn the whole time, and still there when the countdown says so.
+   - This was broken before: the overlay was culled by the cell it was cast on, so walking
+     away made the armour vanish while the buff was still running.
 4. **Immediately** try another shout — Unrelenting Force.
    ✅ Usable after about **one second**. Dragon Aspect barely locks the Voice at all.
 5. Try to cast **Dragon Aspect** again.

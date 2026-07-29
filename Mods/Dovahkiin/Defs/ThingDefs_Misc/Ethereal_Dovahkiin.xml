@@ -82,6 +82,13 @@
 
     tickerType Rare because it only has to notice that the hediff has ended, which is not a
     per-tick question. It holds no game state: destroying it loses the picture and nothing else.
+
+    drawOffscreen MATTERS and is not decoration. RimWorld culls dynamic drawing by the THING's
+    own cell, and this Thing never moves from where it was cast - it draws at the pawn instead.
+    Without this flag the armour silently stopped rendering as soon as the pawn walked far
+    enough from the spot they shouted on, while the hediff carried on running, so the buff
+    looked like it had worn off hours early. Vanilla's other RealtimeOnly movers, Tornado and
+    PawnFlyerBase, both set it for the same reason.
   -->
   <ThingDef ParentName="EtherealThingBase">
     <defName>Dovahkiin_DragonAspectOverlay</defName>
@@ -90,6 +97,7 @@
     <tickerType>Rare</tickerType>
     <useHitPoints>false</useHitPoints>
     <drawerType>RealtimeOnly</drawerType>
+    <drawOffscreen>true</drawOffscreen>
     <altitudeLayer>PawnState</altitudeLayer>
   </ThingDef>
 
