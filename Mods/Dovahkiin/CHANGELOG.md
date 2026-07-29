@@ -1,5 +1,53 @@
 # CHANGELOG
 
+## Phase 2i fix — every SIDE view was wrong: the profile mirrored one half-width (2026-07-29)
+
+Reported off the preview, on all four body types shown, and described on the Hulk as "a
+sagging veil in front of the abs". Correct on every count.
+
+*Root cause:* the measured profile stored **one** half-width per row — `max(left, right)` —
+and mirrored it about a centre line. That is nearly harmless on the front and back views,
+which really are symmetric, and badly wrong on a side view, where the pawn faces one way.
+Measured on the east sprites:
+
+| east view | left | right | mirrored overhang |
+|---|---|---|---|
+| Hulk at y=230 | 69.5 | 11.5 | **58px** |
+| Thin at y=200 | 38.5 | 0.5 | **38px** |
+| Female at y=181 | 54.5 | 24.5 | **30px** |
+| Male at y=200 | 35.5 | 19.5 | **16px** |
+
+Taking the larger edge and mirroring it hangs that much armour off the front of the lower
+body — which is exactly the veil described.
+
+Two compounding errors sat underneath it. The side sprites are **not centred on 127.5**
+(Female east is centred on x=113, Thin on 121.5, Fat on 121) and **not the same height as the
+front** (Female east runs y 82..224 against the front's 86..224; Hulk east 73..248 against
+66..250). The generator took the centre line and the vertical extent from the *front* view for
+all three rotations, so the side outline was mispositioned before asymmetry was even in play.
+
+*Fix:* the profile is now `@(y, halfLeft, halfRight)` and every place that **positions**
+geometry against the outline takes its own side — torso path, arm bands, plate fill and its
+alpha ramp, shoulder fins, elbow spikes, chest crest. `HalfWidthAt` survives only for
+*scaling* decisions (how long is a fin), with a new `HalfSideAt` for placement. Each rotation
+now also carries its own centre, extent and vertical landmarks, built once into a `$GEOM`
+table that `UseRotation` selects.
+
+Size quantities are still taken from the **front** view and shared across rotations: a
+shoulder fin does not shrink when the pawn turns sideways.
+
+*Verified numerically, not by eye.* Armour overhang past the body outline, east view, from
+10% to 90% down the body: **0–2px on all five body types**, against 58px before. The 27–53px
+readings on the topmost row are the shoulder fins, which SPEC 4.4d wants breaking the
+silhouette.
+
+*Method note:* the throwaway sheet built to check this first failed with every sprite load
+erroring, because it used `$REF` for the bodies folder and `$ref` for a Bitmap — **one
+variable**, PowerShell being case-insensitive. The notebook already carried that warning
+twice. Names in these scripts must differ by more than case.
+
+---
+
 ## Phase 2i fix — the armour was drawn INSIDE the pawn, and only ever fitted one body type (2026-07-29)
 
 Reported as "it still looked weird on my pawn (inside them)", after the previous round's

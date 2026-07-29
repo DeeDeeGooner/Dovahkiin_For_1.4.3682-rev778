@@ -242,7 +242,21 @@ function MeasureSilhouette([string]$path) {
 }
 
 # ---------------------------------------------------------------------------------
-# Turn a measured silhouette into the @(y, halfWidth) table HalfWidthAt expects.
+# Turn a measured silhouette into a @(y, halfLeft, halfRight) table.
+#
+# BOTH EDGES ARE KEPT SEPARATELY, and that is the whole point. The first version stored
+# one half-width per row - max(left, right) - and mirrored it about the centre line. That
+# is harmless on the front and back views, which really are near-symmetric, and badly
+# wrong on the SIDE view, where the pawn faces one way. Measured on the east sprites:
+#
+#   Hulk   at y=230   left 69.5   right 11.5   -> 58px of armour hanging off the front
+#   Thin   at y=200   left 38.5   right  0.5   -> 38px
+#   Female at y=181   left 54.5   right 24.5   -> 30px
+#   Male   at y=200   left 35.5   right 19.5   -> 16px
+#
+# The user reported it as a sagging veil in front of the abs, which is exactly what
+# mirroring the larger edge produces down the lower body.
+#
 # Sampled every 6 rows and 3-tap smoothed: raw per-row values carry the sprite's
 # antialiasing as jitter, which the plate scatter then amplifies into a ragged edge.
 # ---------------------------------------------------------------------------------
@@ -250,25 +264,25 @@ function ProfileFromSilhouette($m) {
   $rmin = $m.Min; $rmax = $m.Max
   $topY = $m.Top; $botY = $m.Bot; $centreX = $m.CX
 
-  # raw half-width per row, measured from the centre line so the profile stays symmetric
-  $raw = @{}
+  $rawL = @{}
+  $rawR = @{}
   for ($yy = $topY; $yy -le $botY; $yy++) {
-    if ($rmin[$yy] -lt 0) { $raw[$yy] = 0.0; continue }
-    $lft = $centreX - $rmin[$yy]
-    $rgt = $rmax[$yy] - $centreX
-    $raw[$yy] = [Math]::Max([double]$lft, [double]$rgt)
+    if ($rmin[$yy] -lt 0) { $rawL[$yy] = 0.0; $rawR[$yy] = 0.0; continue }
+    # Clamped at zero: a row can lie entirely on one side of the centre line - the neck on
+    # a side view does - and a negative half-width would fold the polygon inside out.
+    $rawL[$yy] = [Math]::Max([double]0.0, [double]($centreX - $rmin[$yy]))
+    $rawR[$yy] = [Math]::Max([double]0.0, [double]($rmax[$yy] - $centreX))
   }
 
   $stops = New-Object System.Collections.ArrayList
   $yy = $topY
   while ($yy -le $botY) {
-    $acc = 0.0; $cnt = 0
+    $accL = 0.0; $accR = 0.0; $cnt = 0
     for ($k = -1; $k -le 1; $k++) {
       $yk = $yy + $k
-      if ($yk -ge $topY -and $yk -le $botY) { $acc += $raw[$yk]; $cnt++ }
+      if ($yk -ge $topY -and $yk -le $botY) { $accL += $rawL[$yk]; $accR += $rawR[$yk]; $cnt++ }
     }
-    $hw = $acc / $cnt
-    [void]$stops.Add(@( ([double]$yy), ([double]$hw) ))
+    [void]$stops.Add(@( ([double]$yy), ([double]($accL/$cnt)), ([double]($accR/$cnt)) ))
     if ($yy -eq $botY) { break }
     $yy += 6
     if ($yy -gt $botY) { $yy = $botY }
@@ -280,9 +294,8 @@ function ProfileFromSilhouette($m) {
 # Set every geometry variable for one body type. BuildBody and its helpers read these
 # from script scope, so this is called once per body type before generating.
 # ---------------------------------------------------------------------------------
-$PROFILE_SOUTH = $null
-$PROFILE_NORTH = $null
-$PROFILE_EAST  = $null
+$GEOM = @{}
+$PROFILE_CUR = $null
 $CX = 127.5
 $Y_TOP = 88.0
 $Y_BOT = 214.0
@@ -299,69 +312,117 @@ $CREST_TOP_Y = 108.0
 $CREST_BOT_Y = 188.0
 
 function SetBodyGeometry([string]$bodyType) {
-  $mS = MeasureSilhouette (Join-Path $REF_DIR "Naked_${bodyType}_south.png")
-  $mN = MeasureSilhouette (Join-Path $REF_DIR "Naked_${bodyType}_north.png")
-  $mE = MeasureSilhouette (Join-Path $REF_DIR "Naked_${bodyType}_east.png")
+  $meas = @{}
+  foreach ($rot in @("south","north","east")) {
+    $meas[$rot] = MeasureSilhouette (Join-Path $REF_DIR "Naked_${bodyType}_${rot}.png")
+  }
 
-  $script:PROFILE_SOUTH = ProfileFromSilhouette $mS
-  $script:PROFILE_NORTH = ProfileFromSilhouette $mN
-  $script:PROFILE_EAST  = ProfileFromSilhouette $mE
+  # SIZE quantities are taken from the FRONT view and shared by all three rotations: a
+  # shoulder fin does not shrink when the pawn turns to face sideways. Only the OUTLINE,
+  # the centre line and the vertical extent are per-rotation.
+  $profS = ProfileFromSilhouette $meas["south"]
+  $sTop  = [double]$meas["south"].Top
+  $sBot  = [double]$meas["south"].Bot
+  $hwShoulder = HalfWidthAt $profS ($sTop + ($sBot - $sTop) * $F_SHOULDER)
 
-  # The FRONT view sets the vertical landmarks; north and east share them so the three
-  # rotations line up on the pawn. Their own profiles still drive the widths.
-  $script:CX    = $mS.CX
-  $script:Y_TOP = [double]$mS.Top
-  $script:Y_BOT = [double]$mS.Bot
-  $bodyH  = $script:Y_BOT - $script:Y_TOP
-  $maxHalf = $mS.MaxHalf
+  $script:GEOM = @{}
+  foreach ($rot in @("south","north","east")) {
+    $m = $meas[$rot]
+    # Each rotation gets its OWN centre and extent. The side sprites are neither centred
+    # on 127.5 nor the same height as the front - Female east is centred on x=113 and runs
+    # y 82..224 against the front's 86..224 - so sharing the front's numbers put the whole
+    # side outline in the wrong place before the asymmetry was even considered.
+    $top = [double]$m.Top
+    $bot = [double]$m.Bot
+    $bodyH = $bot - $top
+    $script:GEOM[$rot] = @{
+      Prof      = ProfileFromSilhouette $m
+      CX        = $m.CX
+      YTop      = $top
+      YBot      = $bot
+      ArmYTop   = $top + $bodyH * $F_ARM_TOP
+      ArmYBot   = $top + $bodyH * $F_ARM_BOT
+      ShoulderY = $top + $bodyH * $F_SHOULDER
+      ElbowYs   = @( ($top + $bodyH * $F_ELBOW_A), ($top + $bodyH * $F_ELBOW_B) )
+      CrestTopY = $top + $bodyH * $F_CREST_TOP
+      CrestBotY = $top + $bodyH * $F_CREST_BOT
+      ArmW      = $hwShoulder * $F_ARM_W
+      SpurLen   = $hwShoulder * $F_SPUR_LEN
+      SpurThick = $hwShoulder * $F_SPUR_THICK
+      ShardTop  = $hwShoulder * $F_SHARD_TOP
+      ShardBot  = $hwShoulder * $F_SHARD_BOT
+    }
+  }
 
-  $script:ARM_Y_TOP  = $script:Y_TOP + $bodyH * $F_ARM_TOP
-  $script:ARM_Y_BOT  = $script:Y_TOP + $bodyH * $F_ARM_BOT
-  $script:SHOULDER_Y = $script:Y_TOP + $bodyH * $F_SHOULDER
-  $script:ELBOW_YS   = @( ($script:Y_TOP + $bodyH * $F_ELBOW_A), ($script:Y_TOP + $bodyH * $F_ELBOW_B) )
-  $script:CREST_TOP_Y = $script:Y_TOP + $bodyH * $F_CREST_TOP
-  $script:CREST_BOT_Y = $script:Y_TOP + $bodyH * $F_CREST_BOT
-
-  # Upper-body features scale off the SHOULDER half-width, not the body maximum. See the
-  # comment on $F_ARM_W: on a Fat body the maximum is the belly and fins became wings.
-  $hwShoulder = HalfWidthAt $script:PROFILE_SOUTH $script:SHOULDER_Y
-
-  $script:ARM_W      = $hwShoulder * $F_ARM_W
-  $script:SPUR_LEN   = $hwShoulder * $F_SPUR_LEN
-  $script:SPUR_THICK = $hwShoulder * $F_SPUR_THICK
-  $script:SHARD_TOP  = $hwShoulder * $F_SHARD_TOP
-  $script:SHARD_BOT  = $hwShoulder * $F_SHARD_BOT
-
-  Write-Output ("  {0,-7} body y {1}..{2}  centre x {3}  max half {4}  shoulder half {5}  arm band {6}  fin {7}" -f `
-    $bodyType, $script:Y_TOP, $script:Y_BOT, [Math]::Round($script:CX,1), `
-    [Math]::Round($maxHalf,1), [Math]::Round($hwShoulder,1), `
-    [Math]::Round($script:ARM_W,1), [Math]::Round($script:SPUR_LEN,1))
+  $e = $script:GEOM["east"]
+  Write-Output ("  {0,-7} front y {1}..{2} cx {3}  |  east y {4}..{5} cx {6}  |  shoulder half {7}  arm band {8}  fin {9}" -f `
+    $bodyType, $sTop, $sBot, [Math]::Round($meas["south"].CX,1), `
+    $e.YTop, $e.YBot, [Math]::Round($e.CX,1), `
+    [Math]::Round($hwShoulder,1), [Math]::Round($e.ArmW,1), [Math]::Round($e.SpurLen,1))
 }
 
-function HalfWidthAt($prof, [double]$y) {
-  if ($y -le $prof[0][0]) { return [double]$prof[0][1] }
+# Point the script-scope geometry variables at ONE rotation. BuildBody and every helper it
+# calls read these from script scope, so this is the single place a rotation is selected.
+function UseRotation([string]$rot) {
+  $g = $script:GEOM[$rot]
+  $script:PROFILE_CUR = $g.Prof
+  $script:CX          = $g.CX
+  $script:Y_TOP       = $g.YTop
+  $script:Y_BOT       = $g.YBot
+  $script:ARM_Y_TOP   = $g.ArmYTop
+  $script:ARM_Y_BOT   = $g.ArmYBot
+  $script:SHOULDER_Y  = $g.ShoulderY
+  $script:ELBOW_YS    = $g.ElbowYs
+  $script:CREST_TOP_Y = $g.CrestTopY
+  $script:CREST_BOT_Y = $g.CrestBotY
+  $script:ARM_W       = $g.ArmW
+  $script:SPUR_LEN    = $g.SpurLen
+  $script:SPUR_THICK  = $g.SpurThick
+  $script:SHARD_TOP   = $g.ShardTop
+  $script:SHARD_BOT   = $g.ShardBot
+}
+
+# Interpolate ONE column of the profile: 1 is the left half-width, 2 the right. They are
+# different numbers, and on a side view they are very different - see ProfileFromSilhouette.
+function ProfCol($prof, [double]$y, [int]$col) {
+  if ($y -le $prof[0][0]) { return [double]$prof[0][$col] }
   $last = $prof.Count - 1
-  if ($y -ge $prof[$last][0]) { return [double]$prof[$last][1] }
+  if ($y -ge $prof[$last][0]) { return [double]$prof[$last][$col] }
   for ($i = 0; $i -lt $last; $i++) {
     $y0 = [double]$prof[$i][0]; $y1 = [double]$prof[$i+1][0]
     if ($y -ge $y0 -and $y -le $y1) {
       $t = ($y - $y0) / ($y1 - $y0)
       $t = $t * $t * (3.0 - 2.0 * $t)
-      return [double]$prof[$i][1] + ($prof[$i+1][1] - $prof[$i][1]) * $t
+      return [double]$prof[$i][$col] + ($prof[$i+1][$col] - $prof[$i][$col]) * $t
     }
   }
-  return [double]$prof[$last][1]
+  return [double]$prof[$last][$col]
+}
+
+# The real silhouette edge on ONE side. $side is -1 for left, +1 for right. Anything that
+# PLACES geometry against the body outline must use this, never HalfWidthAt.
+function HalfSideAt($prof, [double]$y, [double]$side) {
+  if ($side -lt 0) { return ProfCol $prof $y 1 }
+  return ProfCol $prof $y 2
+}
+
+# A single "how wide is the body here" number, for SCALING decisions only - never for
+# placing an edge. On a side view this is the mean of two very unequal halves.
+function HalfWidthAt($prof, [double]$y) {
+  return ((ProfCol $prof $y 1) + (ProfCol $prof $y 2)) / 2.0
 }
 
 function BuildTorsoPath($prof) {
   $pts = New-Object System.Collections.ArrayList
+  # Down the RIGHT edge, then back up the LEFT edge - each taken from its own column, so
+  # the outline follows an asymmetric side view instead of mirroring the wider half.
   for ($y = $Y_TOP; $y -le $Y_BOT; $y += 1.0) {
-    $hw = HalfWidthAt $prof $y
-    [void]$pts.Add((New-Object System.Drawing.PointF ([single](($CX+$hw)*$SS)), ([single]($y*$SS))))
+    $hr = HalfSideAt $prof $y 1.0
+    [void]$pts.Add((New-Object System.Drawing.PointF ([single](($CX+$hr)*$SS)), ([single]($y*$SS))))
   }
   for ($y = $Y_BOT; $y -ge $Y_TOP; $y -= 1.0) {
-    $hw = HalfWidthAt $prof $y
-    [void]$pts.Add((New-Object System.Drawing.PointF ([single](($CX-$hw)*$SS)), ([single]($y*$SS))))
+    $hl = HalfSideAt $prof $y -1.0
+    [void]$pts.Add((New-Object System.Drawing.PointF ([single](($CX-$hl)*$SS)), ([single]($y*$SS))))
   }
   $p = New-Object System.Drawing.Drawing2D.GraphicsPath
   $p.AddPolygon([System.Drawing.PointF[]]$pts.ToArray([System.Drawing.PointF]))
@@ -382,7 +443,7 @@ function BuildArmsPath($prof, $sides) {
     $outer = New-Object System.Collections.ArrayList
     $inner = New-Object System.Collections.ArrayList
     for ($y = $ARM_Y_TOP; $y -le $ARM_Y_BOT; $y += 1.0) {
-      $hw = HalfWidthAt $prof $y
+      $hw = HalfSideAt $prof $y $side
       # taper the band's ends so the sleeve is capped, not chopped
       $tt = [Math]::Min(($y - $ARM_Y_TOP) / 10.0, ($ARM_Y_BOT - $y) / 10.0)
       if ($tt -gt 1.0) { $tt = 1.0 }
@@ -454,7 +515,8 @@ function FillScales($g, $prof, [double]$aCentre, [double]$aEdge) {
   $row = 0
   for ($y = ($Y_TOP+6.0)*$SS; $y -le ($Y_BOT-2.0)*$SS; $y += $rowStep) {
     $y256 = $y / $SS
-    $hw = (HalfWidthAt $prof $y256) * $SS
+    $hwL = (HalfSideAt $prof $y256 -1.0) * $SS
+    $hwR = (HalfSideAt $prof $y256  1.0) * $SS
     $offset = if ($row % 2 -eq 0) { 0.0 } else { $scaleW * 0.5 }
     $lit = 1.0 - [Math]::Min(1.0, ($y256-$Y_TOP)/($Y_BOT-$Y_TOP)) * 0.75
     # The bronze/blue ramp down the body, in whichever direction $VERSION selects.
@@ -462,9 +524,12 @@ function FillScales($g, $prof, [double]$aCentre, [double]$aEdge) {
     # change happens across the middle rather than the whole torso being a half-and-half wash.
     $cool = CoolAt (($y256 - $Y_TOP) / ($Y_BOT - $Y_TOP))
     $col = 0
-    for ($x = $CX*$SS - $hw - $scaleW; $x -le $CX*$SS + $hw + $scaleW; $x += $scaleW*0.86) {
+    for ($x = $CX*$SS - $hwL - $scaleW; $x -le $CX*$SS + $hwR + $scaleW; $x += $scaleW*0.86) {
       $px = $x + $offset
-      $dx = [Math]::Abs($px - $CX*$SS) / [Math]::Max(1.0, $hw)
+      # The centre-to-edge alpha ramp is normalised by THIS side's own half-width, or the
+      # narrow side of an asymmetric body would never reach its edge alpha.
+      $hwSide = if ($px -lt $CX*$SS) { $hwL } else { $hwR }
+      $dx = [Math]::Abs($px - $CX*$SS) / [Math]::Max(1.0, $hwSide)
       $alpha = [int](($aCentre + ($aEdge-$aCentre) * [Math]::Pow([Math]::Min(1.0,$dx), 1.35)) * $PLATE_ALPHA)
       if ($alpha -gt 255) { $alpha = 255 }
       # Deterministic jitter: a perfectly regular grid of identical scales reads as a
@@ -620,11 +685,8 @@ function DrawShardCrest($g, [double]$x0, [double]$y0, [double]$x1, [double]$y1, 
 # Build one body rotation at a given level. Level 1 = arms only, 2 = everything.
 # ---------------------------------------------------------------------------------
 function BuildBody([string]$rot, [int]$level) {
-  switch ($rot) {
-    "south" { $prof = $PROFILE_SOUTH }
-    "north" { $prof = $PROFILE_NORTH }
-    "east"  { $prof = $PROFILE_EAST  }
-  }
+  UseRotation $rot
+  $prof = $PROFILE_CUR
 
   $bmp = New-Object System.Drawing.Bitmap $N, $N, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
   $g = [System.Drawing.Graphics]::FromImage($bmp)
@@ -640,7 +702,10 @@ function BuildBody([string]$rot, [int]$level) {
   if ($level -ge 2) {
     # --- fins first, so plates overlap their roots and they look grown-on ---
     $shoulderY = $SHOULDER_Y
-    $hwS = HalfWidthAt $prof $shoulderY
+    # Each shoulder sits on ITS OWN edge. Using one mirrored half-width hung the far fin
+    # off the front of a side view, where the two edges differ by up to 58px.
+    $hwSL = HalfSideAt $prof $shoulderY -1.0
+    $hwSR = HalfSideAt $prof $shoulderY  1.0
     $spurLen = $SPUR_LEN * $SS
     $spurThick = $SPUR_THICK * $SS
     # The fins sit ON the shoulders, so they take the ramp's value AT the shoulders - gold
@@ -649,11 +714,11 @@ function BuildBody([string]$rot, [int]$level) {
     $finCool = CoolAt (($shoulderY - $Y_TOP) / ($Y_BOT - $Y_TOP))
     if ($rot -eq "east") {
       # facing right, so BOTH fans sweep back to the left; drawing one forward crossed them
-      DrawShoulderFins $g (($CX - $hwS*0.10)*$SS) (($shoulderY+8)*$SS) ($spurLen*0.70) ($spurThick*0.72) -1.0 90 $finCool
-      DrawShoulderFins $g (($CX - $hwS*0.45)*$SS) ($shoulderY*$SS)     $spurLen        $spurThick       -1.0 170 $finCool
+      DrawShoulderFins $g (($CX - $hwSL*0.10)*$SS) (($shoulderY+8)*$SS) ($spurLen*0.70) ($spurThick*0.72) -1.0 90 $finCool
+      DrawShoulderFins $g (($CX - $hwSL*0.45)*$SS) ($shoulderY*$SS)     $spurLen        $spurThick       -1.0 170 $finCool
     } else {
-      DrawShoulderFins $g (($CX - $hwS*0.80)*$SS) ($shoulderY*$SS) $spurLen $spurThick -1.0 170 $finCool
-      DrawShoulderFins $g (($CX + $hwS*0.80)*$SS) ($shoulderY*$SS) $spurLen $spurThick  1.0 170 $finCool
+      DrawShoulderFins $g (($CX - $hwSL*0.80)*$SS) ($shoulderY*$SS) $spurLen $spurThick -1.0 170 $finCool
+      DrawShoulderFins $g (($CX + $hwSR*0.80)*$SS) ($shoulderY*$SS) $spurLen $spurThick  1.0 170 $finCool
     }
 
     # --- torso plates. SPEC 4.4d wants apparel to read underneath, so these are faint:
@@ -679,7 +744,7 @@ function BuildBody([string]$rot, [int]$level) {
   foreach ($side in $armSides) {
     $k = 0
     foreach ($sy in $ELBOW_YS) {
-      $shw = HalfWidthAt $prof $sy
+      $shw = HalfSideAt $prof $sy $side
       # each spike takes the ramp at its OWN height, so it matches the sleeve it grows from
       $spCool = CoolAt (($sy - $Y_TOP) / ($Y_BOT - $Y_TOP))
       DrawSpur $g (($CX + $side*($shw-2.0))*$SS) ($sy*$SS) ((9.0 - $k*1.4)*$SS) (2.7*$SS) $side $spikeAlpha (70.0 + $k*6.0) $spCool
@@ -733,19 +798,20 @@ function BuildBody([string]$rot, [int]$level) {
     # hourglass body the crest follows the waist in rather than running straight down.
     $cTopY = $CREST_TOP_Y
     $cBotY = $CREST_BOT_Y
-    $hwTop = HalfWidthAt $prof $cTopY
-    $hwBot = HalfWidthAt $prof $cBotY
     if ($rot -eq "east") {
       # Side-on: one crest, sitting FORWARD on the trunk (the pawn faces right, so forward
-      # is +x) and squashed, because edge-on it foreshortens along the view axis.
-      $xTopE = $CX + $hwTop * $F_CREST_X_TOP_E
-      $xBotE = $CX + $hwBot * $F_CREST_X_BOT_E
+      # is +x) and squashed, because edge-on it foreshortens along the view axis. Taken off
+      # the RIGHT edge specifically - the front of the body - not a mirrored average.
+      $xTopE = $CX + (HalfSideAt $prof $cTopY 1.0) * $F_CREST_X_TOP_E
+      $xBotE = $CX + (HalfSideAt $prof $cBotY 1.0) * $F_CREST_X_BOT_E
       DrawShardCrest $g $xTopE $cTopY $xBotE $cBotY 10 $SHARD_TOP $SHARD_BOT 1.0 224 0.55
     } else {
-      $dxTop = $hwTop * $F_CREST_X_TOP
-      $dxBot = $hwBot * $F_CREST_X_BOT
-      DrawShardCrest $g ($CX - $dxTop) $cTopY ($CX - $dxBot) $cBotY 10 $SHARD_TOP $SHARD_BOT -1.0 224
-      DrawShardCrest $g ($CX + $dxTop) $cTopY ($CX + $dxBot) $cBotY 10 $SHARD_TOP $SHARD_BOT  1.0 224
+      $dxTopL = (HalfSideAt $prof $cTopY -1.0) * $F_CREST_X_TOP
+      $dxBotL = (HalfSideAt $prof $cBotY -1.0) * $F_CREST_X_BOT
+      $dxTopR = (HalfSideAt $prof $cTopY  1.0) * $F_CREST_X_TOP
+      $dxBotR = (HalfSideAt $prof $cBotY  1.0) * $F_CREST_X_BOT
+      DrawShardCrest $g ($CX - $dxTopL) $cTopY ($CX - $dxBotL) $cBotY 10 $SHARD_TOP $SHARD_BOT -1.0 224
+      DrawShardCrest $g ($CX + $dxTopR) $cTopY ($CX + $dxBotR) $cBotY 10 $SHARD_TOP $SHARD_BOT  1.0 224
     }
   }
 
