@@ -37,15 +37,26 @@
     <defaultLabelColor>(0.42, 0.62, 0.95)</defaultLabelColor>
     <comps>
       <!--
-        Vanilla's own invisibility, the same one Become Ethereal uses. The CLASS lives in
-        Verse even though the def that uses it is Royalty, so this is baseline-safe - see the
-        notebook's note on DLC defs whose classes are in Assembly-CSharp.
+        Vanilla's own invisibility, the same one Become Ethereal uses, so the pawn underneath
+        fades and the spectral Dragon Aspect armour is what the player sees.
 
-        He is invisible so that the ONLY thing on screen is the spectral Dragon Aspect armour
-        following him. The pawn underneath is scaffolding.
+        DECLARED EXACTLY AS ROYALTY'S PsychicInvisibility DOES: a plain HediffCompProperties
+        carrying compClass. There is NO HediffCompProperties_Invisibility type in 1.4 - the
+        first version of this def invented one, along with a visibleToPlayer field. Both would
+        have been logged as XML errors and silently dropped, leaving him fully visible while
+        every comment here claimed otherwise. Checked against the real def, not from memory.
+
+        The Royalty *def* is DLC, but the CLASS is in Verse inside Assembly-CSharp, so this is
+        baseline-safe - same reasoning that made PawnJumper usable.
+
+        KNOWN SIDE EFFECT, FLAGGED FOR PLAYTEST: vanilla invisibility also makes a pawn hard
+        to TARGET. On Become Ethereal that is arguably faithful. On a rescue summon it means
+        enemies largely ignore him, so he is far harder to kill than his health suggests -
+        which is a balance question, not a bug. TESTS/phase2j.md asks about it. If it is
+        unwanted, delete this one comp and he becomes an ordinary visible ally.
       -->
-      <li Class="HediffCompProperties_Invisibility">
-        <visibleToPlayer>true</visibleToPlayer>
+      <li Class="HediffCompProperties">
+        <compClass>HediffComp_Invisibility</compClass>
       </li>
     </comps>
     <stages>
