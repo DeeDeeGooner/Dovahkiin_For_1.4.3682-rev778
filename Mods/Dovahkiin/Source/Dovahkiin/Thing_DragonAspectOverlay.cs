@@ -37,10 +37,47 @@ namespace Dovahkiin
     /// the hediff goes. Owns no game state: if this Thing were destroyed the shout would still
     /// work, it would simply be invisible - which is what makes it safe to destroy on a whim.
     /// </summary>
+    /// <summary>
+    /// [StaticConstructorOnStartup] silences a startup warning, and changes nothing else.
+    ///
+    /// RimWorld warns about any type holding a static Graphic field, because assets must load
+    /// on the main thread. Here that is a false positive - the graphics are deliberately
+    /// resolved LAZILY on first draw, never at def-load, because GraphicDatabase is not safe to
+    /// touch before content has loaded. The attribute marks the type as aware of the rule; it
+    /// does not force the fields to populate early.
+    ///
+    /// Left unattributed it emits a yellow line on every startup, and CLAUDE.md does not allow
+    /// warnings to sit unexplained.
+    /// </summary>
+    [StaticConstructorOnStartup]
     public class Thing_DragonAspectOverlay : Thing
     {
         private Pawn target;
         private int level = 1;
+
+        /// <summary>
+        /// WHICH hediff keeps this overlay alive. Defaults to Dragon Aspect, because that is
+        /// what it was built for.
+        ///
+        /// It has to be a field rather than a hardcoded def because the Ancient Dragonborn
+        /// wears the same armour while carrying Dovahkiin_AncientDragonborn instead. With the
+        /// def hardcoded, StillValid() failed on its first rare tick and the summon's armour,
+        /// helm and aura all vanished about four seconds after he arrived while he walked on
+        /// without them. Found in playtest.
+        /// </summary>
+        private HediffDef watchedHediff;
+
+        /// <summary>
+        /// Draw the spectral axe as part of the overlay.
+        ///
+        /// Needed because RimWorld does NOT render a pawn's weapon unless they are carrying it
+        /// openly - PawnRenderer.DrawEquipment gates on CarryWeaponOpenly(), which is false for
+        /// an undrafted pawn going about its business. The summon is autonomous and never
+        /// drafted, so his axe was equipped, functional, and invisible except mid-swing.
+        /// Drawing it here also keeps it off the pawn render path entirely, which is the same
+        /// reason this whole overlay is a follower Thing.
+        /// </summary>
+        private bool drawAxe;
 
         // Real time, not ticks: the aura animates while the game is paused, as the shout icons
         // and the Thu'um bar do. Seeded from spawn so two overlays never pulse in lockstep.
@@ -101,6 +138,7 @@ namespace Dovahkiin
         private static Dictionary<string, Graphic> bodyL2;
         private static Graphic helm;
         private static Graphic ringGraphic;
+        private static Graphic axeGraphic;
         private static Graphic flareBlend;
         private static Graphic flareEmber;
         private static Graphic flareAzure;
@@ -116,11 +154,19 @@ namespace Dovahkiin
             }
         }
 
-        /// <summary>Attach to a pawn. Level is the words known, 1 to 3.</summary>
-        public void Attach(Pawn pawn, int shoutLevel)
+        /// <summary>
+        /// Attach to a pawn. Level is the words known, 1 to 3.
+        ///
+        /// <paramref name="watch"/> is the hediff whose presence keeps this overlay alive;
+        /// null means Dragon Aspect. <paramref name="withAxe"/> draws the spectral greataxe,
+        /// which only the Ancient Dragonborn wants.
+        /// </summary>
+        public void Attach(Pawn pawn, int shoutLevel, HediffDef watch = null, bool withAxe = false)
         {
             target = pawn;
             level = Mathf.Clamp(shoutLevel, 1, 3);
+            watchedHediff = watch != null ? watch : DovahkiinDefOf.Dovahkiin_DragonAspect;
+            drawAxe = withAxe;
         }
 
         /// <summary>
@@ -146,13 +192,17 @@ namespace Dovahkiin
             {
                 return false;
             }
-            if (target.health == null || target.health.hediffSet == null
-                || DovahkiinDefOf.Dovahkiin_DragonAspect == null)
+            // Whatever hediff we were told to watch - see the field. A save written before
+            // that field existed comes back null, so fall back to Dragon Aspect rather than
+            // treating the overlay as orphaned and deleting a perfectly good one on load.
+            HediffDef watch = watchedHediff != null
+                ? watchedHediff
+                : DovahkiinDefOf.Dovahkiin_DragonAspect;
+            if (target.health == null || target.health.hediffSet == null || watch == null)
             {
                 return false;
             }
-            return target.health.hediffSet
-                .GetFirstHediffOfDef(DovahkiinDefOf.Dovahkiin_DragonAspect) != null;
+            return target.health.hediffSet.GetFirstHediffOfDef(watch) != null;
         }
 
         public override void DrawAt(Vector3 drawLoc, bool flip = false)
@@ -206,6 +256,36 @@ namespace Dovahkiin
             {
                 Graphics.DrawMesh(bodyMesh, basePos, Quaternion.identity,
                     body.MatAt(rot, this), 0);
+            }
+
+            // The spectral axe, drawn by us. See the drawAxe field for why RimWorld will not.
+            // Placed at the pawn's side and angled, roughly where a carried weapon sits, and
+            // BEHIND the pawn when they face north so it does not cover their back.
+            if (drawAxe && axeGraphic != null)
+            {
+                Vector3 axePos = basePos;
+                float axeAngle;
+                if (rot == Rot4.North)
+                {
+                    axePos.y = AltitudeLayer.PawnState.AltitudeFor() - 0.006f;
+                    axePos.x -= 0.34f * scale / RefBodyWidth;
+                    axeAngle = 205f;
+                }
+                else if (rot == Rot4.West)
+                {
+                    axePos.y = AltitudeLayer.PawnState.AltitudeFor() + 0.006f;
+                    axePos.x -= 0.30f * scale / RefBodyWidth;
+                    axeAngle = 200f;
+                }
+                else
+                {
+                    axePos.y = AltitudeLayer.PawnState.AltitudeFor() + 0.006f;
+                    axePos.x += 0.34f * scale / RefBodyWidth;
+                    axeAngle = 145f;
+                }
+                axePos.z -= 0.06f * scale / RefBodyWidth;
+                DrawQuad(axeGraphic, axePos, 0.95f * scale / RefBodyWidth, axeAngle, false,
+                    Color.white, 1f);
             }
 
             if (level < 3)
@@ -468,6 +548,13 @@ namespace Dovahkiin
             helm = GraphicDatabase.Get<Graphic_Multi>(TexRoot + "DragonAspectHelm",
                 ShaderDatabase.Transparent, body, Color.white);
 
+            // The Ancient Dragonborn's axe. Cutout, not Transparent: it is a solid object, and
+            // the same texture the ThingDef uses so the drawn axe and the equipped one can
+            // never diverge.
+            axeGraphic = GraphicDatabase.Get<Graphic_Single>(
+                "Things/Item/Equipment/DovahkiinAncientAxe", ShaderDatabase.Cutout,
+                Vector2.one, Color.white);
+
             // MoteGlow for the aura: it is light, not a surface, and should add rather than
             // occlude. The armour above uses Transparent because it IS a surface.
             Vector2 one = Vector2.one;
@@ -486,6 +573,8 @@ namespace Dovahkiin
             Scribe_References.Look(ref target, "target");
             Scribe_Values.Look(ref level, "level", 1);
             Scribe_Values.Look(ref phaseOffset, "phaseOffset", 0f);
+            Scribe_Defs.Look(ref watchedHediff, "watchedHediff");
+            Scribe_Values.Look(ref drawAxe, "drawAxe", false);
         }
     }
 }

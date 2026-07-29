@@ -160,6 +160,12 @@ namespace Dovahkiin
         public float ancientDragonbornBreathDamage = 18f;
         public int ancientDragonbornBreathInstances = 5;
 
+        /// <summary>
+        /// How far he may drift from the Dovahkiin before walking back. He is a bodyguard,
+        /// not a wanderer. Only nudges him when idle - never interrupts a fight.
+        /// </summary>
+        public float ancientDragonbornFollowRadius = 8f;
+
         // --- Dragon Aspect (SPEC.md 4.4d) ---
 
         /// <summary>

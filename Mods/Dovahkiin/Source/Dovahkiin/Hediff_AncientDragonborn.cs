@@ -27,6 +27,7 @@ using RimWorld;
 using RimWorld.Planet;
 using UnityEngine;
 using Verse;
+using Verse.AI;      // Job, JobCondition, LocomotionUrgency
 using Verse.Sound;   // PlayOneShot is an extension method on SoundDef, not a member
 
 namespace Dovahkiin
@@ -116,10 +117,70 @@ namespace Dovahkiin
             }
             scanCounter = 30;
 
-            if (breathCooldown <= 0 && p.Spawned && !p.Downed && p.Map != null)
+            if (p.Spawned && !p.Downed && p.Map != null)
             {
-                TryBreathe(p);
+                if (breathCooldown <= 0)
+                {
+                    TryBreathe(p);
+                }
+                KeepNearDovahkiin(p);
             }
+        }
+
+        /// <summary>
+        /// Stay with the Dovahkiin. He is a bodyguard, not a wanderer.
+        ///
+        /// Only nudges him when he has drifted past the leash AND is idle or merely wandering -
+        /// an existing job is left alone, so this never interrupts a fight, and a pawn already
+        /// walking back is not re-ordered every rare tick. Deliberately light-touch: the AI is
+        /// perfectly capable of fighting on its own, and the only thing wrong with it was that
+        /// it had no reason to stay close once the fighting stopped.
+        /// </summary>
+        private static void KeepNearDovahkiin(Pawn p)
+        {
+            GameComponent_DragonbornRegistry reg = GameComponent_DragonbornRegistry.Get;
+            if (reg == null)
+            {
+                return;
+            }
+            Pawn dov = reg.CurrentDovahkiin;
+            if (dov == null || dov.Dead || !dov.Spawned || dov.Map != p.Map)
+            {
+                return;
+            }
+
+            DovahkiinTuningDef t = DovahkiinTuningDef.Current;
+            float leash = t != null ? t.ancientDragonbornFollowRadius : 8f;
+            if (p.Position.DistanceTo(dov.Position) <= leash)
+            {
+                return;
+            }
+
+            // Never interrupt real work - and for this pawn "real work" is fighting. Wandering
+            // and standing idle are the only states worth overriding.
+            Job cur = p.CurJob;
+            if (cur != null
+                && cur.def != JobDefOf.Wait
+                && cur.def != JobDefOf.Wait_Wander
+                && cur.def != JobDefOf.GotoWander
+                && cur.def != JobDefOf.Goto)
+            {
+                return;
+            }
+
+            IntVec3 spot;
+            if (!CellFinder.TryRandomClosewalkCellNear(dov.Position, dov.Map, 3, out spot, null))
+            {
+                spot = dov.Position;
+            }
+            if (!spot.IsValid || !spot.Standable(p.Map))
+            {
+                return;
+            }
+            // Constructed directly: there is no JobMaker type in 1.4 - checked, not assumed.
+            Job goTo = new Job(JobDefOf.Goto, spot);
+            goTo.locomotionUrgency = LocomotionUrgency.Jog;
+            p.jobs.StartJob(goTo, JobCondition.InterruptForced, null, false, true, null, null, false, false);
         }
 
         /// <summary>
@@ -284,6 +345,22 @@ namespace Dovahkiin
                         p.DrawPos + new Vector3(Rand.Range(-0.4f, 0.4f), 0f, Rand.Range(-0.4f, 0.4f)),
                         p.Map, Rand.Range(1.2f, 2.0f), new Color(0.55f, 0.75f, 1f, 0.6f));
                 }
+            }
+
+            // LEAVE THE PLAYER FACTION BEFORE BEING DESTROYED.
+            //
+            // Ideology treats a player-faction pawn as a colony MEMBER, so destroying him fires
+            // Ideo.Notify_MemberCorpseDestroyed -> RitualObligationTrigger_MemberCorpseDestroyed,
+            // which then dereferences null because he deliberately has no ideo. That threw a
+            // red error every time a summon expired, in playtest, and the error is Ideology's
+            // rather than ours - so the fix is to stop looking like a member, not to guard
+            // something we do not own.
+            //
+            // Hediff_DeadPuppet already does this for the same class of reason, dropping
+            // faction a tick before it kills the puppet.
+            if (p.Faction != null && p.Faction.IsPlayer)
+            {
+                p.SetFaction(null, null);
             }
 
             // Anything he was carrying goes with him - a ghostly axe must not drop as loot.

@@ -269,7 +269,10 @@ namespace Dovahkiin
                 return;
             }
             GenSpawn.Spawn(overlay, summon.Position, summon.Map);
-            overlay.Attach(summon, 3);
+            // Watch the SUMMON's hediff, not Dragon Aspect - he does not carry Dragon Aspect,
+            // and the overlay deleted itself four seconds after arriving when it looked for
+            // the wrong one. And draw the axe, because RimWorld will not for an undrafted pawn.
+            overlay.Attach(summon, 3, DovahkiinDefOf.Dovahkiin_AncientDragonborn, true);
         }
 
         private static void DoArrivalEffect(Pawn summon)
