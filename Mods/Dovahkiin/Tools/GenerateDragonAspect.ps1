@@ -147,12 +147,26 @@ $C_BLUE_HOT  = @(132,186,246)
 # armour reads as a dark smear rather than as more solid armour.
 #
 #   $PLATE_ALPHA  straight multiplier on plate alpha - how OPAQUE
-#   $PLATE_LIFT   0..1, how much BRIGHTER the plate palette is. See BrightLift below: it
-#                 raises each stop's VALUE while holding the channel ratios, so hue and
-#                 saturation are preserved EXACTLY and nothing can clip. This replaced a
-#                 plain multiplicative gain, which blew C_GOLD's red past 255 at the
-#                 strengths a fully-opaque suit needs and flattened the golds to pale
-#                 yellow. Two knobs doing the same job is how the wrong one gets turned.
+#
+#   TWO WAYS TO BRIGHTEN, AND THEY ARE NOT INTERCHANGEABLE. This was learned the hard way:
+#   both were tuned to the same MEAN luminance and the user still saw one as darker, because
+#   they put the light in completely different places.
+#
+#   $PLATE_GAIN   multiplies every stop. A bright stop gains as much proportionally as a
+#                 dark one, so MIDTONES and HIGHLIGHTS rise together. Can clip - but only
+#                 mildly at the strengths used here (at 1.12, C_GOLD's red overshoots 255
+#                 by 0.4 of 255, which is nothing; it only became a real problem at the
+#                 ~1.47 a fully-opaque suit would need).
+#   $PLATE_LIFT   raises each stop's VALUE towards 255 by a fraction, holding the channel
+#                 ratios. Preserves hue and saturation exactly and cannot clip - but the
+#                 gain it applies is much larger for DARK stops than bright ones
+#                 (C_BLUE_DEEP peak 66 gains ~90% at 0.32; C_GOLD peak 228 gains ~4%). So
+#                 it lifts SHADOWS and barely moves midtones.
+#
+#   Measured over the body, at matched mean luminance: gain 1.12 gives a median of 159.9,
+#   lift 0.32 gives 156.3. Same mean, 2.3% darker midtone - and the midtone is most of what
+#   the eye reads. SHIPPED USES THE GAIN. Reach for the lift only when the shadow end
+#   specifically needs opening up, as a fully-opaque variant would.
 #   $DEEP_LIFT    pulls the two DEEP stops towards their MID neighbours - stops the
 #                 shadow end going black as alpha rises. 0 = as authored, 1 = no deep
 #                 stop at all.
@@ -167,15 +181,19 @@ $C_BLUE_HOT  = @(132,186,246)
 # All four can be overridden from the environment so the A/B harness can sweep them
 # without editing this file.
 # ---------------------------------------------------------------------------------
-# SHIPPED VALUES, chosen 2026-07-29 and measured rather than eyeballed.
+# SHIPPED VALUES, chosen 2026-07-29. This is the "B - recommended" option the user picked
+# from a preview, reproduced exactly.
 #
 # The ask was "a bit more opacity, make sure it doesn't darken". Those fight each other:
 # the plates are darker than the pale body under them, so more alpha means less body
-# showing and a darker composite. $PLATE_ALPHA 1.55 sets the opacity; $PLATE_LIFT 0.32 was
-# then SWEPT to find the value that puts the brightness back exactly. Measured over the
-# body silhouette, front and side, Male and Female: opacity +20% to +31%, brightness within
-# 0.6% of the art signed off before this change. Re-sweep the lift if the alpha moves.
-$PLATE_LIFT  = 0.32
+# showing and a darker composite. $PLATE_ALPHA 1.55 sets the opacity, $PLATE_GAIN 1.12 puts
+# the brightness back. Measured over the body silhouette: opacity +20% to +31%, mean
+# luminance within 0.6% and MEDIAN within 0.2% of the art signed off before this change.
+#
+# A $PLATE_LIFT 0.32 version was shipped first and the user reported it as darker. They were
+# right: it matched on mean and was 2.3% down on median. Match the MEDIAN, not the mean.
+$PLATE_GAIN  = 1.12
+$PLATE_LIFT  = 0.00
 $DEEP_LIFT   = 0.00
 $LIT_FALLOFF = 0.75
 
@@ -208,6 +226,7 @@ $SPUR_SEP = 0.00
 
 if ($env:DOVAH_SPUR_SEP)        { $SPUR_SEP        = [double]$env:DOVAH_SPUR_SEP }
 if ($env:DOVAH_PLATE_ALPHA)     { $PLATE_ALPHA     = [double]$env:DOVAH_PLATE_ALPHA }
+if ($env:DOVAH_PLATE_GAIN)      { $PLATE_GAIN      = [double]$env:DOVAH_PLATE_GAIN }
 if ($env:DOVAH_PLATE_LIFT)      { $PLATE_LIFT      = [double]$env:DOVAH_PLATE_LIFT }
 if ($env:DOVAH_DEEP_LIFT)       { $DEEP_LIFT       = [double]$env:DOVAH_DEEP_LIFT }
 if ($env:DOVAH_LIT_FALLOFF)     { $LIT_FALLOFF     = [double]$env:DOVAH_LIT_FALLOFF }
@@ -257,8 +276,21 @@ if ($DEEP_LIFT -gt 0.0) {
 # colours, which belong to the aura and the crest and were tuned against their own
 # backgrounds. Every stop moves together: brightening only some of them stops the scale
 # reading as a lit surface and makes it read as the wrong colour instead.
+$PLATE_STOPS = @("C_DEEP","C_MID","C_GOLD","C_HOT","C_BLUE_DEEP","C_BLUE_MID","C_BLUE_LIT","C_BLUE_HOT")
+
+# GAIN first, then LIFT. Both default to a no-op, and shipping uses the gain alone.
+if ($PLATE_GAIN -ne 1.0) {
+  foreach ($stopName in $PLATE_STOPS) {
+    $stopVal = (Get-Variable -Name $stopName -ValueOnly)
+    Set-Variable -Name $stopName -Value @(
+      ([int][Math]::Min(255.0, [Math]::Round($stopVal[0] * $PLATE_GAIN))),
+      ([int][Math]::Min(255.0, [Math]::Round($stopVal[1] * $PLATE_GAIN))),
+      ([int][Math]::Min(255.0, [Math]::Round($stopVal[2] * $PLATE_GAIN)))
+    )
+  }
+}
 if ($PLATE_LIFT -gt 0.0) {
-  foreach ($stopName in @("C_DEEP","C_MID","C_GOLD","C_HOT","C_BLUE_DEEP","C_BLUE_MID","C_BLUE_LIT","C_BLUE_HOT")) {
+  foreach ($stopName in $PLATE_STOPS) {
     Set-Variable -Name $stopName -Value (BrightLift (Get-Variable -Name $stopName -ValueOnly) $PLATE_LIFT)
   }
 }

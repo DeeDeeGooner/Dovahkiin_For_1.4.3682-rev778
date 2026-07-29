@@ -13,23 +13,44 @@ of the fins as authored** — see below.
 raising alpha shows less body and the composite dims. A first attempt confirmed it — +25%
 opacity cost 2.3% brightness, +70% cost 7.7%.
 
-*Fix:* two knobs instead of one. `$PLATE_ALPHA` sets how opaque; `$PLATE_LIFT` puts the
-brightness back. The lift raises each palette stop's **value** while holding the channel
-ratios, so hue and saturation are preserved exactly and **no channel can clip**. That
-matters: the first version used a plain multiplicative gain, which pushed `C_GOLD`'s red
-past 255 at the strengths needed and flattened the golds to a pale yellow.
+*Fix:* two knobs instead of one. `$PLATE_ALPHA` sets how opaque; a second knob puts the
+brightness back. **Shipped at `$PLATE_ALPHA 1.55` with `$PLATE_GAIN 1.12`** — the "B —
+recommended" option the user picked from a preview, reproduced exactly (the shipped
+south and east textures are byte-identical to that preview).
 
-Shipped at `$PLATE_ALPHA 1.55`, `$PLATE_LIFT 0.32`. The lift was **swept, not converted** —
-gain and lift do not map onto each other evenly across a palette, since the lift's effect
-depends on each colour's existing peak. Measured over the body silhouette, front and side,
-Male and Female:
+### MEAN LUMINANCE IS NOT PERCEIVED BRIGHTNESS — this shipped wrong once
 
-| | opacity | brightness |
+A `$PLATE_LIFT 0.32` version went out first. The lift raises each stop's **value** towards
+255 while holding the channel ratios, so hue and saturation survive exactly and nothing can
+clip — it looked like the better mechanism, and it was tuned until mean luminance matched.
+
+The user reported it as darker than the preview they had approved. They were right, and the
+metric was at fault:
+
+| Male south | mean | **median** | brightest 15% |
+|---|---|---|---|
+| B preview (gain 1.12) | 154.8 | **159.9** | 217.3 |
+| lift 0.32 version | 153.8 | **156.3** | 217.8 |
+
+Same mean to within 0.6%, **median 2.3% lower**. The two mechanisms put the light in
+different places: a gain multiplies, so midtones and highlights rise together; a value lift
+gives a much larger boost to dark stops than bright ones (`C_BLUE_DEEP`, peak 66, gains ~90%
+at 0.32 while `C_GOLD`, peak 228, gains ~4%). So the lift opened the shadows and left the
+midtones where they were — and the midtone is most of the surface the eye reads.
+
+**Match the median, not the mean.** Both knobs are kept, documented with this difference and
+defaulting to no-op. The clipping objection that motivated the lift was also overstated at
+these strengths: at gain 1.12 `C_GOLD`'s red overshoots 255 by 0.4 of 255. It only becomes a
+real problem at the ~1.47 a fully-opaque variant would need.
+
+Measured over the body silhouette, front and side, Male and Female, as shipped:
+
+| | opacity | brightness (mean / median) |
 |---|---|---|
-| Male south | +19.9% | 0.0% |
-| Male east | +26.5% | +0.3% |
-| Female south | +24.9% | −0.1% |
-| Female east | +31.1% | +0.6% |
+| Male south | +19.5% | −0.2% / −0.2% |
+| Male east | +24.4% | +0.3% / +0.2% |
+| Female south | +24.7% | −0.2% / — |
+| Female east | +30.5% | +0.6% / — |
 
 **Do not raise `$PLATE_ALPHA` on its own.** The header comment on it used to say "leave this
 at 1.0", from the round where raising it alone was correctly reverted. That reasoning still
