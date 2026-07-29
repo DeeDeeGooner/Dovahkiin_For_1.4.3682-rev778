@@ -139,6 +139,9 @@ namespace Dovahkiin
         private static Graphic helm;
         private static Graphic ringGraphic;
         private static Graphic axeGraphic;
+
+        /// <summary>World-unit size of the axe, read off whichever ThingDef supplies it.</summary>
+        private static float axeDrawSize = 1f;
         private static Graphic flareBlend;
         private static Graphic flareEmber;
         private static Graphic flareAzure;
@@ -284,7 +287,7 @@ namespace Dovahkiin
                     axeAngle = 145f;
                 }
                 axePos.z -= 0.06f * scale / RefBodyWidth;
-                DrawQuad(axeGraphic, axePos, 0.95f * scale / RefBodyWidth, axeAngle, false,
+                DrawQuad(axeGraphic, axePos, axeDrawSize * scale / RefBodyWidth, axeAngle, false,
                     Color.white, 1f);
             }
 
@@ -564,6 +567,13 @@ namespace Dovahkiin
             if (equippedAxe != null && equippedAxe.graphicData != null)
             {
                 axeGraphic = equippedAxe.graphicData.Graphic;
+                // Take the DEF'S OWN draw size rather than a hardcoded one. The two axes fill
+                // their frames very differently - Medieval Overhaul's texture reaches the
+                // frame edges while ours has margin around it - so one number drawn for both
+                // gives two noticeably different apparent sizes. Reading it per def means each
+                // appears at the size its author intended.
+                float declared = equippedAxe.graphicData.drawSize.x;
+                axeDrawSize = declared > 0.05f ? declared : 1f;
             }
 
             // MoteGlow for the aura: it is light, not a surface, and should add rather than
