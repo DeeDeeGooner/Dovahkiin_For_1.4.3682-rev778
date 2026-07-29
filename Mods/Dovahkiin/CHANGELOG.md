@@ -1,5 +1,96 @@
 # CHANGELOG
 
+## Phase 2i fix — the armour was drawn INSIDE the pawn, and only ever fitted one body type (2026-07-29)
+
+Reported as "it still looked weird on my pawn (inside them)", after the previous round's
+sizing fix had been confirmed as an improvement but "still not enough". Two independent
+defects, found by taking "inside them" literally.
+
+### Defect 1 — the overlay borrowed a mesh that is deliberately smaller than the pawn
+
+*Root cause:* `PawnRenderer.GetBodyOverlayMeshSet()` looks like the correct call and is not.
+It returns `MeshPool`'s **per-body-type** sets, and those are **inset on purpose** — they
+exist for wounds and firefoam, which are meant to sit *within* the silhouette. Read out of
+`Verse.MeshPool..cctor` IL in order, matching each `newobj GraphicMeshSet` to its `stsfld`:
+
+| mesh set | size |
+|---|---|
+| `humanlikeBodySet` — **what the body is actually drawn on** | **1.5 × 1.5** |
+| `humanlikeBodySet_Male` | 1.3 × 1.3 |
+| `humanlikeBodySet_Female` | 1.3 × 1.4 |
+| `humanlikeBodySet_Hulk` | 1.5 × 1.65 |
+| `humanlikeBodySet_Fat` | 1.6 × 1.4 |
+| `humanlikeBodySet_Thin` | 1.2 × 1.4 |
+
+`Verse.PawnRenderer.DrawPawnBody` draws the body through
+`HumanlikeMeshPoolUtility.GetHumanlikeBodySetForPawn(pawn)`, which returns
+`MeshPool.humanlikeBodySet` (1.5) for an ordinary adult. So the armour was rendering at
+**1.3 / 1.5 = 87%** of the pawn on a Male-bodyType colonist — which is exactly the reported
+symptom, and the user's Dovahkiin is Male bodyType (confirmed by reading `<bodyType>` out of
+`Dovahkiindebug.rws`).
+
+*The previous fix caused this.* It replaced a hardcoded 1.5 with `GetBodyOverlayMeshSet()`
+on the reasoning that "it is what firefoam and wounds use". That reasoning was backwards:
+wounds and armour are both drawn on a pawn and want *opposite* insets.
+
+*Fix:* call `HumanlikeMeshPoolUtility.GetHumanlikeBodySetForPawn(target)` — the same method
+`DrawPawnBody` uses, so armour and body share a quad by construction. `public static` on a
+public static class in `Verse`; no patch, no reflection. It also handles Biotech children
+correctly for free, diverting to `MeshPool.GetMeshSetForWidth` when the pawn's life stage
+carries a body-width override — which is what the hardcoded 1.5 got wrong originally.
+Rejected going back to a hardcoded 1.5: it is right for an adult by luck and wrong for every
+child, and it re-introduces the bug the previous round was trying to fix.
+
+`BodyScaleOf` now takes the pawn and asks
+`HumanlikeMeshPoolUtility.HumanlikeBodyWidthForPawn`, which returns the width directly. The
+old `mesh.bounds.size.x` read was a workaround for `GraphicMeshSet` not exposing its width;
+it stays as a fallback.
+
+### Defect 2 — one traced silhouette, worn by five different body shapes
+
+*Root cause:* `GenerateDragonAspect.ps1` traced its entire geometry from
+`Naked_Male_south.png` and nothing else. Measured off the Beautiful Bodies sprites
+(`mireia.bodies`, active at load position 31, and textures-only so vanilla's `BodyTypeDef`
+numbers are live):
+
+| body type | shoulder | waist | hip | height | widest at |
+|---|---|---|---|---|---|
+| Male | 102px | 84 | 88 | 127 | shoulders |
+| Female | 74px | **60** | **92** | 139 | **hips** |
+| Thin | 52px | 52 | 52 | 130 | nowhere — a tube |
+| Fat | 138px | 138 | **162** | 148 | belly |
+| Hulk | 150px | 120 | 130 | **185** | shoulders |
+
+Male and Female are opposite shapes. These are different **shapes**, not different sizes, so
+no scale factor reconciles them — the outline has to be read per body type.
+
+*Fix:* the generator now measures each body sprite's own alpha outline per rotation and fits
+the plates to it. Every landmark is a fraction of the measured body, and each fraction is the
+value the old hardcoded male numbers already implied — so **Male comes out unchanged**
+(verified pixel-wise against the previous textures: mean delta 1.67–4.42 of 255 on the front
+views, total ink within 1%). Rejected hand-tuning five sets of landmarks: five times the
+numbers to maintain, and it would not fit a body sprite any future mod supplies.
+
+30 body textures now ship in place of 6. The **helm is deliberately not per body type** —
+head art does not vary by body type, and `BaseHeadOffsetAt` already moves it per type via
+`BodyTypeDef.headOffset`. Aura unchanged.
+
+Upper-body features (fins, arm bands, chest crest) scale off the half-width **at the shoulder
+line**, not the body's maximum. Scaling by the maximum was tried first and gave a Fat pawn
+fins 1.59× the male's when its shoulders are only 1.35× wider — they read as wings, because
+a Fat body's maximum is its belly.
+
+`Child` and `Baby` have no art of their own and fall back to Male: wrong shape, right size,
+never a missing-texture square.
+
+### Preview harness now paints lit ground
+
+The notebook had carried this as an unactioned lesson since the plates were signed off
+against a dark backdrop and then reported as barely visible over real terrain. Every preview
+cell now paints rough deterministic lit ground under the real body sprite for its own type.
+
+---
+
 ## Phase 2i fix — the armour stopped drawing when the pawn walked away (2026-07-29)
 
 Reported as "the visual wears off way too soon, even though it still says the power lasts

@@ -42,13 +42,20 @@ built to avoid and I want to know immediately.
 
 ## Test 2 — THE OVERLAY (the important one)
 
+**This is the test that has now failed twice, for two different reasons.** Round one it was
+drawn at a fixed size that ignored the pawn. Round two it borrowed a mesh that RimWorld
+deliberately makes *smaller* than the pawn — which is why you saw it sitting inside them.
+It now uses the exact mesh the pawn's own body is drawn on, so it should line up.
+
 1. With **mul** active, look at the Dovahkiin closely.
 2. ✅ **Arm armour only** — spectral plates down both arms, two small spikes at each elbow.
    Nothing on the chest yet.
-   - **Check the fit.** The armour should match the pawn's own width, not sit inside it.
-     It now borrows the pawn's own body mesh, so it should be right for any body type
-     or body mod. If it still looks the wrong size, tell me what that pawn is —
-     body type, xenotype, child or adult.
+   - **THE THING TO JUDGE: does the armour reach the edge of the pawn?** The plates should
+     sit *on* the body's outline, not floating inside it with a gap of bare skin showing
+     around them. The shoulder fins are meant to stick out past the outline — that part is
+     deliberate.
+   - If it is still inset, say roughly how much — "a hair", "a few pixels", "way inside".
+     That distinguishes a leftover art problem from a wrong mesh, and they need opposite fixes.
 3. **Walk the pawn around.** ✅ The armour follows exactly, with no lag and no drift.
 4. **Turn the pawn** so it faces up, down, left and right.
    ✅ The armour turns with them. ✅ Facing left is the mirror of facing right.
@@ -69,6 +76,38 @@ Now **level 3**, cast **mul qah diiv**:
 10. ✅ An **aura**: two soft bands of light, plus small **S-shaped crescents** winking in and
     out around the pawn — some orange, some blue, some blending between the two.
 11. ✅ Zoom out to normal play distance. Does it still read? Tell me if it is too subtle or too loud.
+
+---
+
+## Test 2b — The other body types (NEW — 30 textures, one set per body)
+
+The armour used to be traced from a **male** body and worn by everyone. Male is widest at the
+shoulders; female is narrow-shouldered with a pinched waist and widest at the hips; thin is a
+straight tube; fat is widest at the belly; hulk is much taller. Each now has its own art.
+
+Your Dovahkiin is **Leonid**, who is `Male` body type — so **the whole of this test needs the
+Dovahkiin moved onto someone else.** Your colony has all five types (10 Female, 8 Male,
+8 Hulk, 7 Thin, 2 Fat).
+
+**To move it:** Debug → **Dovahkiin → Clear registry**, then **Dovahkiin → Force awaken pawn**
+and pick a colonist of the body type you want. Then **Learn all words** and **Raise a shout
+one level** again for that pawn.
+
+> **Do this on a throwaway save, or reload afterwards.** It genuinely reassigns who the
+> Dovahkiin is, and there is only ever one per save by design.
+
+For each body type you try — **Female is the one I most want checked**:
+
+1. Cast **mul qah** (two words) so the full torso plates are on.
+2. ✅ The plates follow **that body's** outline. On a female pawn the waist should pull in and
+   the plates should widen again at the hips, rather than running straight down.
+3. ✅ The shoulder fins sit **on the shoulders**, not floating off the sides.
+4. ✅ Nothing is stretched, squashed, or noticeably off-centre.
+5. ✅ No pink or black squares anywhere — that would mean a texture failed to load.
+
+If you would rather not move the Dovahkiin around, **say so and skip this whole test** — I can
+check the fit from the sprites myself. It is your pawn and your save; the male case in Test 2
+is the one that actually matters for your current game.
 
 ---
 

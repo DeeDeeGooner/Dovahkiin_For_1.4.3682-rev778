@@ -12,8 +12,8 @@
 #  Output textures (256x256, transparent, in the SAME frame as a RimWorld body sprite so
 #  the overlay draws at the pawn's own draw position with no offset):
 #
-#    DragonAspect_L1_{south,north,east}.png    arms only
-#    DragonAspect_L2_{south,north,east}.png    full body  (L3 reuses these)
+#    DragonAspect_L1_{Male,Female,Thin,Fat,Hulk}_{south,north,east}.png   arms only
+#    DragonAspect_L2_{Male,Female,Thin,Fat,Hulk}_{south,north,east}.png   full body (L3 reuses)
 #    DragonAspectHelm_{south,north,east}.png   L3 only, drawn at the pawn's HEAD offset
 #    DragonAspectAura.png                      L3 only, greyscale - tinted in code
 #
@@ -36,7 +36,7 @@
 Add-Type -AssemblyName System.Drawing
 
 $DEST    = "C:\Games\Rimworld\RimWorld\RimWorldFolder\Mods\Dovahkiin\Textures\Things\Pawn\DragonAspect"
-$PREVIEW = "C:\Users\User\AppData\Local\Temp\claude\C--Games-Rimworld-RimWorld-RimWorldFolder-DovahkiinClaudePluged\c6ec21ec-5e0f-440d-a0de-21ea4365fe8b\scratchpad"
+$PREVIEW = "C:\Users\User\AppData\Local\Temp\claude\C--Games-Rimworld-RimWorld-RimWorldFolder-DovahkiinClaudePluged\8fd789e0-037c-4f64-847d-50fcce95451a\scratchpad"
 $SIZE    = 256
 $SS      = 4
 $N       = $SIZE * $SS
@@ -148,32 +148,195 @@ function CoolAt([double]$frac) {
 }
 
 # ---------------------------------------------------------------------------------
-# Body profile - our own parametric half-width curve, sampled from the measurements.
-# It starts NARROW at the neck (y=88) and widens to the shoulders; without that the
-# torso renders as a flat-topped bucket, which is how the first version failed.
+# Body profile - MEASURED off each body type's OWN sprite.
+#
+# This was one hand-tuned table traced from Naked_Male_south.png and nothing else, so
+# every other body type wore male-shaped plates. They are different SHAPES, not
+# different sizes, and no scale factor reconciles them:
+#
+#   Male    shoulders 102px, waist 84, hip 88   - widest at the TOP, tapers down
+#   Female  shoulders  74px, waist 60, hip 92   - hourglass, widest at the HIPS
+#   Thin    shoulders  52px, waist 52, hip 52   - a straight tube
+#   Fat     shoulders 138px, waist 138, hip 162 - widest low
+#   Hulk    shoulders 150px, waist 120, hip 130 - and 58px taller than Male
+#
+# The body QUAD is 1.5 x 1.5 for EVERY adult body type (MeshPool.humanlikeBodySet, which
+# is what PawnRenderer.DrawPawnBody uses). All five sprites therefore live in the same
+# 256 frame, and art traced from one is authored 1:1 against it with no rescaling.
+# Do NOT use the per-body-type sets in MeshPool - those are inset, for wounds and
+# firefoam, and drawing armour on them puts it INSIDE the pawn.
+#
+# Every landmark below is a FRACTION of the measured body, and every fraction is the
+# value the old hand-tuned male numbers already implied - so Male comes out as before
+# and the other four now fit themselves.
 # ---------------------------------------------------------------------------------
-$PROFILE_SOUTH = @(
-  @( 88, 15), @( 92, 27), @( 96, 37), @(102, 44), @(110, 48), @(118, 50),
-  @(126, 51), @(134, 50), @(142, 48), @(150, 46), @(158, 43), @(166, 41),
-  @(174, 40), @(182, 39), @(190, 38), @(198, 36), @(206, 33), @(211, 28), @(214, 21)
-)
-$PROFILE_NORTH = @(
-  @( 88, 15), @( 92, 26), @( 96, 36), @(102, 43), @(110, 47), @(118, 49),
-  @(126, 50), @(134, 49), @(142, 47), @(150, 45), @(158, 42), @(166, 40),
-  @(174, 39), @(182, 38), @(190, 37), @(198, 35), @(206, 32), @(211, 27), @(214, 20)
-)
-$PROFILE_EAST = @(
-  @( 88, 14), @( 92, 23), @( 96, 31), @(102, 37), @(110, 41), @(118, 43),
-  @(126, 43), @(134, 42), @(142, 41), @(150, 38), @(158, 36), @(166, 34),
-  @(174, 32), @(182, 31), @(190, 30), @(198, 28), @(206, 26), @(211, 22), @(214, 17)
-)
+$REF_DIR    = "C:\Games\Rimworld\RimWorld\RimWorldFolder\Mods\B.B\Textures\Things\Pawn\Humanlike\Bodies"
+$BODY_TYPES = @("Male", "Female", "Thin", "Fat", "Hulk")
+$ALPHA_MIN  = 40
 
+# fractions of body HEIGHT (y measured down from the top of the silhouette)
+$F_SHOULDER   = 0.2222   # was y=116 on a body spanning 88..214
+$F_ARM_TOP    = 0.1111   # was y=102
+$F_ARM_BOT    = 0.8571   # was y=196
+$F_ELBOW_A    = 0.4206   # was y=141
+$F_ELBOW_B    = 0.5317   # was y=155
+$F_CREST_TOP  = 0.1587   # was y=108
+$F_CREST_BOT  = 0.7937   # was y=188
+
+# Fractions of the half-width AT THE SHOULDER LINE - deliberately NOT of the body's
+# maximum half-width. Fins, arm bands and the chest crest are all upper-body features, and
+# on a Fat body the maximum is the BELLY: scaling fins by it gave a pawn whose shoulder
+# fins were 1.59x the male's when its shoulders were only 1.35x wider, and they read as
+# wings. Male's shoulder half-width is ~50.5 against a maximum of 51, so these numbers are
+# the old hardcoded ones unchanged and Male's art is untouched.
+$F_ARM_W      = 0.297    # was 15.0 against a shoulder half-width of ~50.5
+$F_SPUR_LEN   = 0.614    # was 31.0
+$F_SPUR_THICK = 0.162    # was 8.2
+$F_SHARD_TOP  = 0.416    # was 21.0
+$F_SHARD_BOT  = 0.135    # was 6.8
+
+# crest x, as a fraction of the half-width AT THAT HEIGHT
+$F_CREST_X_TOP    = 0.436
+$F_CREST_X_BOT    = 0.248
+$F_CREST_X_TOP_E  = 0.474   # side-on, the crest sits forward on the trunk
+$F_CREST_X_BOT_E  = 0.378
+
+# ---------------------------------------------------------------------------------
+# Read one body sprite's alpha silhouette. Returns per-row min/max x plus the extent.
+# ---------------------------------------------------------------------------------
+function MeasureSilhouette([string]$path) {
+  $bmp = New-Object System.Drawing.Bitmap $path
+  $bw = $bmp.Width; $bh = $bmp.Height
+  $rect = New-Object System.Drawing.Rectangle 0, 0, $bw, $bh
+  $data = $bmp.LockBits($rect, [System.Drawing.Imaging.ImageLockMode]::ReadOnly, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+  $stride = $data.Stride
+  $buf = New-Object byte[] ($stride * $bh)
+  [System.Runtime.InteropServices.Marshal]::Copy($data.Scan0, $buf, 0, $buf.Length)
+  $bmp.UnlockBits($data)
+  $bmp.Dispose()
+
+  $rmin = New-Object int[] $bh
+  $rmax = New-Object int[] $bh
+  for ($yy = 0; $yy -lt $bh; $yy++) { $rmin[$yy] = -1; $rmax[$yy] = -1 }
+  for ($yy = 0; $yy -lt $bh; $yy++) {
+    $rowBase = $yy * $stride
+    for ($xx = 0; $xx -lt $bw; $xx++) {
+      if ($buf[$rowBase + $xx*4 + 3] -ge $ALPHA_MIN) {
+        if ($rmin[$yy] -lt 0) { $rmin[$yy] = $xx }
+        $rmax[$yy] = $xx
+      }
+    }
+  }
+  $topY = -1; $botY = -1
+  for ($yy = 0; $yy -lt $bh; $yy++) { if ($rmin[$yy] -ge 0) { if ($topY -lt 0) { $topY = $yy }; $botY = $yy } }
+
+  # centre and widest row
+  $wideW = -1; $wideY = -1
+  for ($yy = $topY; $yy -le $botY; $yy++) {
+    if ($rmin[$yy] -lt 0) { continue }
+    $ww = $rmax[$yy] - $rmin[$yy] + 1
+    if ($ww -gt $wideW) { $wideW = $ww; $wideY = $yy }
+  }
+  $centreX = ($rmax[$wideY] + $rmin[$wideY]) / 2.0
+  return @{ Min = $rmin; Max = $rmax; Top = $topY; Bot = $botY; CX = $centreX; MaxHalf = ($wideW / 2.0) }
+}
+
+# ---------------------------------------------------------------------------------
+# Turn a measured silhouette into the @(y, halfWidth) table HalfWidthAt expects.
+# Sampled every 6 rows and 3-tap smoothed: raw per-row values carry the sprite's
+# antialiasing as jitter, which the plate scatter then amplifies into a ragged edge.
+# ---------------------------------------------------------------------------------
+function ProfileFromSilhouette($m) {
+  $rmin = $m.Min; $rmax = $m.Max
+  $topY = $m.Top; $botY = $m.Bot; $centreX = $m.CX
+
+  # raw half-width per row, measured from the centre line so the profile stays symmetric
+  $raw = @{}
+  for ($yy = $topY; $yy -le $botY; $yy++) {
+    if ($rmin[$yy] -lt 0) { $raw[$yy] = 0.0; continue }
+    $lft = $centreX - $rmin[$yy]
+    $rgt = $rmax[$yy] - $centreX
+    $raw[$yy] = [Math]::Max([double]$lft, [double]$rgt)
+  }
+
+  $stops = New-Object System.Collections.ArrayList
+  $yy = $topY
+  while ($yy -le $botY) {
+    $acc = 0.0; $cnt = 0
+    for ($k = -1; $k -le 1; $k++) {
+      $yk = $yy + $k
+      if ($yk -ge $topY -and $yk -le $botY) { $acc += $raw[$yk]; $cnt++ }
+    }
+    $hw = $acc / $cnt
+    [void]$stops.Add(@( ([double]$yy), ([double]$hw) ))
+    if ($yy -eq $botY) { break }
+    $yy += 6
+    if ($yy -gt $botY) { $yy = $botY }
+  }
+  return $stops.ToArray()
+}
+
+# ---------------------------------------------------------------------------------
+# Set every geometry variable for one body type. BuildBody and its helpers read these
+# from script scope, so this is called once per body type before generating.
+# ---------------------------------------------------------------------------------
+$PROFILE_SOUTH = $null
+$PROFILE_NORTH = $null
+$PROFILE_EAST  = $null
 $CX = 127.5
 $Y_TOP = 88.0
 $Y_BOT = 214.0
 $ARM_Y_TOP = 102.0
 $ARM_Y_BOT = 196.0
-$ARM_W = 15.0          # arm band width inward from the silhouette edge
+$ARM_W = 15.0
+$SHOULDER_Y = 116.0
+$ELBOW_YS = @(141.0, 155.0)
+$SPUR_LEN = 31.0
+$SPUR_THICK = 8.2
+$SHARD_TOP = 21.0
+$SHARD_BOT = 6.8
+$CREST_TOP_Y = 108.0
+$CREST_BOT_Y = 188.0
+
+function SetBodyGeometry([string]$bodyType) {
+  $mS = MeasureSilhouette (Join-Path $REF_DIR "Naked_${bodyType}_south.png")
+  $mN = MeasureSilhouette (Join-Path $REF_DIR "Naked_${bodyType}_north.png")
+  $mE = MeasureSilhouette (Join-Path $REF_DIR "Naked_${bodyType}_east.png")
+
+  $script:PROFILE_SOUTH = ProfileFromSilhouette $mS
+  $script:PROFILE_NORTH = ProfileFromSilhouette $mN
+  $script:PROFILE_EAST  = ProfileFromSilhouette $mE
+
+  # The FRONT view sets the vertical landmarks; north and east share them so the three
+  # rotations line up on the pawn. Their own profiles still drive the widths.
+  $script:CX    = $mS.CX
+  $script:Y_TOP = [double]$mS.Top
+  $script:Y_BOT = [double]$mS.Bot
+  $bodyH  = $script:Y_BOT - $script:Y_TOP
+  $maxHalf = $mS.MaxHalf
+
+  $script:ARM_Y_TOP  = $script:Y_TOP + $bodyH * $F_ARM_TOP
+  $script:ARM_Y_BOT  = $script:Y_TOP + $bodyH * $F_ARM_BOT
+  $script:SHOULDER_Y = $script:Y_TOP + $bodyH * $F_SHOULDER
+  $script:ELBOW_YS   = @( ($script:Y_TOP + $bodyH * $F_ELBOW_A), ($script:Y_TOP + $bodyH * $F_ELBOW_B) )
+  $script:CREST_TOP_Y = $script:Y_TOP + $bodyH * $F_CREST_TOP
+  $script:CREST_BOT_Y = $script:Y_TOP + $bodyH * $F_CREST_BOT
+
+  # Upper-body features scale off the SHOULDER half-width, not the body maximum. See the
+  # comment on $F_ARM_W: on a Fat body the maximum is the belly and fins became wings.
+  $hwShoulder = HalfWidthAt $script:PROFILE_SOUTH $script:SHOULDER_Y
+
+  $script:ARM_W      = $hwShoulder * $F_ARM_W
+  $script:SPUR_LEN   = $hwShoulder * $F_SPUR_LEN
+  $script:SPUR_THICK = $hwShoulder * $F_SPUR_THICK
+  $script:SHARD_TOP  = $hwShoulder * $F_SHARD_TOP
+  $script:SHARD_BOT  = $hwShoulder * $F_SHARD_BOT
+
+  Write-Output ("  {0,-7} body y {1}..{2}  centre x {3}  max half {4}  shoulder half {5}  arm band {6}  fin {7}" -f `
+    $bodyType, $script:Y_TOP, $script:Y_BOT, [Math]::Round($script:CX,1), `
+    [Math]::Round($maxHalf,1), [Math]::Round($hwShoulder,1), `
+    [Math]::Round($script:ARM_W,1), [Math]::Round($script:SPUR_LEN,1))
+}
 
 function HalfWidthAt($prof, [double]$y) {
   if ($y -le $prof[0][0]) { return [double]$prof[0][1] }
@@ -476,10 +639,10 @@ function BuildBody([string]$rot, [int]$level) {
 
   if ($level -ge 2) {
     # --- fins first, so plates overlap their roots and they look grown-on ---
-    $shoulderY = 116.0
+    $shoulderY = $SHOULDER_Y
     $hwS = HalfWidthAt $prof $shoulderY
-    $spurLen = 31.0 * $SS
-    $spurThick = 8.2 * $SS
+    $spurLen = $SPUR_LEN * $SS
+    $spurThick = $SPUR_THICK * $SS
     # The fins sit ON the shoulders, so they take the ramp's value AT the shoulders - gold
     # in version A, blue in version B. Leaving them on a fixed gold put warm fins on a cool
     # chest the moment the ramp was reversed.
@@ -515,7 +678,7 @@ function BuildBody([string]$rot, [int]$level) {
   $spikeAlpha = if ($level -ge 2) { 155 } else { 185 }
   foreach ($side in $armSides) {
     $k = 0
-    foreach ($sy in @(141.0, 155.0)) {
+    foreach ($sy in $ELBOW_YS) {
       $shw = HalfWidthAt $prof $sy
       # each spike takes the ramp at its OWN height, so it matches the sleeve it grows from
       $spCool = CoolAt (($sy - $Y_TOP) / ($Y_BOT - $Y_TOP))
@@ -565,14 +728,24 @@ function BuildBody([string]$rot, [int]$level) {
     # the bottom - which is exactly what it already was. So the crest fans wide up by the
     # shoulder fins and thins to nothing by the waist, and the bottom row is untouched.
     # Colours are NOT affected: those still come from CoolAt at each shard's own height.
+    # The crest starts out by the clavicles and converges onto the abdomen as it falls.
+    # Both ends are taken as a fraction of the half-width AT THAT HEIGHT, so on an
+    # hourglass body the crest follows the waist in rather than running straight down.
+    $cTopY = $CREST_TOP_Y
+    $cBotY = $CREST_BOT_Y
+    $hwTop = HalfWidthAt $prof $cTopY
+    $hwBot = HalfWidthAt $prof $cBotY
     if ($rot -eq "east") {
       # Side-on: one crest, sitting FORWARD on the trunk (the pawn faces right, so forward
       # is +x) and squashed, because edge-on it foreshortens along the view axis.
-      DrawShardCrest $g 146.0 108.0 139.0 188.0 10 21.0 6.8 1.0 224 0.55
+      $xTopE = $CX + $hwTop * $F_CREST_X_TOP_E
+      $xBotE = $CX + $hwBot * $F_CREST_X_BOT_E
+      DrawShardCrest $g $xTopE $cTopY $xBotE $cBotY 10 $SHARD_TOP $SHARD_BOT 1.0 224 0.55
     } else {
-      # clavicles at y~106, x~107 and x~148; converging onto the abdomen as they fall
-      DrawShardCrest $g 107.0 108.0 118.0 188.0 10 21.0 6.8 -1.0 224
-      DrawShardCrest $g 148.0 108.0 137.0 188.0 10 21.0 6.8  1.0 224
+      $dxTop = $hwTop * $F_CREST_X_TOP
+      $dxBot = $hwBot * $F_CREST_X_BOT
+      DrawShardCrest $g ($CX - $dxTop) $cTopY ($CX - $dxBot) $cBotY 10 $SHARD_TOP $SHARD_BOT -1.0 224
+      DrawShardCrest $g ($CX + $dxTop) $cTopY ($CX + $dxBot) $cBotY 10 $SHARD_TOP $SHARD_BOT  1.0 224
     }
   }
 
@@ -1092,14 +1265,18 @@ function BuildFlarePair() {
 # Generate everything
 # =================================================================================
 $bodies = @{}
-foreach ($lvl in @(1,2)) {
-  foreach ($rot in @("south","north","east")) {
-    $img = BuildBody $rot $lvl
-    $path = Join-Path $DEST "DragonAspect_L${lvl}_$rot.png"
-    $img.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
-    Write-Output "wrote $path"
-    $bodies["${lvl}_$rot"] = $img
+Write-Output "measuring body silhouettes off Beautiful Bodies:"
+foreach ($bt in $BODY_TYPES) {
+  SetBodyGeometry $bt
+  foreach ($lvl in @(1,2)) {
+    foreach ($rot in @("south","north","east")) {
+      $img = BuildBody $rot $lvl
+      $path = Join-Path $DEST "DragonAspect_L${lvl}_${bt}_$rot.png"
+      $img.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
+      $bodies["${bt}_${lvl}_$rot"] = $img
+    }
   }
+  Write-Output ("    wrote 6 textures for " + $bt)
 }
 $helms = @{}
 foreach ($rot in @("south","north","east")) {
@@ -1124,10 +1301,10 @@ Write-Output "wrote $(Join-Path $DEST 'DragonAspectFlarePlain.png')"
 # =================================================================================
 # PREVIEW SHEET. The reference pawn is read only to build this and is never shipped.
 # =================================================================================
-$refDir = "C:\Games\Rimworld\RimWorld\RimWorldFolder\Mods\B.B\Textures\Things\Pawn\Humanlike\Bodies"
+$refDir = $REF_DIR
 $CELL = 232
-$sheetW = $CELL*3 + 40*4
-$sheetH = $CELL*3 + 66*3 + 96
+$sheetW = $CELL*4 + 40*5
+$sheetH = $CELL*5 + 66*5 + 110
 $sheet = New-Object System.Drawing.Bitmap $sheetW, $sheetH, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
 $gs = [System.Drawing.Graphics]::FromImage($sheet)
 $gs.Clear((RGB 38 40 36 255))
@@ -1176,7 +1353,34 @@ function DrawFlareAt($gs, $img, [double]$cx, [double]$cy, [double]$size, [double
   $ia.Dispose()
 }
 
-function DrawPawnCell($gs, $x, $y, $rot, $img, $helm, $auraImg, $flareImg, $flarePlainImg, $refDir, $CELL) {
+# Rough LIT GROUND under the pawn.
+#
+# The notebook has carried this as an unactioned lesson for a round: the plates were
+# authored and signed off against a flat dark backdrop, and over real terrain in game the
+# user reported them as barely visible - they needed 1.85x. A dark background flatters low
+# alpha enormously. Judging a translucent overlay on one is not a preview, it is a
+# different question. Deterministic, so the sheet reproduces between runs.
+function DrawGround($gs, [int]$x, [int]$y, [int]$size, [int]$salt) {
+  $base = RGB 122 106 84 255
+  $br = New-Object System.Drawing.SolidBrush $base
+  $gs.FillRectangle($br, $x, $y, $size, $size)
+  $br.Dispose()
+  $cellPx = 11
+  for ($gy = 0; $gy -lt $size; $gy += $cellPx) {
+    for ($gx = 0; $gx -lt $size; $gx += $cellPx) {
+      $hsh = [Math]::Sin(($gx + 1) * 12.9898 + ($gy + 1) * 78.233 + $salt * 37.719) * 43758.5453
+      $hsh = $hsh - [Math]::Floor($hsh)
+      $d = [int](($hsh - 0.5) * 42.0)
+      $c = RGB (122 + $d) (106 + $d) (84 + [int]($d * 0.8)) 255
+      $b2 = New-Object System.Drawing.SolidBrush $c
+      $gs.FillRectangle($b2, ($x + $gx), ($y + $gy), $cellPx, $cellPx)
+      $b2.Dispose()
+    }
+  }
+}
+
+function DrawPawnCell($gs, $x, $y, $rot, $img, $helm, $auraImg, $flareImg, $flarePlainImg, $refDir, $CELL, $bodyType, $salt) {
+  DrawGround $gs $x $y $CELL $salt
   if ($auraImg -ne $null) {
     $cx = $x + $CELL/2.0; $cy = $y + $CELL/2.0
     # TWO bands of underglow - azure wide, ember tight. This is the layering from the
@@ -1201,7 +1405,7 @@ function DrawPawnCell($gs, $x, $y, $rot, $img, $helm, $auraImg, $flareImg, $flar
     DrawFlareAt $gs $flarePlainImg $cx $cy ($CELL*0.27)  95.0 ($CELL*0.242) (-90.0+22.0) $C_AZURE 0.85 $false
     DrawFlareAt $gs $flareImg      $cx $cy ($CELL*0.24) 274.0 ($CELL*0.242) (-90.0-17.0) $C_WHITE 0.70 $true
   }
-  $refPath = Join-Path $refDir "Naked_Male_$rot.png"
+  $refPath = Join-Path $refDir "Naked_${bodyType}_$rot.png"
   if (Test-Path $refPath) {
     $ref = New-Object System.Drawing.Bitmap $refPath
     $gs.DrawImage($ref, (New-Object System.Drawing.Rectangle $x, $y, $CELL, $CELL))
@@ -1218,53 +1422,64 @@ function DrawPawnCell($gs, $x, $y, $rot, $img, $helm, $auraImg, $flareImg, $flar
   }
 }
 
-$rowLabels = @(
-  @(1, "LEVEL 1 - one word (Mul): arm armour only"),
-  @(2, "LEVEL 2 - two words (Mul Qah): + plates, 3 fins a side, jagged chest crest"),
-  @(3, "LEVEL 3 - three words (Mul Qah Diiv): + horned helm, + orange/azure aura")
+# One ROW PER BODY TYPE. The question this sheet has to answer is no longer "do the three
+# levels look right" - that was signed off - but "does each body type's armour fit THAT
+# body". So every cell paints the real body sprite for its own type, over lit ground.
+$COLS = @(
+  @("south", 1, $false, "south, L1 (arms only)"),
+  @("south", 2, $true,  "south, L3 (full)"),
+  @("north", 2, $true,  "north, L3"),
+  @("east",  2, $true,  "east, L3")
 )
 $r = 0
-foreach ($rl in $rowLabels) {
-  $lvl = $rl[0]
+foreach ($bt in $BODY_TYPES) {
   $y = 62 + $r * ($CELL + 66)
-  $gs.DrawString($rl[1], $fontS, $gold, [single]40, [single]($y - 26))
+  $gs.DrawString(("BODY TYPE: " + $bt.ToUpper()), $fontS, $gold, [single]40, [single]($y - 26))
   $i = 0
-  foreach ($rot in @("south","north","east")) {
+  foreach ($cspec in $COLS) {
+    $rot = $cspec[0]
+    $lvl = $cspec[1]
+    $full = $cspec[2]
     $x = 40 + $i * ($CELL + 40)
-    $bodyKey = if ($lvl -eq 1) { "1_$rot" } else { "2_$rot" }
-    $useHelm = if ($lvl -eq 3) { $helms[$rot] } else { $null }
-    $useAura = if ($lvl -eq 3) { $aura } else { $null }
-    $useFlare = if ($lvl -eq 3) { $flare } else { $null }
-    $useFlareP = if ($lvl -eq 3) { $flareP } else { $null }
-    DrawPawnCell $gs $x $y $rot $bodies[$bodyKey] $useHelm $useAura $useFlare $useFlareP $refDir $CELL
-    $gs.DrawString($rot, $fontT, $grey, [single]$x, [single]($y + $CELL + 2))
+    $useHelm   = if ($full) { $helms[$rot] } else { $null }
+    $useAura   = if ($full) { $aura }       else { $null }
+    $useFlare  = if ($full) { $flare }      else { $null }
+    $useFlareP = if ($full) { $flareP }     else { $null }
+    DrawPawnCell $gs $x $y $rot $bodies["${bt}_${lvl}_$rot"] $useHelm $useAura $useFlare $useFlareP $refDir $CELL $bt ($r*7 + $i)
+    $gs.DrawString($cspec[3], $fontT, $grey, [single]$x, [single]($y + $CELL + 2))
     $i++
   }
   $r++
 }
 
-# colony-zoom strip
-$yz = 62 + 3*($CELL+66) - 6
-$gs.DrawString("colony zoom, 48px - bare, L1, L2, L3:", $fontT, $grey, [single]40, [single]($yz-20))
+# colony-zoom strip: every body type at play distance, bare then L3
+$yz = 62 + 5*($CELL+66) - 6
+$gs.DrawString("colony zoom, 48px - each body type BARE then with L3, over lit ground:", $fontT, $grey, [single]40, [single]($yz-20))
 $zx = 40
-$refPath = Join-Path $refDir "Naked_Male_south.png"
-$ref = New-Object System.Drawing.Bitmap $refPath
-$gs.DrawImage($ref, (New-Object System.Drawing.Rectangle $zx, $yz, 48, 48)); $zx += 62
-foreach ($spec in @(@("1_south",$null,$null), @("2_south",$null,$null), @("2_south",$helms["south"],$aura))) {
-  if ($spec[2] -ne $null) {
-    DrawTinted $gs $spec[2] (New-Object System.Drawing.Rectangle ($zx-7), ($yz-7), 62, 62) $C_AZURE 0.95
-    DrawTinted $gs $spec[2] (New-Object System.Drawing.Rectangle ($zx+4), ($yz+4), 40, 40) $C_EMBER 0.80
-    DrawFlareAt $gs $flare  ($zx+24) ($yz+24) 12  34.0  8.0  18.0 $C_WHITE 1.00 $false
-    DrawFlareAt $gs $flare  ($zx+24) ($yz+24) 15 128.0 12.0 297.0 $C_WHITE 0.85 $true
-    DrawFlareAt $gs $flareP ($zx+24) ($yz+24) 11 212.0  8.0 205.0 $C_EMBER 0.72 $true
-  }
+$zi = 0
+foreach ($bt in $BODY_TYPES) {
+  $refPath = Join-Path $refDir "Naked_${bt}_south.png"
+  $ref = New-Object System.Drawing.Bitmap $refPath
+  # bare
+  DrawGround $gs $zx $yz 48 (100 + $zi)
   $gs.DrawImage($ref, (New-Object System.Drawing.Rectangle $zx, $yz, 48, 48))
-  $gs.DrawImage($bodies[$spec[0]], (New-Object System.Drawing.Rectangle $zx, $yz, 48, 48))
-  if ($spec[1] -ne $null) { $gs.DrawImage($spec[1], (New-Object System.Drawing.Rectangle ($zx+9), ($yz+3), 30, 30)) }
-  $zx += 62
+  $gs.DrawString($bt, $fontT, $grey, [single]$zx, [single]($yz + 50))
+  $zx += 56
+  # with L3
+  DrawGround $gs $zx $yz 48 (200 + $zi)
+  DrawTinted $gs $aura (New-Object System.Drawing.Rectangle ($zx-7), ($yz-7), 62, 62) $C_AZURE 0.95
+  DrawTinted $gs $aura (New-Object System.Drawing.Rectangle ($zx+4), ($yz+4), 40, 40) $C_EMBER 0.80
+  DrawFlareAt $gs $flare  ($zx+24) ($yz+24) 12  34.0  8.0  18.0 $C_WHITE 1.00 $false
+  DrawFlareAt $gs $flare  ($zx+24) ($yz+24) 15 128.0 12.0 297.0 $C_WHITE 0.85 $true
+  DrawFlareAt $gs $flareP ($zx+24) ($yz+24) 11 212.0  8.0 205.0 $C_EMBER 0.72 $true
+  $gs.DrawImage($ref, (New-Object System.Drawing.Rectangle $zx, $yz, 48, 48))
+  $gs.DrawImage($bodies["${bt}_2_south"], (New-Object System.Drawing.Rectangle $zx, $yz, 48, 48))
+  $gs.DrawImage($helms["south"], (New-Object System.Drawing.Rectangle ($zx+9), ($yz+3), 30, 30))
+  $ref.Dispose()
+  $zx += 76
+  $zi++
 }
-$ref.Dispose()
-$gs.DrawString("Dragon Aspect - the three words, SPEC 4.4d", $font, $white, [single]40, [single]12)
+$gs.DrawString("Dragon Aspect - fitted per body type, SPEC 4.4d", $font, $white, [single]40, [single]12)
 $gs.Dispose()
 
 $sheetPath = Join-Path $PREVIEW "dragon_aspect_levels.png"

@@ -83,8 +83,22 @@ namespace Dovahkiin
 
         // --- cached graphics. Built on first draw, never at def-load: GraphicDatabase is not
         // safe to touch before the game has loaded its content. ---
-        private static Graphic bodyL1;
-        private static Graphic bodyL2;
+        // ONE ARMOUR TEXTURE SET PER BODY TYPE, keyed by BodyTypeDef defName.
+        //
+        // The five silhouettes are different SHAPES, not different sizes, so a single traced
+        // set fits exactly one of them. Measured off the body sprites: Male is widest at the
+        // shoulders (102px) and tapers; Female is narrow-shouldered (74px), pinches to a 60px
+        // waist and is widest at the hips; Thin is a straight 52px tube; Fat reaches 162px at
+        // the belly; Hulk is 58px taller than Male. No scale factor reconciles those.
+        //
+        // Anything with no art of its own - a modded body type, or Biotech's Child and Baby -
+        // falls back to Male. That is the wrong shape but the right size, and it never renders
+        // as a missing-texture square.
+        private static readonly string[] BodyTypeKeys = { "Male", "Female", "Thin", "Fat", "Hulk" };
+        private const string FallbackBodyType = "Male";
+
+        private static Dictionary<string, Graphic> bodyL1;
+        private static Dictionary<string, Graphic> bodyL2;
         private static Graphic helm;
         private static Graphic ringGraphic;
         private static Graphic flareBlend;
@@ -160,21 +174,34 @@ namespace Dovahkiin
             basePos.y = AltitudeLayer.PawnState.AltitudeFor();
             Rot4 rot = target.Rotation;
 
-            // THE PAWN'S OWN body mesh, not one of ours. This is what makes the armour fit a
-            // Hulk, a child or a modded body type instead of always being 1.5 wide.
-            GraphicMeshSet meshSet = renderer.GetBodyOverlayMeshSet();
+            // THE MESH THE BODY ITSELF IS DRAWN ON. Not GetBodyOverlayMeshSet().
+            //
+            // GetBodyOverlayMeshSet() looks like the right call and is not: it returns the
+            // per-body-type sets, which are DELIBERATELY INSET because they exist for wounds
+            // and firefoam, and those are meant to sit inside the silhouette. Read out of
+            // MeshPool..cctor IL: humanlikeBodySet_Male is 1.3x1.3, _Female 1.3x1.4,
+            // _Thin 1.2x1.4, _Fat 1.6x1.4, _Hulk 1.5x1.65 - while the BODY is drawn on
+            // humanlikeBodySet at 1.5x1.5. Borrowing the overlay set drew this armour at 87%
+            // of the pawn, which the user correctly reported as the armour being *inside*
+            // their colonist.
+            //
+            // PawnRenderer.DrawPawnBody calls GetHumanlikeBodySetForPawn, so calling it here
+            // means the armour and the body are drawn on the same quad by construction. It
+            // also handles Biotech children for free: it diverts to MeshPool.GetMeshSetForWidth
+            // when the pawn's life stage carries a body-width override.
+            GraphicMeshSet meshSet = HumanlikeMeshPoolUtility.GetHumanlikeBodySetForPawn(target);
             if (meshSet == null)
             {
                 return;
             }
             Mesh bodyMesh = meshSet.MeshAt(rot);
 
-            // Everything else is scaled off that same mesh, so the aura and helm grow and
-            // shrink with the armour rather than drifting out of proportion.
-            float scale = BodyScaleOf(bodyMesh);
+            // Everything else is scaled off the pawn's real body width, so the aura grows and
+            // shrinks with the armour rather than drifting out of proportion.
+            float scale = BodyScaleOf(target, bodyMesh);
 
-            // --- the armour itself, matched to the pawn's facing and size ---
-            Graphic body = level >= 2 ? bodyL2 : bodyL1;
+            // --- the armour itself, matched to the pawn's facing, size AND body type ---
+            Graphic body = BodyArmourFor(target, level);
             if (body != null)
             {
                 Graphics.DrawMesh(bodyMesh, basePos, Quaternion.identity,
@@ -333,15 +360,23 @@ namespace Dovahkiin
         }
 
         /// <summary>
-        /// How wide the pawn's body actually draws, in world units, read off the mesh itself.
+        /// How wide the pawn's body actually draws, in world units.
         ///
-        /// GraphicMeshSet does not expose the width it was built with, and PawnRenderer does
-        /// not expose the pawn's body width either - so it is measured from the mesh bounds,
-        /// which is the one source that is always right. That covers vanilla body types and
-        /// any mod that registers a custom mesh set, without needing to know about either.
+        /// HumanlikeMeshPoolUtility.HumanlikeBodyWidthForPawn is public and static and answers
+        /// this directly - it is the same number the body mesh is built from, so the aura is
+        /// sized against the body rather than against whatever quad we happened to draw on.
+        /// The mesh bounds remain a fallback for a modded pawn that returns something absurd.
         /// </summary>
-        private static float BodyScaleOf(Mesh mesh)
+        private static float BodyScaleOf(Pawn pawn, Mesh mesh)
         {
+            if (pawn != null)
+            {
+                float pw = HumanlikeMeshPoolUtility.HumanlikeBodyWidthForPawn(pawn);
+                if (pw > 0.01f && pw < 12f)
+                {
+                    return pw;
+                }
+            }
             if (mesh == null)
             {
                 return RefBodyWidth;
@@ -381,6 +416,30 @@ namespace Dovahkiin
             { 3, 0.864f, 0.19f, 1 }
         };
 
+        /// <summary>
+        /// The armour set for this pawn's body type, falling back to Male for any body type we
+        /// ship no art for. Never returns a graphic for a level the pawn has not reached.
+        /// </summary>
+        private static Graphic BodyArmourFor(Pawn pawn, int shoutLevel)
+        {
+            Dictionary<string, Graphic> set = shoutLevel >= 2 ? bodyL2 : bodyL1;
+            if (set == null)
+            {
+                return null;
+            }
+            string key = FallbackBodyType;
+            if (pawn != null && pawn.story != null && pawn.story.bodyType != null)
+            {
+                string defName = pawn.story.bodyType.defName;
+                if (!string.IsNullOrEmpty(defName) && set.ContainsKey(defName))
+                {
+                    key = defName;
+                }
+            }
+            Graphic g;
+            return set.TryGetValue(key, out g) ? g : null;
+        }
+
         private static void EnsureGraphics()
         {
             if (bodyL1 != null)
@@ -394,10 +453,18 @@ namespace Dovahkiin
             // The drawSize passed here is irrelevant to the armour: DrawAt uses the PAWN's
             // mesh, not the graphic's. These graphics are only ever asked for their Material.
             Vector2 body = new Vector2(RefBodyWidth, RefBodyWidth);
-            bodyL1 = GraphicDatabase.Get<Graphic_Multi>(TexRoot + "DragonAspect_L1",
-                ShaderDatabase.Transparent, body, Color.white);
-            bodyL2 = GraphicDatabase.Get<Graphic_Multi>(TexRoot + "DragonAspect_L2",
-                ShaderDatabase.Transparent, body, Color.white);
+            bodyL1 = new Dictionary<string, Graphic>();
+            bodyL2 = new Dictionary<string, Graphic>();
+            for (int i = 0; i < BodyTypeKeys.Length; i++)
+            {
+                string key = BodyTypeKeys[i];
+                bodyL1[key] = GraphicDatabase.Get<Graphic_Multi>(
+                    TexRoot + "DragonAspect_L1_" + key, ShaderDatabase.Transparent, body, Color.white);
+                bodyL2[key] = GraphicDatabase.Get<Graphic_Multi>(
+                    TexRoot + "DragonAspect_L2_" + key, ShaderDatabase.Transparent, body, Color.white);
+            }
+            // The helm is deliberately NOT per body type: head art does not vary by body type,
+            // and BaseHeadOffsetAt already moves it per type via BodyTypeDef.headOffset.
             helm = GraphicDatabase.Get<Graphic_Multi>(TexRoot + "DragonAspectHelm",
                 ShaderDatabase.Transparent, body, Color.white);
 
