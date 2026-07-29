@@ -194,8 +194,17 @@ $OVERLAY_OPACITY = 1.00
 
 # $SPUR_SEP, 0..1: how hard the shoulder fins and elbow spikes are separated from the
 # plate field behind them. See DrawSpur - it drives a dark rim, the hot edge width and a
-# small brightness lift together. 0 = as authored.
-$SPUR_SEP = 0.85
+# small brightness lift together.
+#
+# SHIPPED AT 0 - the fins are as originally authored. This was built and compared at 0.35,
+# 0.60, 0.85 and 1.00 against the fins untouched, at the shipped opacity, and the user
+# chose UNTOUCHED. Do not turn it on again without being asked.
+#
+# Keeping the machinery because the finding behind it stands and cost a round to reach: the
+# opacity bump made the fins HARDER to read, since the plates gained ~20% opacity while the
+# fins were unchanged, so fin-against-plate contrast necessarily fell. If that is ever
+# revisited, 0.85 was the value that read best.
+$SPUR_SEP = 0.00
 
 if ($env:DOVAH_SPUR_SEP)        { $SPUR_SEP        = [double]$env:DOVAH_SPUR_SEP }
 if ($env:DOVAH_PLATE_ALPHA)     { $PLATE_ALPHA     = [double]$env:DOVAH_PLATE_ALPHA }

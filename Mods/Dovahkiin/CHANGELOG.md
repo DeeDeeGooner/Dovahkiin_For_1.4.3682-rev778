@@ -1,9 +1,11 @@
 # CHANGELOG
 
-## Phase 2i — plate opacity up ~25%, and the fins separated from the plates (2026-07-29)
+## Phase 2i — plate opacity up ~25% at unchanged brightness (2026-07-29)
 
 Two requests: *"add a bit more opacity, make sure it doesn't darken"*, and *"make sure the
-pikes and fins are more distinguishable"*. Both measured rather than eyeballed.
+pikes and fins are more distinguishable"*. Both measured rather than eyeballed. The opacity
+change ships; the fin separation was built, compared side by side, and **rejected in favour
+of the fins as authored** — see below.
 
 ### Opacity and darkness are the same lever until you split them
 
@@ -34,20 +36,30 @@ at 1.0", from the round where raising it alone was correctly reverted. That reas
 holds — it just no longer applies now the lift exists to pair with it. Moving one means
 re-sweeping the other against the brightness measurement.
 
-### The fins merged into the plates because they share the colour ramp
+### Fin separation — built, compared, and NOT shipped
 
-*Root cause:* a fin takes `CoolAt` at its own height, and so does the plate field behind it —
-so at the shoulders a blue fin sits on blue plates, separated only by a hot edge
-`thick × 0.16` wide. Brightening the palette never helped, because it lifts both equally.
+The fins were reported as hard to distinguish from the plates. **The opacity bump is what
+caused that**, and the mechanism is not a matter of opinion: the plates gained ~20% opacity
+while the fins were left exactly as they were, so fin-against-plate contrast necessarily
+fell. Underneath it, a fin takes `CoolAt` at its own height and so does the plate field
+behind it — at the shoulders, a blue fin on blue plates, separated only by a hot edge
+`thick × 0.16` wide. Brightening the palette never helps, because it lifts both equally.
 
-*Fix:* `$SPUR_SEP` (shipped at 0.85) drives three levers together — a dark rim under the
-fill, a thicker hot edge, and a small brightness lift on the fins alone. Turning any one
-alone trades one kind of mush for another.
+`$SPUR_SEP` was built to fix it: three levers together — a dark rim under the fill, a thicker
+hot edge, and a brightness lift on the fins alone. Turning any one alone trades one kind of
+mush for another. The rim colour is derived from `$C_DEEP_RAW` / `$C_BLUE_DEEP_RAW`,
+**captured before any lifting**; deriving it from the lifted deeps was the first attempt and
+gave a mid-tone rim that separated nothing, because a contrast rim cannot be brightened by
+the same knob that brightens the thing it contrasts with.
 
-The rim colour is derived from `$C_DEEP_RAW` / `$C_BLUE_DEEP_RAW`, **captured before any
-lifting**. Deriving it from the lifted deeps was the first attempt and gave a mid-tone rim
-that separated nothing — a contrast rim cannot be brightened by the same knob that brightens
-the thing it is meant to contrast with.
+**It ships at 0 — the fins are as originally authored.** It was compared at 0.35 / 0.60 /
+0.85 / 1.00 against untouched, at the shipped opacity, and the user chose untouched. The
+machinery stays in the generator because the finding is worth keeping and re-deriving it
+would cost another round; 0.85 was the value that read best if it is ever wanted.
+
+Opacity and brightness are effectively unaffected by the choice — fins are a small fraction
+of the pawn's area, so with and without measured +19.5–30.5% vs +19.9–31.1% opacity, and
+−0.2–+0.6% vs 0.0–+0.6% brightness. It was purely a look decision.
 
 ### Not shipped, deliberately
 
