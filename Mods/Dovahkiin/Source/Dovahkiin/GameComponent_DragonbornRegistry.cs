@@ -307,6 +307,78 @@ namespace Dovahkiin
             base.FinalizeInit();
             RepairDovahkiinIdentity();
             SweepDeadPuppets();
+            SweepAncientDragonborn();
+        }
+
+        // --- Dragon Aspect's Ancient Dragonborn summons -------------------------------------
+
+        private List<Pawn> ancientDragonborn = new List<Pawn>();
+
+        /// <summary>Records a summon, so the load sweep can find it later.</summary>
+        public void NotifyAncientDragonbornSummoned(Pawn p)
+        {
+            if (p == null)
+            {
+                return;
+            }
+            if (ancientDragonborn == null)
+            {
+                ancientDragonborn = new List<Pawn>();
+            }
+            if (!ancientDragonborn.Contains(p))
+            {
+                ancientDragonborn.Add(p);
+            }
+        }
+
+        /// <summary>Drops a summon from tracking once it has gone. Safe to call twice.</summary>
+        public void NotifyAncientDragonbornGone(Pawn p)
+        {
+            if (p != null && ancientDragonborn != null)
+            {
+                ancientDragonborn.Remove(p);
+            }
+        }
+
+        /// <summary>
+        /// The same guard SweepDeadPuppets provides, for summons. **This should never fire.**
+        ///
+        /// A summon cannot normally be stranded: its hediff is non-removable and vanishes the
+        /// pawn on expiry, so every exit path ends. But a summon that survived a reload without
+        /// its hediff would be a permanent, unkillable extra pawn in the player's faction -
+        /// RISKS.md section 9's failure, with the added twist that a summon is GENERATED, so
+        /// there is no "restore it to what it was" fallback. Vanish it and say so loudly.
+        /// </summary>
+        private void SweepAncientDragonborn()
+        {
+            if (ancientDragonborn == null || ancientDragonborn.Count == 0)
+            {
+                return;
+            }
+            HediffDef summonDef = DovahkiinDefOf.Dovahkiin_AncientDragonborn;
+            for (int i = ancientDragonborn.Count - 1; i >= 0; i--)
+            {
+                Pawn p = ancientDragonborn[i];
+                if (p == null || p.Destroyed || p.Dead)
+                {
+                    ancientDragonborn.RemoveAt(i);
+                    continue;
+                }
+                bool stillSummon = summonDef != null && p.health != null
+                    && p.health.hediffSet.GetFirstHediffOfDef(summonDef) != null;
+                if (stillSummon)
+                {
+                    continue; // Normal: alive, doomed, still counting down.
+                }
+
+                Log.Error("[Dovahkiin] SAFETY SWEEP: " + p.LabelShortCap + " is tracked as an "
+                    + "Ancient Dragonborn summon but no longer carries "
+                    + "Dovahkiin_AncientDragonborn. That should be impossible - the hediff is "
+                    + "non-removable. Vanishing it rather than leaving a permanent summoned "
+                    + "pawn. See RISKS.md section 9.");
+                Hediff_AncientDragonborn.VanishNow(p);
+                ancientDragonborn.RemoveAt(i);
+            }
         }
 
         // --- SPEC.md 4.4f / RISKS.md section 9: the dead puppets -----------------------------
@@ -423,6 +495,10 @@ namespace Dovahkiin
             // be deep-copied into the registry. SPEC.md 4.4f / RISKS.md section 9.
             Scribe_Collections.Look(ref deadPuppets, "deadPuppets", LookMode.Reference);
 
+            // Same rule for summons: a Reference, never a deep copy. A summon that got
+            // deep-copied here would be resurrected by the registry on every load.
+            Scribe_Collections.Look(ref ancientDragonborn, "ancientDragonborn", LookMode.Reference);
+
             Scribe_Values.Look(ref strangerQuestFired, "strangerQuestFired", false);
             Scribe_Collections.Look(ref wordsDiscoveredWorld, "wordsDiscoveredWorld", LookMode.Value);
             Scribe_Values.Look(ref treasureMapsSold, "treasureMapsSold", 0);
@@ -437,6 +513,12 @@ namespace Dovahkiin
                 if (wordsDiscoveredWorld == null)
                 {
                     wordsDiscoveredWorld = new List<string>();
+                }
+                // Null on any save written before the summon existed. The sweep runs in
+                // FinalizeInit, after this, and would throw on a null list.
+                if (ancientDragonborn == null)
+                {
+                    ancientDragonborn = new List<Pawn>();
                 }
                 lockedOutCache = null;
             }

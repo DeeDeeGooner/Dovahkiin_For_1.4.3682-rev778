@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    Dragon Aspect's Ancient Dragonborn summon.
+
+    NOT IN SPEC.md - specified by the user directly. He is a RESCUE: casting the three-word
+    shout at full health summons nobody. He arrives when the Dovahkiin is already hurt at cast
+    time, or is downed while the shout is running.
+
+    THE HEDIFF IS THE SAFETY MECHANISM, exactly as Dovahkiin_DeadPuppet is for Soul Tear.
+    RISKS.md section 9 names temporary pawns as the top save-corruption risk in this mod, and
+    the answer there was to make the pawn ALWAYS DOOMED: incurable, untendable, non-removable,
+    and it ends the pawn when it expires. Every exit path therefore already terminates, and
+    save -> load carries nothing bespoke.
+
+      isBad             false  - it is not an affliction, it is what he IS
+      tendable          false  - nothing can extend his stay
+      makesSickThought  false  - no colonist reacts to him being temporary
+      scenarioCanAdd    false  - never grantable from a scenario
+
+    Do NOT add HediffComp_Disappears here. The lifetime is counted by Hediff_AncientDragonborn
+    itself, because expiry must VANISH THE PAWN rather than merely remove a hediff - and a comp
+    that removed it would strand a permanent summoned colonist, which is the exact failure the
+    whole design exists to prevent.
+  -->
+  <HediffDef>
+    <defName>Dovahkiin_AncientDragonborn</defName>
+    <label>ancient dragonborn</label>
+    <description>This warrior is a shard of the Dovahkiin's own soul, held in the world by the Thu'um alone. When the shout fades, so does he.</description>
+    <hediffClass>Dovahkiin.Hediff_AncientDragonborn</hediffClass>
+    <isBad>false</isBad>
+    <tendable>false</tendable>
+    <makesSickThought>false</makesSickThought>
+    <scenarioCanAdd>false</scenarioCanAdd>
+    <maxSeverity>1.0</maxSeverity>
+    <defaultLabelColor>(0.42, 0.62, 0.95)</defaultLabelColor>
+    <comps>
+      <!--
+        Vanilla's own invisibility, the same one Become Ethereal uses. The CLASS lives in
+        Verse even though the def that uses it is Royalty, so this is baseline-safe - see the
+        notebook's note on DLC defs whose classes are in Assembly-CSharp.
+
+        He is invisible so that the ONLY thing on screen is the spectral Dragon Aspect armour
+        following him. The pawn underneath is scaffolding.
+      -->
+      <li Class="HediffCompProperties_Invisibility">
+        <visibleToPlayer>true</visibleToPlayer>
+      </li>
+    </comps>
+    <stages>
+      <li>
+        <statOffsets>
+          <MoveSpeed>0.4</MoveSpeed>
+        </statOffsets>
+        <statFactors>
+          <IncomingDamageFactor>0.75</IncomingDamageFactor>
+        </statFactors>
+      </li>
+    </stages>
+  </HediffDef>
+
+</Defs>

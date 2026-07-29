@@ -131,6 +131,35 @@ namespace Dovahkiin
         public float akatoshMitigationPerSoul = 0.02f;
         public float akatoshMitigationCap = 0.30f;
 
+        // --- Dragon Aspect: the Ancient Dragonborn summon ---
+        //
+        // NOT IN SPEC.md - specified by the user directly. He is a RESCUE, not a guarantee:
+        // casting the three-word shout at full health summons nobody. He arrives when the
+        // Dovahkiin is already hurt at cast time, or is downed while the shout is running.
+
+        /// <summary>
+        /// Health fraction at or below which a level-3 cast summons him. 1.0 would make him
+        /// unconditional; 0 would make him unreachable except by being downed.
+        /// </summary>
+        public float ancientDragonbornSummonHealthThreshold = 0.65f;
+
+        /// <summary>How long he lasts. 2500 ticks is one in-game hour, so 3750 is 1.5 hours.</summary>
+        public int ancientDragonbornLifetimeTicks = 3750;
+
+        /// <summary>Ticks after arriving before he will use his breath at all.</summary>
+        public int ancientDragonbornBreathFirstDelayTicks = 120;
+
+        /// <summary>Ticks between breaths. Long on purpose - he is support, not a turret.</summary>
+        public int ancientDragonbornBreathCooldownTicks = 420;
+
+        /// <summary>Reach and width of his breath. Matched to the Dovahkiin's own level-1 breath.</summary>
+        public float ancientDragonbornBreathRange = 9f;
+        public float ancientDragonbornBreathCone = 46f;
+
+        /// <summary>Total breath damage, split across this many body parts.</summary>
+        public float ancientDragonbornBreathDamage = 18f;
+        public int ancientDragonbornBreathInstances = 5;
+
         // --- Dragon Aspect (SPEC.md 4.4d) ---
 
         /// <summary>

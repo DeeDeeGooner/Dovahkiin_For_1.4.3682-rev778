@@ -39,6 +39,18 @@ namespace Dovahkiin
         /// <summary>The crimson mark on a puppet, so it is never mistaken for a real ally.</summary>
         public static FleckDef Dovahkiin_Fleck_PuppetGlow;
 
+        /// <summary>
+        /// Dragon Aspect's Ancient Dragonborn summon. Read by the registry's load-time safety
+        /// sweep, exactly as Dovahkiin_DeadPuppet is - a null here silently disables the guard
+        /// against a permanent summon, so the startup check covers it.
+        /// </summary>
+        public static HediffDef Dovahkiin_AncientDragonborn;
+
+        // NOTE: Dovahkiin_AncientDragonbornKind (PawnKindDef) and Dovahkiin_AncientDragonbornAxe
+        // (ThingDef) belong here too, but are deliberately NOT declared yet - their defs are not
+        // written. A [DefOf] field that cannot resolve logs a red error on every startup, and
+        // CLAUDE.md forbids shipping those. Add both the moment the defs land.
+
         /// <summary>Soul Tear's travelling bolt.</summary>
         public static FleckDef Dovahkiin_Fleck_SoulTearWave;
 
