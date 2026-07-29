@@ -1,0 +1,12 @@
+{
+  "TextureModID": "erzou.dovahkiin",
+  "ItemDefName": "Dovahkiin_AncientDragonbornAxe",
+  "ItemType": "ThingDef",
+  "ItemTypeNamespace": "Verse",
+  "OffX": 0.3245394,
+  "OffY": -0.08620581,
+  "Rotation": 45.0,
+  "BladeStart": 0.62,
+  "BladeEnd": 0.95,
+  "MeleeWeaponType": 2
+}
