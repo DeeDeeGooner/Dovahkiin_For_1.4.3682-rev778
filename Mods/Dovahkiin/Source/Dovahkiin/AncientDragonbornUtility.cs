@@ -138,8 +138,22 @@ namespace Dovahkiin
                 return null;
             }
 
+            // THE ECHO. If a Dovahkiin has already died, this summon wears their face - the
+            // ally who arrives to save you is the ghost of the one who came before.
+            //
+            // Appearance only, and applied BEFORE the name and skills below so nothing it
+            // touches can overwrite them. Null on a colony that has not lost a Dovahkiin yet,
+            // which is correct: there is nobody to echo.
+            GameComponent_DragonbornRegistry echoReg = GameComponent_DragonbornRegistry.Get;
+            if (echoReg != null && echoReg.FallenEcho != null && echoReg.FallenEcho.IsUsable)
+            {
+                echoReg.FallenEcho.ApplyTo(p);
+            }
+
             // He is a shard of the Dovahkiin's soul, not a person. Strip everything that would
-            // make the colony treat him as one.
+            // make the colony treat him as one. The name is DELIBERATELY not inherited even
+            // when the face is - a pawn carrying a dead colonist's name is something the
+            // colony can grieve for twice, and he is scenery.
             p.Name = new NameSingle("Dovahkiin_AncientDragonborn_Name".Translate());
 
             // PawnKindDef carries no <skills> field in 1.4 - checked against Core rather than

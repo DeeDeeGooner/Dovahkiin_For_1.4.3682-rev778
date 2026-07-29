@@ -103,6 +103,31 @@ survived in a state that is supposed to be impossible, and the message says whic
 
 ---
 
+## Test 5b — The fallen Dovahkiin's echo
+
+Once a Dovahkiin has **died**, every Ancient Dragonborn summoned afterwards wears **that
+Dovahkiin's face** — body type, head, hair, hair colour and skin. The ally who comes to save
+you is the ghost of the one who came before.
+
+Before the first Dovahkiin dies there is no echo, and summons look like nobody in particular.
+That is correct, not a bug — there is nobody to echo yet.
+
+1. Note what your current Dovahkiin looks like — hair, hair colour, skin, build.
+2. **Dovahkiin → Kill Dovahkiin (test OD-1)**.
+3. Awaken a new Dovahkiin (**Force awaken pawn**), give them **Dragon Aspect at level 3**, hurt
+   them below 65%, and cast.
+4. ✅ The summon now has the **dead** Dovahkiin's hair, colour, skin and build.
+   - He is semi-transparent, so look closely. Hair shape and colour are usually the clearest.
+5. ✅ His **name is still "Ancient Dragonborn"** — never the dead colonist's name.
+6. ✅ Nobody in the colony reacts to him. No mood, no recognition, no grief.
+7. Kill a second Dovahkiin, summon again.
+   ✅ He now wears the **second** one's face. The echo is always the most recent.
+
+Point 5 and 6 matter: he inherits a **face**, not an identity. If the colony ever treats him
+as the dead colonist, tell me — that would mean something copied across that should not have.
+
+---
+
 ## Test 6 — Nothing else broke
 
 1. Cast a few other shouts — Fire Breath, Unrelenting Force, Soul Tear. ✅ All as before.

@@ -228,6 +228,20 @@ namespace Dovahkiin
                 return;
             }
 
+            // Take the echo BEFORE clearing the holder: from here on, Ancient Dragonborn
+            // summons wear this Dovahkiin's face. Appearance only - see DovahkiinEcho.
+            //
+            // Captured on every death, overwriting any earlier echo, so the summon always shows
+            // the MOST RECENT fallen Dovahkiin rather than the first. A colony that has lost
+            // three of them sees the third.
+            DovahkiinEcho captured = DovahkiinEcho.CaptureFrom(p);
+            if (captured != null && captured.IsUsable)
+            {
+                fallenEcho = captured;
+                DovahkiinMod.VerboseLog("Echo captured from " + p.LabelShort
+                    + "; Ancient Dragonborn summons will now wear their face.");
+            }
+
             dovahkiin = null;
             dovahkiinDeaths++;
 
@@ -313,6 +327,20 @@ namespace Dovahkiin
         // --- Dragon Aspect's Ancient Dragonborn summons -------------------------------------
 
         private List<Pawn> ancientDragonborn = new List<Pawn>();
+
+        /// <summary>
+        /// How the last Dovahkiin to die LOOKED. Ancient Dragonborn summons wear this face, so
+        /// the ally who comes to save you is the ghost of the one who came before.
+        ///
+        /// Null until a Dovahkiin has died - the first Dovahkiin's summons are anonymous, which
+        /// is correct: there is nobody to echo yet.
+        /// </summary>
+        private DovahkiinEcho fallenEcho;
+
+        public DovahkiinEcho FallenEcho
+        {
+            get { return fallenEcho; }
+        }
 
         /// <summary>Records a summon, so the load sweep can find it later.</summary>
         public void NotifyAncientDragonbornSummoned(Pawn p)
@@ -498,6 +526,11 @@ namespace Dovahkiin
             // Same rule for summons: a Reference, never a deep copy. A summon that got
             // deep-copied here would be resurrected by the registry on every load.
             Scribe_Collections.Look(ref ancientDragonborn, "ancientDragonborn", LookMode.Reference);
+
+            // Deep, unlike the two above, and correctly so: the echo is a record of how someone
+            // looked, not a reference to them. It must outlive the pawn it was taken from -
+            // that pawn is dead and may be discarded from the save entirely.
+            Scribe_Deep.Look(ref fallenEcho, "fallenEcho");
 
             Scribe_Values.Look(ref strangerQuestFired, "strangerQuestFired", false);
             Scribe_Collections.Look(ref wordsDiscoveredWorld, "wordsDiscoveredWorld", LookMode.Value);

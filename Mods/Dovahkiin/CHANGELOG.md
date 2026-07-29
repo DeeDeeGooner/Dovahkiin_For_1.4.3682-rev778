@@ -1,5 +1,107 @@
 # CHANGELOG
 
+## Phase 2j — the Ancient Dragonborn summon (2026-07-29)
+
+Dragon Aspect's last piece, and the riskiest thing in the mod. **Built and building clean;
+never yet run in game.** `TESTS/phase2j.md` is the gate.
+
+### What he is
+
+An invisible pawn wearing the level-3 spectral armour and carrying a ghostly greataxe, so what
+the player sees is the armour walking on its own. Autonomous ally, appears beside the
+Dovahkiin, lasts 1.5 in-game hours, breathes fire **or** frost rolled 50/50 at summon.
+
+**A rescue, not a guarantee.** Casting at full health summons nobody. He arrives at three words
+when the Dovahkiin is downed, or at/below 65% health — whether that is already true at cast
+time or becomes true while the shout runs.
+
+The user described three triggers. They are implemented as **one rule sampled at two moments**
+(immediately on cast, then each rare tick), because they are the same condition — "the
+Dovahkiin is in trouble and Dragon Aspect is up". Three separate triggers would have been three
+chances to disagree about what that means. At most one summon per activation.
+
+### He will not breathe through your own people
+
+Checked with `ShoutTargeting.CellsInCone`, at the same range and angle the wave is spawned
+with. Reusing the real geometry rather than writing a second "is anyone in front of me" test is
+the point: a separate check is free to drift away from where the flames actually land. Strict
+by design — colonists, animals, neutrals and prisoners all block him, and he waits for a clean
+line rather than accepting collateral. Fire ignites pawns but never the ground.
+
+### Safety, which is most of the work
+
+`RISKS.md` §9 names temporary pawns as the top save-corruption risk. He is doomed by
+construction like Soul Tear's puppet — incurable, untendable, non-removable — and additionally:
+
+- **vanishes rather than dying**, so no corpse; equipment, apparel and inventory go with him,
+  and the axe is `destroyOnDrop` as a second line
+- **is discarded from `Find.WorldPawns`**. Once per day over a five-year colony is ~1800
+  summons; this would never appear in a playtest and would surface months later as a save
+  growing without bound
+- **is cleaned up by the `Pawn.Kill` patch** when killed in a fight, because RimWorld does not
+  tick a dead pawn's hediffs so the hediff's own death branch never runs on that path
+- **is generated inert**: no relations, ideo, backstory or title; not recruitable; no needs, no
+  work, no drafting
+- **is tracked and swept on load** exactly as puppets are, scribed as a Reference so the
+  registry can never deep-copy and resurrect one
+- **is abandoned entirely if any step throws.** A half-built summon is the stranded
+  pseudo-colonist the design exists to prevent, so there is no partial-success path
+
+### The fallen Dovahkiin's echo — user's idea
+
+Once a Dovahkiin dies, later summons wear **that Dovahkiin's face**: body type, head, hair,
+hair colour, skin, gender. The ally who arrives to save you is the ghost of the one before.
+Captured on every death, so the echo is always the most recent.
+
+**Appearance only** — no name, traits, backstory, skills or relations. That restraint is the
+design: a summon carrying a dead colonist's identity is something the colony could recognise,
+grieve, or form opinions about, and every one of those is a hook into a system expecting the
+pawn to persist. A face is safe; an identity is not.
+
+Scribed **deep**, unlike the pawn lists, and correctly so: it is a record of how someone looked,
+not a reference to them, and it must outlive a pawn that may be discarded from the save.
+Every field is null-tolerant on load, so an echo whose hair def came from a since-removed mod
+produces generated hair rather than a failed summon.
+
+### Verified rather than assumed — and two were wrong
+
+`PawnGenerationRequest`'s 50-parameter constructor, `DestroyMode.Vanish`,
+`WorldPawns.RemoveAndDiscardPawnViaGC`, `PawnKindDef` using `backstoryFilters` in 1.4, and
+`ThingDef.destroyOnDrop` (used by mechanoid weapons).
+
+- **`Interact_BladelikeWeapon` does not exist** in Core. Replaced with `Standard_Pickup` — an
+  unrecognised sound defName is an XML error at load.
+- **`PawnKindDef` has no `<skills>` field** in 1.4, so his melee skill is set in code. A
+  randomly generated tribal can roll Melee 2, which would make the rescue arrive and lose.
+
+### The invisibility comp was declared as a type that does not exist
+
+Caught while building a preview, by checking what `HediffComp_Invisibility` actually is rather
+than trusting the def just written. The first version used
+`<li Class="HediffCompProperties_Invisibility">` with a `visibleToPlayer` field. **Neither
+exists in 1.4** — both invented. RimWorld would have logged an XML error, dropped the comp, and
+he would have walked around fully visible while the def comments, the commit message and the
+test script all claimed otherwise.
+
+Corrected to the form Royalty's `PsychicInvisibility` uses — and the form this mod's own Become
+Ethereal already used, two hediffs away in the same folder. The right answer was on disk and
+was not looked at.
+
+**Known side effect, flagged for playtest:** vanilla invisibility also makes a pawn hard to
+*target*, so enemies largely ignore him and he is far harder to kill than his health suggests.
+Deleting the one comp makes him an ordinary visible ally if that is unwanted.
+
+### Art
+
+`Tools/GenerateAncientAxe.ps1`, palette taken from the armour generator so the two read as one
+conjuration. **The blade took three attempts.** An axe bit must grow its along-haft extent
+*monotonically* with distance from the haft: narrow at the root, tallest at the cutting edge.
+The first two versions put the tallest points at mid-span, which is a lozenge — and a lozenge
+with a thick outline renders as a hexagon, which is exactly what appeared both times. The
+outward reach was never the problem; the profile was.
+
+---
+
 ## Phase 2i — plate opacity up ~25% at unchanged brightness (2026-07-29)
 
 Two requests: *"add a bit more opacity, make sure it doesn't darken"*, and *"make sure the
