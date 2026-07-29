@@ -22,10 +22,16 @@ Persistent rules for this repository. Read `SPEC.md` for *what* to build, `ROADM
 
 ## The notebook — mandatory, every session
 
-`Mods\Dovahkiin\HANDOFF.md` is the project's memory across conversations. Chat history is lost;
-that file is not. **Keeping it current is not optional and is not a chore to do "later".**
+**`C:\Users\User\Documents\SaveNotebooks\Dovahkiin-RimWorld-Mod.md`** is the project's memory
+across conversations. Chat history is lost; that file is not. **Keeping it current is not
+optional and is not a chore to do "later".**
 
-**Update `HANDOFF.md` whenever any of these happen — in the same turn, not at the end:**
+It lives in the central notebook library with every other project's, **not in this repo**, and
+there is exactly one copy. `Mods\Dovahkiin\NOTEBOOK.md` is a one-line signpost pointing at it —
+a signpost, never a duplicate. There is no `HANDOFF.md`; earlier revisions of this file named
+one, and nothing of that name has ever existed on disk.
+
+**Update the notebook whenever any of these happen — in the same turn, not at the end:**
 
 - a phase or sub-phase completes, or a playtest passes
 - a feature is added, cut, or deferred
