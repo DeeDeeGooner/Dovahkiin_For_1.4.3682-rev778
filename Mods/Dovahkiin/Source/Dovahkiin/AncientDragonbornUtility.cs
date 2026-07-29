@@ -236,27 +236,17 @@ namespace Dovahkiin
         }
 
         /// <summary>
-        /// Medieval Overhaul's greataxe if that mod is installed, otherwise ours.
+        /// One axe, always ours.
         ///
-        /// Looked up BY NAME with GetNamedSilentFail, never through DovahkiinDefOf: a [DefOf]
-        /// field for a MayRequire def logs a red error on every startup for anyone without the
-        /// mod, which is exactly the failure CLAUDE.md's no-hard-dependency rule is about.
+        /// There used to be a second, Medieval-Overhaul-only def that reused their greataxe
+        /// texture with a tint. That is gone: their texture's mask leaves the haft untintable,
+        /// and the user's better suggestion was to ship OUR art with the full gradient and
+        /// borrow only the greataxe's BEHAVIOUR - which needs no MayRequire, no fallback and no
+        /// runtime def lookup, and looks the same for every player.
         /// </summary>
-        private const string MedievalOverhaulAxeDefName = "Dovahkiin_AncientDragonbornAxe_MO";
-
-        private static ThingDef ResolveAxeDef()
-        {
-            ThingDef mo = DefDatabase<ThingDef>.GetNamedSilentFail(MedievalOverhaulAxeDefName);
-            if (mo != null)
-            {
-                return mo;
-            }
-            return DovahkiinDefOf.Dovahkiin_AncientDragonbornAxe;
-        }
-
         private static void EquipAxe(Pawn summon)
         {
-            ThingDef axeDef = ResolveAxeDef();
+            ThingDef axeDef = DovahkiinDefOf.Dovahkiin_AncientDragonbornAxe;
             if (axeDef == null || summon.equipment == null)
             {
                 return;

@@ -55,10 +55,18 @@ $g.Clear((RGB 0 0 0 0))
 $g.SmoothingMode      = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
 $g.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
 
-# The axis runs bottom-right (butt of the haft) to top-left (head), which is how RimWorld
-# equipment sprites are authored - equippedAngleOffset then rotates it into the hand.
-$BUTT_X = 0.74; $BUTT_Y = 0.86
-$HEAD_X = 0.30; $HEAD_Y = 0.20
+# AXIS: bottom-LEFT (butt) to top-RIGHT (head), matching Medieval Overhaul's convention.
+#
+# This was mirrored until measured. Counting opaque pixels per quadrant: their halberd is
+# topLeft 105 / topRight 5583 / botLeft 3252 / botRight 105, and their greataxe the same shape -
+# both run bottom-left to top-right with the head at TOP-RIGHT. Mine ran top-left to
+# bottom-right, i.e. the other diagonal.
+#
+# That matters because we now borrow their halberd's Melee Animation tweak data verbatim, and
+# OffX/OffY/Rotation/BladeStart/BladeEnd are all expressed in THEIR texture's frame. Copying
+# those onto a mirrored sprite would have the pawn holding this by the blade.
+$BUTT_X = 0.26; $BUTT_Y = 0.86
+$HEAD_X = 0.70; $HEAD_Y = 0.20
 
 function PT([double]$fx, [double]$fy) {
   return (New-Object System.Drawing.PointF ([single]($fx*$N)), ([single]($fy*$N)))
@@ -69,12 +77,33 @@ function PT([double]$fx, [double]$fy) {
 # along its length - a pen would give one flat colour and the axe would not match the
 # armour's ramp.
 # ---------------------------------------------------------------------------------
-$HAFT_W_BUTT = 0.017
-$HAFT_W_HEAD = 0.026
+$HAFT_W_BUTT = 0.024
+$HAFT_W_HEAD = 0.036
 $dx = $HEAD_X - $BUTT_X; $dy = $HEAD_Y - $BUTT_Y
 $len = [Math]::Sqrt($dx*$dx + $dy*$dy)
 $ux = $dx/$len; $uy = $dy/$len
 $px = -$uy; $py = $ux            # unit normal
+
+# DARK OUTLINE FIRST, under everything.
+#
+# This is what the art was missing. RimWorld weapon sprites are drawn with a dark keyline -
+# Medieval Overhaul's greataxe has one - and without it a coloured shape on lit ground reads as
+# soft and washed out however good the silhouette is. Comparing the two side by side, the
+# outline was the whole difference, not the geometry.
+#
+# Drawn as a single wider quad along the haft, then the gradient bands paint over its middle
+# and leave the margin showing as a keyline.
+$C_LINE = @(14, 18, 28)
+$OUTLINE = 0.010
+$haftOutline = @(
+  (PT ($BUTT_X + $px*($HAFT_W_BUTT+$OUTLINE) - $ux*$OUTLINE) ($BUTT_Y + $py*($HAFT_W_BUTT+$OUTLINE) - $uy*$OUTLINE)),
+  (PT ($HEAD_X + $px*($HAFT_W_HEAD+$OUTLINE) + $ux*$OUTLINE) ($HEAD_Y + $py*($HAFT_W_HEAD+$OUTLINE) + $uy*$OUTLINE)),
+  (PT ($HEAD_X - $px*($HAFT_W_HEAD+$OUTLINE) + $ux*$OUTLINE) ($HEAD_Y - $py*($HAFT_W_HEAD+$OUTLINE) + $uy*$OUTLINE)),
+  (PT ($BUTT_X - $px*($HAFT_W_BUTT+$OUTLINE) - $ux*$OUTLINE) ($BUTT_Y - $py*($HAFT_W_BUTT+$OUTLINE) - $uy*$OUTLINE))
+)
+$brLine = New-Object System.Drawing.SolidBrush (RGB $C_LINE[0] $C_LINE[1] $C_LINE[2] 240)
+$g.FillPolygon($brLine, [System.Drawing.PointF[]]$haftOutline)
+$brLine.Dispose()
 
 $BANDS = 26
 for ($i = 0; $i -lt $BANDS; $i++) {
@@ -125,6 +154,13 @@ function DrawBit([double]$side, [double]$o, [double]$up, $raw, [int]$edgeAlpha, 
   $path = New-Object System.Drawing.Drawing2D.GraphicsPath
   $path.AddPolygon([System.Drawing.PointF[]]$pts)
 
+  # Dark keyline UNDER the fill - see the note by the haft outline. Stroked before filling, so
+  # the fill covers the inner half and the outer half survives as the outline.
+  $penLine = New-Object System.Drawing.Pen (RGB 14 18 28 245), ([single](6.0*$SS))
+  $penLine.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Miter
+  $penLine.MiterLimit = [single]6.0
+  $g.DrawPath($penLine, $path); $penLine.Dispose()
+
   $rect = $path.GetBounds()
   if ($rect.Width -lt 1) { $rect.Width = 1 }
   if ($rect.Height -lt 1) { $rect.Height = 1 }
@@ -141,34 +177,39 @@ function DrawBit([double]$side, [double]$o, [double]$up, $raw, [int]$edgeAlpha, 
   $path.Dispose()
 }
 
-# The blade.
+# A BEARDED GREATAXE HEAD, not a wedge.
 #
-# THE ALONG-HAFT EXTENT MUST GROW WITH OUTWARD DISTANCE, monotonically: 0.30 at the root,
-# 0.66 mid, 1.00 at the cutting edge. That fan is what makes a blade.
+# Two rules carried over from the shoulder fins and the chest crest, both learned the hard way:
 #
-# The previous two attempts put the tallest points at MID-span (0.62 out) instead, which is
-# a lozenge - and a lozenge with a thick outline is a hexagon, which is exactly what
-# rendered both times. The outward reach was never the problem; the profile was.
+#  1. THE ALONG-HAFT EXTENT MUST GROW MONOTONICALLY with distance from the haft - 0.42 at the
+#     socket, 0.78 mid, 1.00 at the edge. Put the tallest points at mid-span instead and the
+#     shape is a lozenge, which with an outline renders as a hexagon. That happened twice.
+#
+#  2. THE BEARD NEEDS A CONCAVE NOTCH. Points 6 and 7 hook the lower horn down and then pull
+#     BACK toward the haft. Without that notch the bottom of the blade is just a longer
+#     triangle - it is the concavity that says "axe" rather than "spearhead", exactly as the
+#     shoulder fins only read as fins once their trailing edge scooped inward.
 $BLADE = @(
-  @( (0.04),  (0.30) ),
-  @( (0.44),  (0.66) ),
-  @( (0.93),  (1.00) ),
-  @( (1.10),  (0.00) ),
-  @( (0.93), (-1.00) ),
-  @( (0.44), (-0.66) ),
-  @( (0.04), (-0.30) )
+  @( (0.10),  (0.42) ),
+  @( (0.50),  (0.78) ),
+  @( (0.92),  (1.00) ),
+  @( (1.10),  (0.25) ),
+  @( (1.02), (-0.55) ),
+  @( (0.78), (-1.05) ),
+  @( (0.42), (-0.70) ),
+  @( (0.12), (-0.40) )
 )
-# The counterweight spike opposite. Same rule, much smaller - it balances the silhouette and
-# any detail on it is lost by 48px anyway.
+# The counterweight spike opposite, small: it balances the silhouette and any detail on it is
+# lost by 48px, which is the size that actually matters in play.
 $SPIKE = @(
-  @( (0.10),  (0.30) ),
-  @( (1.00),  (0.62) ),
-  @( (1.14),  (0.00) ),
-  @( (1.00), (-0.62) ),
-  @( (0.10), (-0.30) )
+  @( (0.10),  (0.34) ),
+  @( (0.95),  (0.55) ),
+  @( (1.16),  (0.00) ),
+  @( (0.95), (-0.55) ),
+  @( (0.10), (-0.34) )
 )
-DrawBit  1.0 0.185 0.150 $BLADE 250 2.2
-DrawBit -1.0 0.080 0.058 $SPIKE 235 1.8
+DrawBit  1.0 0.205 0.165 $BLADE 250 2.2
+DrawBit -1.0 0.085 0.062 $SPIKE 235 1.8
 
 # --- a warm collar where head meets haft, so the two colours meet at something hot ---
 $collar = New-Object System.Drawing.Pen (RGB $C_HOT[0] $C_HOT[1] $C_HOT[2] 220), ([single](5.0*$SS))

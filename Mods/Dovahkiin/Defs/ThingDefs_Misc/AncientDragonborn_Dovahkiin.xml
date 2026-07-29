@@ -52,10 +52,29 @@
     useHitPoints false so it cannot be damaged or deteriorate; it has no way to be repaired
     and a broken ghost axe is not a state worth modelling.
   -->
+  <!--
+    IT MUST BE HELD AND ANIMATED AS MEDIEVAL OVERHAUL'S HALBERD.
+
+    The user's call, and everything below that looks like a magic number is copied from
+    DankPyon_MeleeWeapon_Halberd rather than chosen: drawSize, Mass, both tools, and
+    equippedAngleOffset 45 (which lives on its parent, DankPyon_Base_Sharp_Oversize).
+    WeaponTweakData/ carries the halberd's Melee Animation entry verbatim, so the swing, the
+    grip offset and the blade span are the halberd's too.
+
+    THE ART HAD TO BE MIRRORED FOR THIS TO WORK, and that was measured, not assumed. Counting
+    opaque pixels per quadrant, their halberd is topLeft 105 / topRight 5583 / botLeft 3252 /
+    botRight 105 - bottom-left to top-right, head at top-right. Ours ran the other diagonal.
+    Their tweak values are expressed in their texture's frame, so on a mirrored sprite the pawn
+    would have gripped this by the blade.
+
+    Labelled a HALBERD, not a greataxe: an axe head on a long shaft is what a halberd is, and
+    it would be dishonest to show the player "greataxe" on something that hits, reaches and
+    swings like a halberd.
+  -->
   <ThingDef>
     <defName>Dovahkiin_AncientDragonbornAxe</defName>
-    <label>spectral greataxe</label>
-    <description>A two-handed axe of solid Thu'um, carried by a shard of the Dovahkiin's soul. It is not steel and it is not here for long.</description>
+    <label>spectral halberd</label>
+    <description>A halberd of solid Thu'um, carried by a shard of the Dovahkiin's soul. It is not steel and it is not here for long.</description>
     <thingClass>ThingWithComps</thingClass>
     <category>Item</category>
     <equipmentType>Primary</equipmentType>
@@ -88,25 +107,36 @@
     <graphicData>
       <texPath>Things/Item/Equipment/DovahkiinAncientAxe</texPath>
       <graphicClass>Graphic_Single</graphicClass>
-      <drawSize>1.15</drawSize>
+      <!-- (1.5,1.5), the halberd's own drawSize - it inherits DankPyon_Base_Sharp_Oversize and
+           is deliberately an oversize weapon. Our tweak data passes Scale 1.5 to match. -->
+      <drawSize>(1.5,1.5)</drawSize>
     </graphicData>
     <uiIconScale>1.2</uiIconScale>
-    <equippedAngleOffset>-55</equippedAngleOffset>
+    <!-- 45, from DankPyon_Base_Sharp_Oversize. This is the orientation in the pawn's hand and
+         is the whole reason the sprite had to be mirrored to their diagonal. -->
+    <equippedAngleOffset>45</equippedAngleOffset>
     <statBases>
-      <Mass>2.4</Mass>
+      <Mass>2.75</Mass>
       <MarketValue>0</MarketValue>
     </statBases>
     <weaponClasses>
       <li>Melee</li>
     </weaponClasses>
+    <!--
+      DankPyon_MeleeWeapon_Halberd's tools, verbatim. A player with Medieval Overhaul gets a
+      weapon that hits exactly like the halberd they know; a player without it still gets a
+      properly weighted polearm rather than numbers invented on the spot. No MayRequire and no
+      fallback path is needed, because we borrow the BEHAVIOUR and ship our own art.
+    -->
     <tools>
       <li>
-        <label>haft</label>
+        <label>shaft</label>
         <capacities>
           <li>Blunt</li>
+          <li>Poke</li>
         </capacities>
-        <power>11</power>
-        <cooldownTime>2.1</cooldownTime>
+        <power>13</power>
+        <cooldownTime>2</cooldownTime>
       </li>
       <li>
         <label>blade</label>
@@ -114,9 +144,9 @@
         <capacities>
           <li>Cut</li>
         </capacities>
-        <power>26</power>
-        <cooldownTime>2.1</cooldownTime>
-        <armorPenetration>0.30</armorPenetration>
+        <power>27</power>
+        <cooldownTime>2.9</cooldownTime>
+        <armorPenetration>0.3</armorPenetration>
       </li>
     </tools>
   </ThingDef>

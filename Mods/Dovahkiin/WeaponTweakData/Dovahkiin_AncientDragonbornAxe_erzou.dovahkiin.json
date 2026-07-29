@@ -3,10 +3,12 @@
   "ItemDefName": "Dovahkiin_AncientDragonbornAxe",
   "ItemType": "ThingDef",
   "ItemTypeNamespace": "Verse",
-  "OffX": 0.3245394,
-  "OffY": -0.08620581,
+  "OffX": 0.542588949,
+  "OffY": -0.005071081,
   "Rotation": 45.0,
-  "BladeStart": 0.62,
-  "BladeEnd": 0.95,
-  "MeleeWeaponType": 2
+  "ScaleX": 1.5,
+  "ScaleY": 1.5,
+  "BladeStart": 0.851915538,
+  "BladeEnd": 1.52634883,
+  "MeleeWeaponType": 7
 }

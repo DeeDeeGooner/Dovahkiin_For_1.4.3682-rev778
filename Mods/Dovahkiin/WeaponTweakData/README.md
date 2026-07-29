@@ -21,16 +21,33 @@ at Melee Animation. If that mod is absent these files are simply never read, whi
 
 ## The fields
 
-Copied from Medieval Overhaul's own greataxe entry, because that is the closest analogue to our
-axe that is already tuned:
+**Every value is `DankPyon_MeleeWeapon_Halberd`'s, copied verbatim** — at the user's request the
+spectral halberd must be held, oriented and animated exactly as Medieval Overhaul's halberd is.
+Nothing here is estimated.
 
-| field | meaning |
-|---|---|
-| `MeleeWeaponType` | **2** — what Medieval Overhaul's `Greataxe` uses, i.e. a two-handed axe. |
-| `Rotation` | corrects the texture's own diagonal. Our art points up-left at roughly 45°. |
-| `OffX` / `OffY` | grip offset in the pawn's hand. |
-| `BladeStart` / `BladeEnd` | fraction along the weapon that is *edge*, used for the hit spark and for execution animations. Our blade sits at the far end from the grip. |
+| field | value | why |
+|---|---|---|
+| `MeleeWeaponType` | **7** | the halberd's type — a polearm, not the axe type 2 |
+| `Rotation` | 45 | matches `equippedAngleOffset` 45 on `DankPyon_Base_Sharp_Oversize` |
+| `ScaleX` / `ScaleY` | 1.5 | the halberd is an oversize weapon; our def's `drawSize` matches |
+| `OffX` / `OffY` | theirs | grip offset in the pawn's hand |
+| `BladeStart` / `BladeEnd` | theirs | the edge span, used for hit sparks and executions |
 
-**`Rotation`, `BladeStart` and `BladeEnd` are estimates and want one visual check.** They were
-derived from our art's own geometry rather than measured against a swinging pawn, so the swing
-may need the numbers nudged. Everything else is copied from a known-good entry.
+## Why the art had to be mirrored first
+
+These values are expressed in **their texture's frame**, so they only transfer if our sprite runs
+along the same diagonal with the head at the same end. Measured by counting opaque pixels per
+quadrant:
+
+| sprite | topLeft | topRight | botLeft | botRight | reads as |
+|---|---|---|---|---|---|
+| their halberd | 105 | **5583** | 3252 | 105 | bottom-left → top-right |
+| their greataxe | 1429 | **8418** | 3932 | 192 | bottom-left → top-right |
+| ours, before | **5724** | 203 | 122 | 2141 | top-left → bottom-right |
+
+Ours ran the **opposite** diagonal. Copying their numbers onto it would have had the pawn
+gripping the weapon by its blade. `GenerateAncientAxe.ps1` now draws butt at (0.26, 0.86) and
+head at (0.70, 0.20), and the same check confirms it reads bottom-left → top-right.
+
+**Re-run that check if the art is ever redrawn** — it is the one thing that silently invalidates
+every value in this file.
