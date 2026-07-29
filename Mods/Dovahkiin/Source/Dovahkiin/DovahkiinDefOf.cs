@@ -46,10 +46,9 @@ namespace Dovahkiin
         /// </summary>
         public static HediffDef Dovahkiin_AncientDragonborn;
 
-        // NOTE: Dovahkiin_AncientDragonbornKind (PawnKindDef) and Dovahkiin_AncientDragonbornAxe
-        // (ThingDef) belong here too, but are deliberately NOT declared yet - their defs are not
-        // written. A [DefOf] field that cannot resolve logs a red error on every startup, and
-        // CLAUDE.md forbids shipping those. Add both the moment the defs land.
+        /// <summary>The summoned ally himself, and his ghostly axe.</summary>
+        public static PawnKindDef Dovahkiin_AncientDragonbornKind;
+        public static ThingDef Dovahkiin_AncientDragonbornAxe;
 
         /// <summary>Soul Tear's travelling bolt.</summary>
         public static FleckDef Dovahkiin_Fleck_SoulTearWave;

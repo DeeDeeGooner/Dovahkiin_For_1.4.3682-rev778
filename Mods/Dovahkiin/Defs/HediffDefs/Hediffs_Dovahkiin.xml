@@ -710,6 +710,15 @@
         <disappearsAfterTicks>12500</disappearsAfterTicks>
         <showRemainingTime>true</showRemainingTime>
       </li>
+      <!-- Watches for the Ancient Dragonborn's arrival conditions.
+
+           Added to THIS comps block, not a second one: a HediffDef may have only ONE <comps>,
+           and a second parses as perfectly valid XML while RimWorld silently keeps one and
+           drops the other. Nothing complains.
+
+           He is a rescue, not a guarantee - this fires at most once per activation, and only
+           at three words with the Dovahkiin downed or at/below the health threshold. -->
+      <li Class="Dovahkiin.HediffCompProperties_AncientDragonbornWatch" />
     </comps>
     <stages>
       <li>

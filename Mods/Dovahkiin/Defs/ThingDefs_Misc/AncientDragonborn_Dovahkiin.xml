@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    Dragon Aspect's Ancient Dragonborn - the pawn and his axe.
+
+    NOT IN SPEC.md; specified by the user directly. The lifetime, cleanup and breath live in
+    Hediff_AncientDragonborn; these defs only describe what he is made of.
+
+    He is generated INVISIBLE (the hediff carries vanilla's HediffComp_Invisibility), so the
+    only thing on screen is the level-3 Dragon Aspect armour following him and this axe. That
+    is why he has no apparel and no apparel money - none of it would ever be seen, and every
+    generated item is another object to clean up when he vanishes.
+  -->
+
+  <PawnKindDef>
+    <defName>Dovahkiin_AncientDragonbornKind</defName>
+    <label>ancient dragonborn</label>
+    <race>Human</race>
+    <combatPower>140</combatPower>
+    <isFighter>true</isFighter>
+    <canBeSapper>false</canBeSapper>
+    <acceptArrestChanceFactor>0</acceptArrestChanceFactor>
+    <!-- Any category would do; he is invisible and his backstory is never read. Tribal is
+         chosen only because it exists in Core and carries no tech assumptions. -->
+    <backstoryFilters>
+      <li>
+        <categories>
+          <li>Tribal</li>
+        </categories>
+      </li>
+    </backstoryFilters>
+    <!-- Nothing generated onto him. The axe is equipped in code so it is always the right
+         weapon, and apparel would be invisible anyway. -->
+    <apparelMoney>0~0</apparelMoney>
+    <weaponMoney>0~0</weaponMoney>
+    <techHediffsChance>0</techHediffsChance>
+    <chemicalAddictionChance>0</chemicalAddictionChance>
+    <apparelAllowHeadgearChance>0</apparelAllowHeadgearChance>
+    <initialWillRange>0~0</initialWillRange>
+    <initialResistanceRange>0~0</initialResistanceRange>
+  </PawnKindDef>
+
+  <!--
+    The ghostly two-handed axe.
+
+    Standalone rather than ParentName="BaseMeleeWeapon_Sharp_Quality" ON PURPOSE: the vanilla
+    bases require stuff and quality, which would make this craftable-looking, tradeable, and
+    subject to deterioration. It is a spectral weapon that exists for 1.5 in-game hours and is
+    destroyed with its wielder, so none of that machinery should touch it.
+
+    useHitPoints false so it cannot be damaged or deteriorate; it has no way to be repaired
+    and a broken ghost axe is not a state worth modelling.
+  -->
+  <ThingDef>
+    <defName>Dovahkiin_AncientDragonbornAxe</defName>
+    <label>spectral greataxe</label>
+    <description>A two-handed axe of solid Thu'um, carried by a shard of the Dovahkiin's soul. It is not steel and it is not here for long.</description>
+    <thingClass>ThingWithComps</thingClass>
+    <category>Item</category>
+    <equipmentType>Primary</equipmentType>
+    <altitudeLayer>Item</altitudeLayer>
+    <useHitPoints>false</useHitPoints>
+    <selectable>true</selectable>
+    <techLevel>Medieval</techLevel>
+    <smeltable>false</smeltable>
+    <burnableByRecipe>false</burnableByRecipe>
+    <destroyOnDrop>true</destroyOnDrop>
+    <!-- Standard_Pickup, not a bladelike-weapon sound: there is no Interact_Bladelike* def in
+         Core, and an unrecognised sound defName is an XML error at load. Checked, not assumed. -->
+    <soundInteract>Standard_Pickup</soundInteract>
+    <graphicData>
+      <texPath>Things/Item/Equipment/DovahkiinAncientAxe</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <drawSize>1.15</drawSize>
+    </graphicData>
+    <uiIconScale>1.2</uiIconScale>
+    <equippedAngleOffset>-55</equippedAngleOffset>
+    <statBases>
+      <Mass>2.4</Mass>
+      <MarketValue>0</MarketValue>
+    </statBases>
+    <weaponClasses>
+      <li>Melee</li>
+    </weaponClasses>
+    <tools>
+      <li>
+        <label>haft</label>
+        <capacities>
+          <li>Blunt</li>
+        </capacities>
+        <power>11</power>
+        <cooldownTime>2.1</cooldownTime>
+      </li>
+      <li>
+        <label>blade</label>
+        <labelUsedInLogging>false</labelUsedInLogging>
+        <capacities>
+          <li>Cut</li>
+        </capacities>
+        <power>26</power>
+        <cooldownTime>2.1</cooldownTime>
+        <armorPenetration>0.30</armorPenetration>
+      </li>
+    </tools>
+  </ThingDef>
+
+</Defs>

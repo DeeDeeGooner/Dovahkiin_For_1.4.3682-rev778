@@ -33,14 +33,32 @@ namespace Dovahkiin
                 return;
             }
             GameComponent_DragonbornRegistry reg = GameComponent_DragonbornRegistry.Get;
-            if (reg == null)
+            if (reg != null)
             {
-                return;
+                // Cheap reference compare first - this runs on every pawn death in the game.
+                if (reg.IsDovahkiin(__instance))
+                {
+                    reg.NotifyDovahkiinDied(__instance);
+                }
             }
-            // Cheap reference compare first - this runs on every pawn death in the game.
-            if (reg.IsDovahkiin(__instance))
+
+            // An Ancient Dragonborn KILLED IN A FIGHT rather than expiring.
+            //
+            // Hediff_AncientDragonborn cannot handle this itself: RimWorld does not tick the
+            // hediffs of a dead pawn, so that class's own p.Dead branch never runs on this
+            // path. Without this the summon leaves a CORPSE - an invisible body wearing
+            // spectral armour, haulable and butcherable, holding a reference to a pawn that
+            // was supposed to stop existing. Vanishing here covers the corpse, the ghostly axe
+            // and the world-pawn entry in one place, for every cause of death at once.
+            //
+            // Deliberately outside the registry null-check above: a summon must be cleaned up
+            // even in a game state where the registry is missing.
+            if (DovahkiinDefOf.Dovahkiin_AncientDragonborn != null
+                && __instance.health != null
+                && __instance.health.hediffSet.GetFirstHediffOfDef(
+                       DovahkiinDefOf.Dovahkiin_AncientDragonborn) != null)
             {
-                reg.NotifyDovahkiinDied(__instance);
+                Hediff_AncientDragonborn.VanishNow(__instance);
             }
         }
     }
