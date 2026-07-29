@@ -703,7 +703,10 @@
     <scenarioCanAdd>false</scenarioCanAdd>
     <comps>
       <li Class="HediffCompProperties_Disappears">
-        <disappearsAfterTicks>1200</disappearsAfterTicks>
+        <!-- 12500 ticks = 5 in-game hours (GenDate.TicksPerHour is 2500). The comp's
+             durationTicks overrides this at cast time, but they are kept in step so the
+             hediff is still correct if it is ever added by any other route. -->
+        <disappearsAfterTicks>12500</disappearsAfterTicks>
         <showRemainingTime>true</showRemainingTime>
       </li>
     </comps>

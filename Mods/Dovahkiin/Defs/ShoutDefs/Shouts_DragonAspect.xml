@@ -62,8 +62,26 @@
       <li>Dovahkiin_Ability_DragonAspect_2</li>
       <li>Dovahkiin_Ability_DragonAspect_3</li>
     </abilitiesByLevel>
-    <thuumCostByLevel><li>9</li><li>15</li><li>22</li></thuumCostByLevel>
-    <cooldownTicksByLevel><li>3600</li><li>5400</li><li>7200</li></cooldownTicksByLevel>
+    <!--
+      TES5's once-per-day power, not a combat shout. Three numbers carry that, and they are
+      deliberately in TWO different places:
+
+        thuumCostByLevel      0  - it costs no Voice at all
+        cooldownTicksByLevel  60 - the SHARED cooldown, one second
+        AbilityDef cooldownTicksRange 60000 - Dragon Aspect's OWN cooldown, a full day
+
+      The distinction matters. cooldownTicksByLevel here is the "general shouting" lockout
+      that blocks EVERY other shout (SPEC.md 4.2 - one shared cooldown, whose length is set
+      by the shout just used). Putting a day into it would silence the Thu'um entirely for
+      that day, which is not what a once-per-day power means. So the shared lockout is
+      almost nothing, and the day-long wait lives on the AbilityDef, where vanilla's own
+      per-ability cooldown enforces it.
+
+      A cost of zero is safe: Need_Thuum.CanAfford(0) is CurLevel >= 0, always true, and
+      TrySpend(0) subtracts nothing. No division anywhere on that path.
+    -->
+    <thuumCostByLevel><li>0</li><li>0</li><li>0</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>60</li><li>60</li><li>60</li></cooldownTicksByLevel>
     <!-- SPEC.md 4.5 / 4.6: dragons and draugr get only Force, Fire and Frost. Never this. -->
     <availableToDragons>false</availableToDragons>
     <availableToUndead>false</availableToUndead>

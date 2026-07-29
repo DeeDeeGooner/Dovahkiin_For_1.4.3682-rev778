@@ -1,5 +1,42 @@
 # CHANGELOG
 
+## Phase 2i — Dragon Aspect becomes a once-per-day power (2026-07-29)
+
+Retuned at the user's request to TES5's rhythm: a daily power, not a combat shout.
+
+| | was | now |
+|---|---|---|
+| Duration | 20 / 30 / 45 s | **5 in-game hours** (12500 ticks) at every level |
+| Own cooldown | — | **24 in-game hours** (60000 ticks) |
+| Thu'um cost | 9 / 15 / 22 | **0** |
+| Shared shout lockout | 3600 / 5400 / 7200 | **60 ticks — one second** |
+
+### The two cooldowns are different things, and that is the whole point
+
+`ShoutDef.cooldownTicksByLevel` is the **shared** cooldown: per SPEC.md 4.2 there is one
+Thu'um cooldown across ALL shouts, and its length is set by whichever shout was last used.
+Putting a day into it would silence the Voice entirely for that day — which is not what a
+once-per-day power means.
+
+So the shared lockout is one second, and the day-long wait lives on
+`AbilityDef.cooldownTicksRange`, which is vanilla's own per-ability cooldown. Verified by
+reflection that it exists as an `IntRange` and that `Ability` exposes `CanCast`,
+`HasCooldown` and `StartCooldown` to enforce it. **Dragon Aspect is the only shout in the mod
+that needs both**; every other one leaves `cooldownTicksRange` at 0.
+
+### Zero cost needed no special case
+
+Checked rather than assumed: `Need_Thuum.CanAfford(0)` is `CurLevel >= 0`, always true, and
+`TrySpend(0)` subtracts nothing. There is no division anywhere on that path, so the "use 1 if
+0 breaks things" fallback the user offered was not needed.
+
+### Duration no longer scales with words
+
+All three levels last 5 hours. Word count now buys armour, resistances, the cooldown cut and
+the summon — not time. Flagged because it is a deliberate loss of a progression axis.
+
+---
+
 ## Phase 2i fix — armour smaller than the pawn, and the wave never returned (2026-07-29)
 
 Second playtest. Both reports correct, and the first one was a better guess than it looked.

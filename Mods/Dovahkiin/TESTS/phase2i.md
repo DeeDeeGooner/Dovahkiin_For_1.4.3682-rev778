@@ -19,9 +19,10 @@ overlay the whole spec hangs on.
 1. Debug mode on. **Dovahkiin → Learn all words** → ✅ should report **42** words.
    - If it says 39, the Dragon Aspect files did not load — **stop and tell me**.
 2. **Raise a shout one level** → ✅ **14** shouts listed, including **Dragon Aspect**.
-3. It is expensive: 9 thu'um at one word, 22 at three. Refill often.
-4. Its cooldown is by far the longest in the mod — a minute at one word, two at three.
-   Use **Dovahkiin → Clear shout cooldown** between tests or you will be waiting.
+3. It is **free** — no thu'um cost at any level. You never need to refill for it.
+4. It is **once per day**: a 24-hour in-game cooldown on the button itself.
+   You will need **Dovahkiin → Clear shout cooldown**, or dev-mode time skip, between
+   nearly every test below. Expect that.
 
 ---
 
@@ -116,7 +117,25 @@ up what damage type it uses.
 
 ---
 
-## Test 6 — Shout cooldown, three words only
+## Test 6a — Once per day, and it barely blocks other shouts
+
+This is the TES5 rhythm: a daily power, not a combat shout.
+
+1. Cast **Dragon Aspect** at any level.
+2. ✅ It cost **no thu'um** — the bar does not move.
+3. ✅ The buff lasts **5 in-game hours**. Check the countdown in the Health tab.
+4. **Immediately** try another shout — Unrelenting Force.
+   ✅ Usable after about **one second**. Dragon Aspect barely locks the Voice at all.
+5. Try to cast **Dragon Aspect** again.
+   ✅ Refused, with a cooldown running to **24 in-game hours**.
+6. Skip a day. ✅ Available again.
+
+Point 4 and point 5 are the whole design: the *general shouting* lockout is a second, while
+Dragon Aspect's *own* wait is a full day. If either is the other way round, tell me.
+
+---
+
+## Test 6b — Shout cooldown reduction, three words only
 
 1. Cast **mul qah diiv**, then immediately cast any other shout — Unrelenting Force is cheap.
 2. Watch the shared Thu'um cooldown. ✅ It runs about **a third shorter** than usual.

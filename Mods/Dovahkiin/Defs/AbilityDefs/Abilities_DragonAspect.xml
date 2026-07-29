@@ -20,7 +20,19 @@
 <Defs>
 
   <AbilityDef Name="Dovahkiin_DragonAspectBase" Abstract="True">
-    <cooldownTicksRange>0</cooldownTicksRange>
+    <!--
+      ONCE PER DAY, TES5-style. 60000 ticks is exactly one in-game day
+      (GenDate.TicksPerDay; an hour is 2500).
+
+      This is vanilla's OWN per-ability cooldown, which is a different thing from the shared
+      Thu'um cooldown in the ShoutDef. That one is the "general shouting" lockout and is set
+      to a single second here, so casting Dragon Aspect barely delays any other shout - while
+      Dragon Aspect itself cannot be cast again until tomorrow.
+
+      Every other shout in the mod leaves this at 0 and is governed purely by the shared
+      cooldown. Dragon Aspect is the only one that needs both.
+    -->
+    <cooldownTicksRange>60000</cooldownTicksRange>
     <hostile>false</hostile>
     <targetRequired>false</targetRequired>
     <showWhenDrafted>true</showWhenDrafted>
@@ -52,11 +64,12 @@
       <li Class="Dovahkiin.CompProperties_ShoutSelfBuff">
         <hediffDef>Dovahkiin_DragonAspect</hediffDef>
         <severity>1</severity>
-        <durationTicks>1200</durationTicks>
+        <durationTicks>12500</durationTicks>
         <castSound>PsychicPulseGlobal</castSound>
         <soundOnCamera>true</soundOnCamera>
         <ringRadius>10</ringRadius>
-        <!-- the armour's own ember, (255,150,56) -->
+        <!-- the armour's own ember, (240,118,28) - keep in step with $C_EMBER in
+             Tools/GenerateDragonAspect.ps1 and with Ember in Thing_DragonAspectOverlay.cs -->
         <ringTint>(0.94, 0.463, 0.11)</ringTint>
         <ringAlpha>0.55</ringAlpha>
         <ringFleck>Dovahkiin_Fleck_TimeRing</ringFleck>
@@ -87,7 +100,7 @@
       <li Class="Dovahkiin.CompProperties_ShoutSelfBuff">
         <hediffDef>Dovahkiin_DragonAspect</hediffDef>
         <severity>2</severity>
-        <durationTicks>1800</durationTicks>
+        <durationTicks>12500</durationTicks>
         <castSound>PsychicPulseGlobal</castSound>
         <soundOnCamera>true</soundOnCamera>
         <ringRadius>14</ringRadius>
@@ -121,7 +134,7 @@
       <li Class="Dovahkiin.CompProperties_ShoutSelfBuff">
         <hediffDef>Dovahkiin_DragonAspect</hediffDef>
         <severity>3</severity>
-        <durationTicks>2700</durationTicks>
+        <durationTicks>12500</durationTicks>
         <castSound>PsychicPulseGlobal</castSound>
         <soundOnCamera>true</soundOnCamera>
         <ringRadius>18</ringRadius>
