@@ -65,17 +65,28 @@ $PARTICLE_SHAPE = "ess"
 $VERSION = "B"
 
 # ---------------------------------------------------------------------------------
-#  PLATE OPACITY - deliberately 1.0, which is the ORIGINAL signed-off art.
+#  PLATE OPACITY - 1.55, raised from 1.0 on 2026-07-29 AT THE USER'S REQUEST.
 #
-#  When the first playtest reported the armour as "barely visible" this was raised to 1.85.
-#  That was the wrong fix: opacity is what makes the plates translucent, and cranking it made
-#  the armour darker and heavier than the design that had been agreed. The visibility problem
-#  was solved by DEEPENING THE COLOURS instead - see the palette below - which reads against
-#  lit ground without touching the transparency at all.
+#  HISTORY, because this number has been argued twice and the earlier reasoning still
+#  holds - it just no longer applies on its own:
 #
-#  Leave this at 1.0. If the armour needs to read harder, saturate the palette further.
+#  When the first playtest reported the armour as "barely visible" this was raised to 1.85
+#  alone. That WAS the wrong fix. Opacity is what makes the plates translucent, and
+#  cranking it by itself made the armour darker and heavier than the design that had been
+#  agreed, because the plates are darker than the pale body they cover - more alpha means
+#  less body showing through and a dimmer result. It was reverted, and the visibility
+#  problem was solved by DEEPENING THE COLOURS instead.
+#
+#  The user then asked for more opacity explicitly, with "make sure it doesn't darken".
+#  That is achievable, but ONLY as a pair: $PLATE_ALPHA sets how opaque, and $PLATE_LIFT
+#  puts the brightness back. 1.55 with a lift of 0.32 measures as +20% to +31% opacity at
+#  within 0.6% of the previous brightness, over the body silhouette, front and side, on
+#  Male and Female.
+#
+#  SO: do not raise this one on its own. Moving it means re-sweeping $PLATE_LIFT against
+#  the brightness measurement, or the old mistake comes straight back.
 # ---------------------------------------------------------------------------------
-$PLATE_ALPHA = 1.0
+$PLATE_ALPHA = 1.55
 
 if (-not (Test-Path $DEST)) { New-Item -ItemType Directory -Path $DEST -Force | Out-Null }
 
@@ -126,6 +137,122 @@ $C_BLUE_LIT  = @( 58,124,216)  # was Unrelenting Force's (95,165,240)
 $C_BLUE_MID  = @( 36, 80,150)
 $C_BLUE_DEEP = @( 14, 32, 66)
 $C_BLUE_HOT  = @(132,186,246)
+
+# ---------------------------------------------------------------------------------
+# OPACITY / BRIGHTNESS KNOBS, and why there are three rather than one.
+#
+# "More opaque" and "darker" are the same lever unless they are deliberately separated.
+# The plate gradient runs down to C_DEEP (88,46,12) and C_BLUE_DEEP (14,32,66) - the
+# second is near black - so simply multiplying alpha reveals more of those stops and the
+# armour reads as a dark smear rather than as more solid armour.
+#
+#   $PLATE_ALPHA  straight multiplier on plate alpha - how OPAQUE
+#   $PLATE_LIFT   0..1, how much BRIGHTER the plate palette is. See BrightLift below: it
+#                 raises each stop's VALUE while holding the channel ratios, so hue and
+#                 saturation are preserved EXACTLY and nothing can clip. This replaced a
+#                 plain multiplicative gain, which blew C_GOLD's red past 255 at the
+#                 strengths a fully-opaque suit needs and flattened the golds to pale
+#                 yellow. Two knobs doing the same job is how the wrong one gets turned.
+#   $DEEP_LIFT    pulls the two DEEP stops towards their MID neighbours - stops the
+#                 shadow end going black as alpha rises. 0 = as authored, 1 = no deep
+#                 stop at all.
+#   $LIT_FALLOFF  how much darker a scale gets towards the waist. At 0.75 the waist sits
+#                 at a quarter brightness, which is invisible under a translucent plate
+#                 and very visible under an opaque one.
+#
+# ALL FOUR DEFAULT TO THE SIGNED-OFF LOOK. A default here is not a free parameter - it is
+# art the user has already approved, and changing one as a side effect of adding a knob
+# silently rewrites their decision.
+#
+# All four can be overridden from the environment so the A/B harness can sweep them
+# without editing this file.
+# ---------------------------------------------------------------------------------
+# SHIPPED VALUES, chosen 2026-07-29 and measured rather than eyeballed.
+#
+# The ask was "a bit more opacity, make sure it doesn't darken". Those fight each other:
+# the plates are darker than the pale body under them, so more alpha means less body
+# showing and a darker composite. $PLATE_ALPHA 1.55 sets the opacity; $PLATE_LIFT 0.32 was
+# then SWEPT to find the value that puts the brightness back exactly. Measured over the
+# body silhouette, front and side, Male and Female: opacity +20% to +31%, brightness within
+# 0.6% of the art signed off before this change. Re-sweep the lift if the alpha moves.
+$PLATE_LIFT  = 0.32
+$DEEP_LIFT   = 0.00
+$LIT_FALLOFF = 0.75
+
+# $OVERLAY_OPACITY scales the alpha of the FINISHED texture - plates, arm bands, fins,
+# elbow spikes, rim light and chest crest together - so the whole overlay knocks back as
+# one object. It is a separate knob from $PLATE_ALPHA on purpose:
+#
+#   $PLATE_ALPHA   multiplies the AUTHORED per-pixel alpha, which runs 26 at the centre
+#                  line to 88 at the edges. Turning it DOWN from a saturated value does
+#                  not fade the suit evenly - it brings that centre-to-edge ramp back,
+#                  so the middle of the torso goes see-through while the edges stay solid.
+#   $OVERLAY_OPACITY  a flat multiplier on the final alpha. THIS is "make the whole thing
+#                  20% less opaque", and it leaves the fins and crest in step with the
+#                  plates instead of leaving them standing at full strength.
+$OVERLAY_OPACITY = 1.00
+
+# $SPUR_SEP, 0..1: how hard the shoulder fins and elbow spikes are separated from the
+# plate field behind them. See DrawSpur - it drives a dark rim, the hot edge width and a
+# small brightness lift together. 0 = as authored.
+$SPUR_SEP = 0.85
+
+if ($env:DOVAH_SPUR_SEP)        { $SPUR_SEP        = [double]$env:DOVAH_SPUR_SEP }
+if ($env:DOVAH_PLATE_ALPHA)     { $PLATE_ALPHA     = [double]$env:DOVAH_PLATE_ALPHA }
+if ($env:DOVAH_PLATE_LIFT)      { $PLATE_LIFT      = [double]$env:DOVAH_PLATE_LIFT }
+if ($env:DOVAH_DEEP_LIFT)       { $DEEP_LIFT       = [double]$env:DOVAH_DEEP_LIFT }
+if ($env:DOVAH_LIT_FALLOFF)     { $LIT_FALLOFF     = [double]$env:DOVAH_LIT_FALLOFF }
+if ($env:DOVAH_OVERLAY_OPACITY) { $OVERLAY_OPACITY = [double]$env:DOVAH_OVERLAY_OPACITY }
+
+# Raise a colour's VALUE towards full brightness by fraction $t, holding the channel
+# ratios. Because the largest channel lands exactly on the new value, hue and saturation
+# come through unchanged and NO channel can clip - which is the whole reason this is not
+# a multiply. t=0 leaves the colour alone; t=1 makes its brightest channel 255.
+function BrightLift($col, [double]$t) {
+  if ($t -le 0.0) { return $col }
+  $peak = [Math]::Max($col[0], [Math]::Max($col[1], $col[2]))
+  if ($peak -le 0) { return $col }
+  $peakNew = $peak + (255.0 - $peak) * $t
+  $k = $peakNew / [double]$peak
+  return @(
+    ([int][Math]::Min(255.0, [Math]::Round($col[0] * $k))),
+    ([int][Math]::Min(255.0, [Math]::Round($col[1] * $k))),
+    ([int][Math]::Min(255.0, [Math]::Round($col[2] * $k)))
+  )
+}
+
+# Captured BEFORE any lifting. The fin separation rim is derived from these, so it stays
+# genuinely dark however far $DEEP_LIFT and $PLATE_LIFT have brightened everything else.
+# Deriving it from the LIFTED deeps was the first attempt and produced a mid-tone rim that
+# separated nothing - the rim has to contrast with the plates, so it cannot be brightened
+# by the same knob that brightens the plates.
+$C_DEEP_RAW      = $C_DEEP
+$C_BLUE_DEEP_RAW = $C_BLUE_DEEP
+
+# Applied once, here, rather than at each use site - the deep stops are read from several
+# places and lifting only the obvious one is how the fins ended up gold on a blue chest.
+if ($DEEP_LIFT -gt 0.0) {
+  $C_DEEP = @(
+    ([int]($C_DEEP[0] + ($C_MID[0] - $C_DEEP[0]) * $DEEP_LIFT)),
+    ([int]($C_DEEP[1] + ($C_MID[1] - $C_DEEP[1]) * $DEEP_LIFT)),
+    ([int]($C_DEEP[2] + ($C_MID[2] - $C_DEEP[2]) * $DEEP_LIFT))
+  )
+  $C_BLUE_DEEP = @(
+    ([int]($C_BLUE_DEEP[0] + ($C_BLUE_MID[0] - $C_BLUE_DEEP[0]) * $DEEP_LIFT)),
+    ([int]($C_BLUE_DEEP[1] + ($C_BLUE_MID[1] - $C_BLUE_DEEP[1]) * $DEEP_LIFT)),
+    ([int]($C_BLUE_DEEP[2] + ($C_BLUE_MID[2] - $C_BLUE_DEEP[2]) * $DEEP_LIFT))
+  )
+}
+
+# The lift is applied to the PLATE stops only - not to C_EMBER, C_AZURE or the crest
+# colours, which belong to the aura and the crest and were tuned against their own
+# backgrounds. Every stop moves together: brightening only some of them stops the scale
+# reading as a lit surface and makes it read as the wrong colour instead.
+if ($PLATE_LIFT -gt 0.0) {
+  foreach ($stopName in @("C_DEEP","C_MID","C_GOLD","C_HOT","C_BLUE_DEEP","C_BLUE_MID","C_BLUE_LIT","C_BLUE_HOT")) {
+    Set-Variable -Name $stopName -Value (BrightLift (Get-Variable -Name $stopName -ValueOnly) $PLATE_LIFT)
+  }
+}
 # How far towards blue the bottom of the armour goes. 1.0 would drop the bronze entirely.
 $COOL_MAX = 0.92
 
@@ -518,7 +645,7 @@ function FillScales($g, $prof, [double]$aCentre, [double]$aEdge) {
     $hwL = (HalfSideAt $prof $y256 -1.0) * $SS
     $hwR = (HalfSideAt $prof $y256  1.0) * $SS
     $offset = if ($row % 2 -eq 0) { 0.0 } else { $scaleW * 0.5 }
-    $lit = 1.0 - [Math]::Min(1.0, ($y256-$Y_TOP)/($Y_BOT-$Y_TOP)) * 0.75
+    $lit = 1.0 - [Math]::Min(1.0, ($y256-$Y_TOP)/($Y_BOT-$Y_TOP)) * $LIT_FALLOFF
     # The bronze/blue ramp down the body, in whichever direction $VERSION selects.
     # Smoothstepped inside CoolAt, so one end stays convincingly its own colour and the
     # change happens across the middle rather than the whole torso being a half-and-half wash.
@@ -584,13 +711,41 @@ function DrawSpur($g, [double]$bx, [double]$by, [double]$len, [double]$thick, [d
   $p = New-Object System.Drawing.Drawing2D.GraphicsPath
   $p.AddClosedCurve([System.Drawing.PointF[]]$pts, [single]0.18)
 
+  # SEPARATION. A fin takes the CoolAt ramp at its own height, and so does the plate field
+  # it sits on - so at the shoulders a blue fin lies on blue plates and the two merge into
+  # one mass. Raising $PLATE_LIFT does not help, because it brightens both equally.
+  #
+  # $SPUR_SEP drives all three separation levers together, because turning one alone just
+  # trades one kind of mush for another:
+  #   a DARK RIM under the fill, which is what actually makes two overlapping shapes read
+  #     as separate objects rather than as one silhouette
+  #   a THICKER hot edge, giving the fin its own defined outline
+  #   a small BRIGHTNESS lift on the fin only, so it stands off the plate field it covers
+  # The rim colour is derived by darkening, not taken from the palette, so it stays dark
+  # however far $PLATE_LIFT has brightened everything else.
+  if ($SPUR_SEP -gt 0.0) {
+    $sGold = BrightLift $sGold (0.18 * $SPUR_SEP)
+    $sHot  = BrightLift $sHot  (0.18 * $SPUR_SEP)
+    # From the RAW deeps, not $sDeep - see the note where $C_DEEP_RAW is captured.
+    $rimBase = Lerp3 $C_DEEP_RAW $C_BLUE_DEEP_RAW $cool
+    $rimCol = @(
+      ([int]($rimBase[0] * 0.72)),
+      ([int]($rimBase[1] * 0.72)),
+      ([int]($rimBase[2] * 0.72))
+    )
+    $penRim = New-Object System.Drawing.Pen (RGB $rimCol[0] $rimCol[1] $rimCol[2] ([int]([Math]::Min(255, $alpha*1.45)))), ([single]($thick * 0.46 * $SPUR_SEP))
+    $penRim.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+    $g.DrawPath($penRim, $p); $penRim.Dispose()
+  }
+
   $rect = $p.GetBounds()
   if ($rect.Width -lt 1) { $rect.Width = 1 }
   if ($rect.Height -lt 1) { $rect.Height = 1 }
   $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rect, (RGB $sDeep[0] $sDeep[1] $sDeep[2] $alpha), (RGB $sGold[0] $sGold[1] $sGold[2] ([int]([Math]::Min(255,$alpha*1.25)))), ([single]300.0)
   $g.FillPath($brush, $p); $brush.Dispose()
 
-  $pen = New-Object System.Drawing.Pen (RGB $sHot[0] $sHot[1] $sHot[2] ([int]([Math]::Min(230,$alpha*1.4)))), ([single]($thick*0.16))
+  $edgeW = $thick * (0.16 + 0.26 * $SPUR_SEP)
+  $pen = New-Object System.Drawing.Pen (RGB $sHot[0] $sHot[1] $sHot[2] ([int]([Math]::Min(230,$alpha*1.4)))), ([single]$edgeW)
   $pen.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
   $g.DrawPath($pen, $p)
   $pen.Dispose(); $p.Dispose()
@@ -824,6 +979,22 @@ function BuildBody([string]$rot, [int]$level) {
   $gf.Clear((RGB 0 0 0 0))
   $gf.DrawImage($bmp, (New-Object System.Drawing.Rectangle 0,0,$SIZE,$SIZE))
   $gf.Dispose(); $bmp.Dispose()
+
+  # Knock the WHOLE overlay back as one object. Done here, on the finished texture, so it
+  # catches every layer - plates, arm bands, fins, elbow spikes, rim light, crest - rather
+  # than only the ones routed through FillScales. The helm is a separate texture and is
+  # deliberately NOT touched here; decide it explicitly when a value is chosen.
+  if ($OVERLAY_OPACITY -lt 1.0) {
+    $fRect = New-Object System.Drawing.Rectangle 0, 0, $SIZE, $SIZE
+    $fBits = $final.LockBits($fRect, [System.Drawing.Imaging.ImageLockMode]::ReadWrite, [System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+    $fBuf = New-Object 'byte[]' ($fBits.Stride * $SIZE)
+    [System.Runtime.InteropServices.Marshal]::Copy([System.IntPtr]$fBits.Scan0, $fBuf, [int]0, [int]$fBuf.Length)
+    for ($fi = 3; $fi -lt $fBuf.Length; $fi += 4) {
+      $fBuf[$fi] = [byte][int][Math]::Round($fBuf[$fi] * $OVERLAY_OPACITY)
+    }
+    [System.Runtime.InteropServices.Marshal]::Copy($fBuf, 0, [System.IntPtr]$fBits.Scan0, $fBuf.Length)
+    $final.UnlockBits($fBits)
+  }
   return $final
 }
 
@@ -1330,38 +1501,58 @@ function BuildFlarePair() {
 # =================================================================================
 # Generate everything
 # =================================================================================
+# A/B harness support: sweep the opacity knobs without paying for a full 30-texture run
+# plus the aura, the flares and the preview sheet. Absent = a normal full run.
+$FAST_MODE  = ($env:DOVAH_FAST -eq "1")
+$emitTypes  = $BODY_TYPES
+$emitDest   = $DEST
+$emitSuffix = ""
+if ($env:DOVAH_ONLY)    { $emitTypes  = $env:DOVAH_ONLY -split "," }
+if ($env:DOVAH_DESTDIR) { $emitDest   = $env:DOVAH_DESTDIR }
+if ($env:DOVAH_SUFFIX)  { $emitSuffix = $env:DOVAH_SUFFIX }
+
 $bodies = @{}
+Write-Output ("plate alpha {0}, deep lift {1}, lit falloff {2}" -f $PLATE_ALPHA, $DEEP_LIFT, $LIT_FALLOFF)
 Write-Output "measuring body silhouettes off Beautiful Bodies:"
-foreach ($bt in $BODY_TYPES) {
+foreach ($bt in $emitTypes) {
   SetBodyGeometry $bt
-  foreach ($lvl in @(1,2)) {
-    foreach ($rot in @("south","north","east")) {
+  $emitLvls = if ($FAST_MODE) { @(2) } else { @(1,2) }
+  $emitRots = if ($FAST_MODE) { @("south","east") } else { @("south","north","east") }
+  foreach ($lvl in $emitLvls) {
+    foreach ($rot in $emitRots) {
       $img = BuildBody $rot $lvl
-      $path = Join-Path $DEST "DragonAspect_L${lvl}_${bt}_$rot.png"
+      $path = Join-Path $emitDest ("DragonAspect_L${lvl}_${bt}_${rot}${emitSuffix}.png")
       $img.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
       $bodies["${bt}_${lvl}_$rot"] = $img
     }
   }
-  Write-Output ("    wrote 6 textures for " + $bt)
+  Write-Output ("    wrote textures for " + $bt)
+}
+
+if ($FAST_MODE) {
+  foreach ($k in $bodies.Keys) { $bodies[$k].Dispose() }
+  Write-Output "FAST MODE - skipped helm, aura, flares and the preview sheet"
+  Write-Output "DONE"
+  return
 }
 $helms = @{}
 foreach ($rot in @("south","north","east")) {
   $img = BuildHelm $rot
-  $path = Join-Path $DEST "DragonAspectHelm_$rot.png"
+  $path = Join-Path $emitDest "DragonAspectHelm_$rot.png"
   $img.Save($path, [System.Drawing.Imaging.ImageFormat]::Png)
   Write-Output "wrote $path"
   $helms[$rot] = $img
 }
 $aura = BuildAuraRing
-$aura.Save((Join-Path $DEST "DragonAspectAuraRing.png"), [System.Drawing.Imaging.ImageFormat]::Png)
-Write-Output "wrote $(Join-Path $DEST 'DragonAspectAuraRing.png')"
+$aura.Save((Join-Path $emitDest "DragonAspectAuraRing.png"), [System.Drawing.Imaging.ImageFormat]::Png)
+Write-Output "wrote $(Join-Path $emitDest 'DragonAspectAuraRing.png')"
 $flarePair = BuildFlarePair
 $flare  = $flarePair.blend
 $flareP = $flarePair.plain
-$flare.Save((Join-Path $DEST "DragonAspectFlare.png"), [System.Drawing.Imaging.ImageFormat]::Png)
-Write-Output "wrote $(Join-Path $DEST 'DragonAspectFlare.png')"
-$flareP.Save((Join-Path $DEST "DragonAspectFlarePlain.png"), [System.Drawing.Imaging.ImageFormat]::Png)
-Write-Output "wrote $(Join-Path $DEST 'DragonAspectFlarePlain.png')"
+$flare.Save((Join-Path $emitDest "DragonAspectFlare.png"), [System.Drawing.Imaging.ImageFormat]::Png)
+Write-Output "wrote $(Join-Path $emitDest 'DragonAspectFlare.png')"
+$flareP.Save((Join-Path $emitDest "DragonAspectFlarePlain.png"), [System.Drawing.Imaging.ImageFormat]::Png)
+Write-Output "wrote $(Join-Path $emitDest 'DragonAspectFlarePlain.png')"
 
 
 # =================================================================================
@@ -1548,6 +1739,7 @@ foreach ($bt in $BODY_TYPES) {
 $gs.DrawString("Dragon Aspect - fitted per body type, SPEC 4.4d", $font, $white, [single]40, [single]12)
 $gs.Dispose()
 
+if ($env:DOVAH_PREVIEW) { $PREVIEW = $env:DOVAH_PREVIEW }
 $sheetPath = Join-Path $PREVIEW "dragon_aspect_levels.png"
 $sheet.Save($sheetPath, [System.Drawing.Imaging.ImageFormat]::Png)
 $sheet.Dispose()

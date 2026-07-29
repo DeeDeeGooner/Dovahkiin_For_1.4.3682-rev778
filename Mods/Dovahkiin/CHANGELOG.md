@@ -1,5 +1,69 @@
 # CHANGELOG
 
+## Phase 2i — plate opacity up ~25%, and the fins separated from the plates (2026-07-29)
+
+Two requests: *"add a bit more opacity, make sure it doesn't darken"*, and *"make sure the
+pikes and fins are more distinguishable"*. Both measured rather than eyeballed.
+
+### Opacity and darkness are the same lever until you split them
+
+*Root cause of the tension:* the plates are darker than the pale body sprite under them, so
+raising alpha shows less body and the composite dims. A first attempt confirmed it — +25%
+opacity cost 2.3% brightness, +70% cost 7.7%.
+
+*Fix:* two knobs instead of one. `$PLATE_ALPHA` sets how opaque; `$PLATE_LIFT` puts the
+brightness back. The lift raises each palette stop's **value** while holding the channel
+ratios, so hue and saturation are preserved exactly and **no channel can clip**. That
+matters: the first version used a plain multiplicative gain, which pushed `C_GOLD`'s red
+past 255 at the strengths needed and flattened the golds to a pale yellow.
+
+Shipped at `$PLATE_ALPHA 1.55`, `$PLATE_LIFT 0.32`. The lift was **swept, not converted** —
+gain and lift do not map onto each other evenly across a palette, since the lift's effect
+depends on each colour's existing peak. Measured over the body silhouette, front and side,
+Male and Female:
+
+| | opacity | brightness |
+|---|---|---|
+| Male south | +19.9% | 0.0% |
+| Male east | +26.5% | +0.3% |
+| Female south | +24.9% | −0.1% |
+| Female east | +31.1% | +0.6% |
+
+**Do not raise `$PLATE_ALPHA` on its own.** The header comment on it used to say "leave this
+at 1.0", from the round where raising it alone was correctly reverted. That reasoning still
+holds — it just no longer applies now the lift exists to pair with it. Moving one means
+re-sweeping the other against the brightness measurement.
+
+### The fins merged into the plates because they share the colour ramp
+
+*Root cause:* a fin takes `CoolAt` at its own height, and so does the plate field behind it —
+so at the shoulders a blue fin sits on blue plates, separated only by a hot edge
+`thick × 0.16` wide. Brightening the palette never helped, because it lifts both equally.
+
+*Fix:* `$SPUR_SEP` (shipped at 0.85) drives three levers together — a dark rim under the
+fill, a thicker hot edge, and a small brightness lift on the fins alone. Turning any one
+alone trades one kind of mush for another.
+
+The rim colour is derived from `$C_DEEP_RAW` / `$C_BLUE_DEEP_RAW`, **captured before any
+lifting**. Deriving it from the lifted deeps was the first attempt and gave a mid-tone rim
+that separated nothing — a contrast rim cannot be brightened by the same knob that brightens
+the thing it is meant to contrast with.
+
+### Not shipped, deliberately
+
+A fully-opaque "dragon-scale bodysuit" variant was explored at the user's request and
+rejected. It hides the colonist completely — no skin, no apparel, no body shading — which
+crosses the `SPEC.md 4.4d` line about apparel reading underneath. It is reachable at
+`$PLATE_ALPHA 10` with `$PLATE_LIFT ~0.70`, `$DEEP_LIFT ~0.65`, `$LIT_FALLOFF ~0.22` if it is
+ever wanted; those numbers are recorded here so the exploration does not have to be redone.
+
+### Geometry unchanged
+
+Silhouette-fit re-measured after the change and identical to before: overhang past the body
+outline through 10–90% of the body is 0–2px on all five body types.
+
+---
+
 ## Phase 2i fix — every SIDE view was wrong: the profile mirrored one half-width (2026-07-29)
 
 Reported off the preview, on all four body types shown, and described on the Hulk as "a
