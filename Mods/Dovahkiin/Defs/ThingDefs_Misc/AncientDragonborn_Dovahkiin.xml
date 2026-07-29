@@ -60,12 +60,28 @@
     <category>Item</category>
     <equipmentType>Primary</equipmentType>
     <altitudeLayer>Item</altitudeLayer>
+    <drawerType>MapMeshOnly</drawerType>
+    <tickerType>Never</tickerType>
     <useHitPoints>false</useHitPoints>
     <selectable>true</selectable>
     <techLevel>Medieval</techLevel>
     <smeltable>false</smeltable>
     <burnableByRecipe>false</burnableByRecipe>
     <destroyOnDrop>true</destroyOnDrop>
+    <!-- REQUIRED. Without it RimWorld logs "is equipment but has no CompEquippable" at load
+         and then Pawn_EquipmentTracker.Notify_EquipmentAdded throws a NullReferenceException
+         the moment anything tries to hold it - which is exactly what killed the first summon.
+         Note there is NO CompProperties_Equippable type: vanilla's BaseWeapon declares it as a
+         plain comp carrying compClass, the same shape HediffComp_Invisibility needs. -->
+    <comps>
+      <li>
+        <compClass>CompEquippable</compClass>
+      </li>
+    </comps>
+    <!-- destroyOnDrop with the default tradeability of All is a config error in its own right.
+         None is correct anyway: a spectral weapon that exists for 1.5 in-game hours has no
+         business in a trade window. -->
+    <tradeability>None</tradeability>
     <!-- Standard_Pickup, not a bladelike-weapon sound: there is no Interact_Bladelike* def in
          Core, and an unrecognised sound defName is an XML error at load. Checked, not assumed. -->
     <soundInteract>Standard_Pickup</soundInteract>

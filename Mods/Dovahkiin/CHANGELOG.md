@@ -1,5 +1,52 @@
 # CHANGELOG
 
+## Phase 2j fix — the summon never appeared: the axe had no CompEquippable (2026-07-29)
+
+First playtest. Reported as "the ancient dragonborn didn't appear" with the Dovahkiin both
+dying and downed — so every trigger condition was met and nothing came.
+
+**The trigger was fine.** The log settled that in one line: `[Dovahkiin] Ancient Dragonborn
+summon failed: System.NullReferenceException`. The watch comp resolved, fired, and the summon
+was attempted. Nothing in the log mentions the comp at all, which rules out the whole class of
+"the def didn't load" causes.
+
+*Root cause:* the stack trace ends at `AncientDragonbornUtility.EquipAxe` →
+`Pawn_EquipmentTracker.AddEquipment` → `Notify_EquipmentAdded` → null. **The axe ThingDef had
+no `CompEquippable`.** RimWorld had already said so at load, twice:
+
+```
+Config error in Dovahkiin_AncientDragonbornAxe: is equipment but has no CompEquippable
+Config error in Dovahkiin_AncientDragonbornAxe: destroyOnDrop but tradeability is All
+```
+
+Both were in the log before the summon was ever cast, and neither had been read. A clean build
+and a "does every def parse" check both pass this — parsing proves the XML is well-formed, not
+that it is *valid*. **Read the config errors after adding a def.**
+
+The def was written standalone rather than inheriting `BaseWeapon`, to avoid stuff and quality,
+and that is still right — but `BaseWeapon` is also where `CompEquippable` comes from, and
+dropping the parent dropped the comp silently. Note there is no `CompProperties_Equippable`
+type: vanilla declares it as a plain comp carrying `compClass`, exactly the shape
+`HediffComp_Invisibility` needs. That is the second time this session the same trap has bitten.
+
+*Fixes:* `CompEquippable` added, `tradeability` set to `None`, plus `drawerType MapMeshOnly`
+and `tickerType Never` to match `BaseWeapon`.
+
+### The deeper fault: a decorative failure cost the entire feature
+
+The summon was abandoned wholesale because a **weapon graphic** failed. The catch-all was
+written to abandon on any failure, on the reasoning that a half-built summon is the stranded
+pseudo-colonist `RISKS.md` §9 exists to prevent. That reasoning holds only up to the point the
+doomed hediff is attached — after that the pawn is guaranteed to end itself, and the axe, the
+armour overlay and the arrival puff are decoration.
+
+Those three steps are now individually wrapped. Each logs loudly on failure — a silent fallback
+is indistinguishable from the bug it hides — and none of them can take the ally down. Had this
+been the case originally, the playtest would have produced an armed-less summon and a clear log
+line instead of nothing at all.
+
+---
+
 ## Phase 2j — the Ancient Dragonborn summon (2026-07-29)
 
 Dragon Aspect's last piece, and the riskiest thing in the mod. **Built and building clean;

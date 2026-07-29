@@ -89,9 +89,23 @@ namespace Dovahkiin
                     reg.NotifyAncientDragonbornSummoned(summon);
                 }
 
-                EquipAxe(summon);
-                SpawnArmourOverlay(summon);
-                DoArrivalEffect(summon);
+                // ---------------------------------------------------------------------------
+                // FROM HERE ON, FAILURES ARE COSMETIC AND MUST NOT COST THE ALLY.
+                //
+                // Everything above is load-bearing: without the pawn, the spawn or the doomed
+                // hediff there is either no summon or an immortal one, so any failure there
+                // has to abandon the whole thing. Once the hediff is attached the pawn is
+                // guaranteed to end itself, and the axe, the armour and the puff of dust are
+                // decoration.
+                //
+                // The first playtest proved why this distinction matters: the axe def was
+                // missing CompEquippable, AddEquipment threw, the outer catch abandoned
+                // everything, and the user got NO ALLY AT ALL because of a weapon graphic.
+                // A wrapped step logs and carries on; an unwrapped one costs the feature.
+                // ---------------------------------------------------------------------------
+                TryCosmetic(summon, "equip axe", () => EquipAxe(summon));
+                TryCosmetic(summon, "spawn armour overlay", () => SpawnArmourOverlay(summon));
+                TryCosmetic(summon, "arrival effect", () => DoArrivalEffect(summon));
             }
             catch (System.Exception e)
             {
@@ -102,6 +116,23 @@ namespace Dovahkiin
                 {
                     Hediff_AncientDragonborn.VanishNow(summon);
                 }
+            }
+        }
+
+        /// <summary>
+        /// Run one decorative step. It logs loudly on failure - a silent fallback is
+        /// indistinguishable from the bug it is hiding - but never takes the ally down with it.
+        /// </summary>
+        private static void TryCosmetic(Pawn summon, string what, System.Action step)
+        {
+            try
+            {
+                step();
+            }
+            catch (System.Exception e)
+            {
+                Log.Error("[Dovahkiin] Ancient Dragonborn: '" + what + "' failed. He is still "
+                    + "here and still doomed; only this detail is missing. " + e);
             }
         }
 
