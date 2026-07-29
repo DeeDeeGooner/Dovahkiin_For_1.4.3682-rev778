@@ -64,23 +64,26 @@
         <statOffsets>
           <MoveSpeed>0.4</MoveSpeed>
           <!--
-            +100% physical armour, at the user's request: he is a ghost, and a strong one.
+            Physical armour. Started at 1.00 at the user's request, then cut 25% to 0.75 on
+            their instruction once the scale was spelled out.
 
-            BE CLEAR WHAT THIS MEANS. RimWorld armour is a fraction, so 1.00 is 100 percentage
-            points, not "double what he had" - he had none. At 1.00 an incoming Sharp or Blunt
-            hit is halved and then almost always fully deflected, which makes him very close to
-            immune to conventional weapons. Combined with vanilla invisibility making him hard
-            to target at all, expect him to be nearly unkillable.
+            RimWorld armour is a FRACTION, so 0.75 is 75 percentage points and he had none
+            before. Even here conventional weapons are heavily blunted, and vanilla invisibility
+            already makes him hard to target, so he stays very durable. Intended: he is a ghost,
+            time-boxed to 1.5 in-game hours once a day, only while the Dovahkiin is in trouble.
 
-            That is the requested effect and it is time-boxed - 1.5 in-game hours, once a day,
-            and only when the Dovahkiin is already in trouble. It is also the number most
-            likely to need pulling back after a playtest, which is why it lives here.
+            THE LADDER, so these keep their order if either is ever retuned:
+              Ancient Dragonborn   0.75 sharp / 0.75 blunt   <- this
+              Call of Valor hero   0.66 sharp / 0.33 blunt   <- a real steel plate suit
+            The hero is deliberately the weaker of the two, per the user, and his numbers are
+            not invented: vanilla plate armour carries StuffEffectMultiplierArmor 0.73 and steel
+            has StuffPower_Armor_Sharp 0.9 / Blunt 0.45, giving 0.657 and 0.329. Rounded. That
+            also means the hero is much softer against BLUNT, which is what plate really is.
 
-            NOT heat or frost: this is physical resistance only. His own element already comes
-            from the breath he rolls.
+            NOT heat or frost: physical only. His element comes from the breath he rolls.
           -->
-          <ArmorRating_Sharp>1.00</ArmorRating_Sharp>
-          <ArmorRating_Blunt>1.00</ArmorRating_Blunt>
+          <ArmorRating_Sharp>0.75</ArmorRating_Sharp>
+          <ArmorRating_Blunt>0.75</ArmorRating_Blunt>
         </statOffsets>
         <statFactors>
           <IncomingDamageFactor>0.75</IncomingDamageFactor>

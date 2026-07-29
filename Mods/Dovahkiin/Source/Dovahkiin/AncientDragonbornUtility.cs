@@ -235,9 +235,28 @@ namespace Dovahkiin
                 c => c.InBounds(map) && c.Standable(map) && c != origin, out cell);
         }
 
+        /// <summary>
+        /// Medieval Overhaul's greataxe if that mod is installed, otherwise ours.
+        ///
+        /// Looked up BY NAME with GetNamedSilentFail, never through DovahkiinDefOf: a [DefOf]
+        /// field for a MayRequire def logs a red error on every startup for anyone without the
+        /// mod, which is exactly the failure CLAUDE.md's no-hard-dependency rule is about.
+        /// </summary>
+        private const string MedievalOverhaulAxeDefName = "Dovahkiin_AncientDragonbornAxe_MO";
+
+        private static ThingDef ResolveAxeDef()
+        {
+            ThingDef mo = DefDatabase<ThingDef>.GetNamedSilentFail(MedievalOverhaulAxeDefName);
+            if (mo != null)
+            {
+                return mo;
+            }
+            return DovahkiinDefOf.Dovahkiin_AncientDragonbornAxe;
+        }
+
         private static void EquipAxe(Pawn summon)
         {
-            ThingDef axeDef = DovahkiinDefOf.Dovahkiin_AncientDragonbornAxe;
+            ThingDef axeDef = ResolveAxeDef();
             if (axeDef == null || summon.equipment == null)
             {
                 return;

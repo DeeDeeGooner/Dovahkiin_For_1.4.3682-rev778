@@ -548,12 +548,23 @@ namespace Dovahkiin
             helm = GraphicDatabase.Get<Graphic_Multi>(TexRoot + "DragonAspectHelm",
                 ShaderDatabase.Transparent, body, Color.white);
 
-            // The Ancient Dragonborn's axe. Cutout, not Transparent: it is a solid object, and
-            // the same texture the ThingDef uses so the drawn axe and the equipped one can
-            // never diverge.
-            axeGraphic = GraphicDatabase.Get<Graphic_Single>(
-                "Things/Item/Equipment/DovahkiinAncientAxe", ShaderDatabase.Cutout,
-                Vector2.one, Color.white);
+            // The Ancient Dragonborn's axe. Cutout, not Transparent: it is a solid object.
+            //
+            // Resolved from the SAME ThingDef the summon actually equips, so the drawn axe and
+            // the carried one can never diverge - which matters now that the def is Medieval
+            // Overhaul's greataxe when that mod is present and ours when it is not. Reading the
+            // def's own graphicData also picks up its colour, so the ember tint comes along for
+            // free rather than being duplicated here.
+            ThingDef equippedAxe = DefDatabase<ThingDef>.GetNamedSilentFail(
+                "Dovahkiin_AncientDragonbornAxe_MO");
+            if (equippedAxe == null)
+            {
+                equippedAxe = DovahkiinDefOf.Dovahkiin_AncientDragonbornAxe;
+            }
+            if (equippedAxe != null && equippedAxe.graphicData != null)
+            {
+                axeGraphic = equippedAxe.graphicData.Graphic;
+            }
 
             // MoteGlow for the aura: it is light, not a surface, and should add rather than
             // occlude. The armour above uses Transparent because it IS a surface.
