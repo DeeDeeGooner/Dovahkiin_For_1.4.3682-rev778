@@ -1,4 +1,4 @@
-# =====================================================================================
+﻿# =====================================================================================
 #  The Ancient Dragonborn's spectral greataxe.
 #
 #  Palette is taken from GenerateDragonAspect.ps1 deliberately - the axe and the armour are
@@ -65,8 +65,11 @@ $g.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuali
 # That matters because we now borrow their halberd's Melee Animation tweak data verbatim, and
 # OffX/OffY/Rotation/BladeStart/BladeEnd are all expressed in THEIR texture's frame. Copying
 # those onto a mirrored sprite would have the pawn holding this by the blade.
-$BUTT_X = 0.26; $BUTT_Y = 0.86
-$HEAD_X = 0.70; $HEAD_Y = 0.20
+# LONGER, to match theirs. Measured along the weapon axis, their halberd spans 341px of a 256
+# frame (it uses nearly the whole diagonal) while ours spanned 287. The user asked for a longer
+# handle and this is where it comes from.
+$BUTT_X = 0.12; $BUTT_Y = 0.93
+$HEAD_X = 0.82; $HEAD_Y = 0.14
 
 function PT([double]$fx, [double]$fy) {
   return (New-Object System.Drawing.PointF ([single]($fx*$N)), ([single]($fy*$N)))
@@ -77,8 +80,16 @@ function PT([double]$fx, [double]$fy) {
 # along its length - a pen would give one flat colour and the axe would not match the
 # armour's ramp.
 # ---------------------------------------------------------------------------------
-$HAFT_W_BUTT = 0.024
-$HAFT_W_HEAD = 0.036
+# THINNER, AND ALMOST PARALLEL.
+#
+# The taper was the single biggest reason ours read as a wedge rather than a polearm. Measured,
+# their halberd's haft is a CONSTANT 9.9px half-width for the first 60% of its length - a
+# parallel pole. Ours grew by 50% from butt to head, so the shaft merged into the head and the
+# whole thing read as one widening blade.
+#
+# A hair of taper is kept, because a dead-parallel rectangle reads as a pipe.
+$HAFT_W_BUTT = 0.015
+$HAFT_W_HEAD = 0.018
 $dx = $HEAD_X - $BUTT_X; $dy = $HEAD_Y - $BUTT_Y
 $len = [Math]::Sqrt($dx*$dx + $dy*$dy)
 $ux = $dx/$len; $uy = $dy/$len
@@ -156,7 +167,13 @@ function DrawBit([double]$side, [double]$o, [double]$up, $raw, [int]$edgeAlpha, 
 
   # Dark keyline UNDER the fill - see the note by the haft outline. Stroked before filling, so
   # the fill covers the inner half and the outer half survives as the outline.
-  $penLine = New-Object System.Drawing.Pen (RGB 14 18 28 245), ([single](6.0*$SS))
+  #
+  # WIDTH IS PROPORTIONAL TO THE SHAPE, not fixed. It was a flat 6px, which was fine on the old
+  # oversized head and swallowed the facets entirely once the head shrank to halberd
+  # proportions - the blade went back to reading as a rounded blob. A keyline has to scale with
+  # what it outlines or it stops being an outline and becomes the shape.
+  $lineW = [Math]::Max(2.0*$SS, $o * $N * 0.055)
+  $penLine = New-Object System.Drawing.Pen (RGB 14 18 28 245), ([single]$lineW)
   $penLine.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Miter
   $penLine.MiterLimit = [single]6.0
   $g.DrawPath($penLine, $path); $penLine.Dispose()
@@ -208,8 +225,50 @@ $SPIKE = @(
   @( (0.95), (-0.55) ),
   @( (0.10), (-0.34) )
 )
-DrawBit  1.0 0.205 0.165 $BLADE 250 2.2
-DrawBit -1.0 0.085 0.062 $SPIKE 235 1.8
+# Head SMALLER relative to the weapon: their peak half-width is 0.137 of the length, ours was
+# 0.217. A halberd is mostly pole.
+# Measured against theirs after the first pass and nudged back up: peak half-width as a
+# fraction of length came out 0.101 against their 0.137, i.e. slightly too small. 0.175/0.132
+# lands nearer without going back to the oversized head that read as a spade.
+DrawBit  1.0 0.175 0.132 $BLADE 250 2.0
+DrawBit -1.0 0.076 0.055 $SPIKE 235 1.7
+
+# THE SPEAR POINT above the head - a halberd's defining feature, and ours had none.
+#
+# Their profile shows the head region running all the way to 97% of the length and ending in a
+# narrow 6.4px tip; that tip is the point. Without it this is an axe on a pole, which is what
+# ours read as. Drawn along the haft axis, past the head, and given the same keyline treatment.
+# Long and narrow: the first attempt was 0.115 long and 0.020 half-wide, which is a stub that
+# barely cleared the blade. Same rule as the aura flares - much longer than wide, or it reads
+# as a bead rather than a point.
+$SPEAR_LEN = 0.175
+$SPEAR_HALF = 0.015
+$spearTipX = $HEAD_X + $ux*$SPEAR_LEN
+$spearTipY = $HEAD_Y + $uy*$SPEAR_LEN
+$spearBaseX = $HEAD_X - $ux*0.020
+$spearBaseY = $HEAD_Y - $uy*0.020
+$spear = @(
+  (PT ($spearBaseX + $px*$SPEAR_HALF) ($spearBaseY + $py*$SPEAR_HALF)),
+  (PT ($spearTipX)                    ($spearTipY)),
+  (PT ($spearBaseX - $px*$SPEAR_HALF) ($spearBaseY - $py*$SPEAR_HALF))
+)
+$spearPath = New-Object System.Drawing.Drawing2D.GraphicsPath
+$spearPath.AddPolygon([System.Drawing.PointF[]]$spear)
+$penSpearLine = New-Object System.Drawing.Pen (RGB 14 18 28 245), ([single](5.0*$SS))
+$penSpearLine.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Miter
+$penSpearLine.MiterLimit = [single]6.0
+$g.DrawPath($penSpearLine, $spearPath); $penSpearLine.Dispose()
+$spearRect = $spearPath.GetBounds()
+if ($spearRect.Width -lt 1) { $spearRect.Width = 1 }
+if ($spearRect.Height -lt 1) { $spearRect.Height = 1 }
+$brSpear = New-Object System.Drawing.Drawing2D.LinearGradientBrush $spearRect, `
+  (RGB $C_BLUE_MID[0] $C_BLUE_MID[1] $C_BLUE_MID[2] 230), `
+  (RGB $C_BLUE_HOT[0] $C_BLUE_HOT[1] $C_BLUE_HOT[2] 244), ([single]45.0)
+$g.FillPath($brSpear, $spearPath); $brSpear.Dispose()
+$penSpearEdge = New-Object System.Drawing.Pen (RGB $C_BLUE_HOT[0] $C_BLUE_HOT[1] $C_BLUE_HOT[2] 250), ([single](1.8*$SS))
+$penSpearEdge.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Miter
+$g.DrawPath($penSpearEdge, $spearPath); $penSpearEdge.Dispose()
+$spearPath.Dispose()
 
 # --- a warm collar where head meets haft, so the two colours meet at something hot ---
 $collar = New-Object System.Drawing.Pen (RGB $C_HOT[0] $C_HOT[1] $C_HOT[2] 220), ([single](5.0*$SS))
@@ -251,7 +310,7 @@ $fontB = New-Object System.Drawing.Font "Segoe UI", 14, ([System.Drawing.FontSty
 $fontS = New-Object System.Drawing.Font "Segoe UI", 10
 $brW = New-Object System.Drawing.SolidBrush (RGB 235 235 230 255)
 $brG = New-Object System.Drawing.SolidBrush (RGB 165 168 160 255)
-$gs.DrawString("Spectral greataxe", $fontB, $brW, [single]18, [single]12)
+$gs.DrawString("Spectral halberd", $fontB, $brW, [single]18, [single]12)
 
 $tile = 12
 foreach ($cell in @(@(18,46,256,"full size 256px"), @(300,46,96,"as it appears in-hand, 96px"), @(430,46,48,"colony zoom, 48px"))) {
@@ -275,3 +334,4 @@ $sheet.Save($prev, [System.Drawing.Imaging.ImageFormat]::Png)
 $sheet.Dispose(); $final.Dispose()
 Write-Output ("wrote preview " + $prev)
 Write-Output "DONE"
+
