@@ -46,18 +46,31 @@ namespace Dovahkiin
         // and the Thu'um bar do. Seeded from spawn so two overlays never pulse in lockstep.
         private float phaseOffset;
 
-        // --- geometry, all in world units. A human body sprite draws at ~1.5. ---
-        private const float BodyDrawSize = 1.5f;
-        private const float HelmDrawSize = 0.93f;
+        // --- geometry ---
+        //
+        // The armour is NOT drawn at a fixed size. It borrows the pawn's own body overlay mesh
+        // via PawnRenderer.GetBodyOverlayMeshSet(), which is public and is the same mesh
+        // firefoam and wounds use to paint onto a body.
+        //
+        // Hardcoding 1.5 was the first version's bug. MeshPool.HumanlikeBodyWidth is indeed
+        // 1.5, but that is only the DEFAULT: MeshPool also holds humanlikeBodySet_Male,
+        // _Female, _Hulk, _Fat, _Thin and a humanlikeMeshSet_Custom dictionary that body mods
+        // populate. On a pawn whose body type or mod uses a different width, a fixed 1.5
+        // overlay came out smaller than the pawn - the helm ended up smaller than the head and
+        // the shoulder fins sat inside the body outline.
+        //
+        // Everything below is expressed as a FRACTION of that mesh, so it all scales together
+        // whatever size the pawn turns out to be.
+        private const float RefBodyWidth = 1.5f;   // what the art was drawn against
 
-        // Ported from the preview that the user signed off. Pixel figures there were relative
-        // to a 232px pawn; these are those divided by 232 and multiplied by BodyDrawSize.
-        private const float OrbitInner = 0.239f;
-        private const float OrbitOuter = 0.362f;
-        private const float FlareInner = 0.343f;
-        private const float FlareOuter = 0.466f;
-        private const float RingAzure  = 1.914f;
-        private const float RingEmber  = 1.345f;
+        // Ported from the preview the user signed off. Pixel figures there were relative to a
+        // 232px pawn; these are those divided by 232, then by RefBodyWidth to become fractions.
+        private const float OrbitInnerFrac = 0.159f;
+        private const float OrbitOuterFrac = 0.241f;
+        private const float FlareInnerFrac = 0.229f;
+        private const float FlareOuterFrac = 0.311f;
+        private const float RingAzureFrac  = 1.276f;
+        private const float RingEmberFrac  = 0.897f;
 
         private const float LoopSeconds = 3.4f;   // one full pass of the particle cycle
 
@@ -137,15 +150,34 @@ namespace Dovahkiin
             }
             EnsureGraphics();
 
+            PawnRenderer renderer = target.Drawer.renderer;
+            if (renderer == null)
+            {
+                return;
+            }
+
             Vector3 basePos = target.Drawer.DrawPos;
             basePos.y = AltitudeLayer.PawnState.AltitudeFor();
             Rot4 rot = target.Rotation;
 
-            // --- the armour itself, matched to the pawn's facing ---
+            // THE PAWN'S OWN body mesh, not one of ours. This is what makes the armour fit a
+            // Hulk, a child or a modded body type instead of always being 1.5 wide.
+            GraphicMeshSet meshSet = renderer.GetBodyOverlayMeshSet();
+            if (meshSet == null)
+            {
+                return;
+            }
+            Mesh bodyMesh = meshSet.MeshAt(rot);
+
+            // Everything else is scaled off that same mesh, so the aura and helm grow and
+            // shrink with the armour rather than drifting out of proportion.
+            float scale = BodyScaleOf(bodyMesh);
+
+            // --- the armour itself, matched to the pawn's facing and size ---
             Graphic body = level >= 2 ? bodyL2 : bodyL1;
             if (body != null)
             {
-                Graphics.DrawMesh(body.MeshAt(rot), basePos, Quaternion.identity,
+                Graphics.DrawMesh(bodyMesh, basePos, Quaternion.identity,
                     body.MatAt(rot, this), 0);
             }
 
@@ -156,23 +188,25 @@ namespace Dovahkiin
 
             // --- the helm, at the pawn's REAL head position ---
             // BaseHeadOffsetAt is public on PawnRenderer, so the helm follows the head rather
-            // than being pinned at a guessed offset above the body.
-            if (helm != null && target.Drawer.renderer != null)
+            // than sitting at a guessed offset above the body. It is drawn on the SAME body
+            // mesh: the helm art is sized inside its frame to match a head, so sharing the
+            // body's mesh keeps helm and armour in proportion on any pawn.
+            if (helm != null)
             {
-                Vector3 headPos = basePos + target.Drawer.renderer.BaseHeadOffsetAt(rot);
+                Vector3 headPos = basePos + renderer.BaseHeadOffsetAt(rot);
                 headPos.y = AltitudeLayer.PawnState.AltitudeFor() + 0.005f;
-                Graphics.DrawMesh(helm.MeshAt(rot), headPos, Quaternion.identity,
+                Graphics.DrawMesh(bodyMesh, headPos, Quaternion.identity,
                     helm.MatAt(rot, this), 0);
             }
 
-            DrawAura(basePos);
+            DrawAura(basePos, scale);
         }
 
         /// <summary>
         /// Two bands of constant underglow plus the winking crescents. The whole cycle is
         /// driven from real time so it keeps moving while the game is paused.
         /// </summary>
-        private void DrawAura(Vector3 basePos)
+        private void DrawAura(Vector3 basePos, float scale)
         {
             float t = ((Time.realtimeSinceStartup + phaseOffset) % LoopSeconds) / LoopSeconds;
             float twoPi = Mathf.PI * 2f;
@@ -182,9 +216,11 @@ namespace Dovahkiin
 
             if (ringGraphic != null)
             {
-                DrawQuad(ringGraphic, ringPos, RingAzure * (1f + 0.05f * Mathf.Sin(twoPi * t)),
+                DrawQuad(ringGraphic, ringPos,
+                    RingAzureFrac * scale * (1f + 0.05f * Mathf.Sin(twoPi * t)),
                     0f, false, Azure, 0.72f + 0.28f * Mathf.Sin(twoPi * t));
-                DrawQuad(ringGraphic, ringPos, RingEmber * (1f + 0.06f * Mathf.Sin(twoPi * t + Mathf.PI)),
+                DrawQuad(ringGraphic, ringPos,
+                    RingEmberFrac * scale * (1f + 0.06f * Mathf.Sin(twoPi * t + Mathf.PI)),
                     0f, false, Ember, 0.62f + 0.26f * Mathf.Sin(twoPi * t + Mathf.PI));
             }
 
@@ -228,8 +264,9 @@ namespace Dovahkiin
                     : hSpin * 360f + (hTumb - 0.5f) * 70f * life;
 
                 bool outer = hRow > 0.5f;
-                float orbit = (outer ? OrbitOuter : OrbitInner) * (0.94f + 0.12f * life);
-                float size = (outer ? FlareOuter : FlareInner)
+                float orbit = (outer ? OrbitOuterFrac : OrbitInnerFrac) * scale
+                    * (0.94f + 0.12f * life);
+                float size = (outer ? FlareOuterFrac : FlareInnerFrac) * scale
                     * (0.90f + hSize * 0.22f) * (0.92f + 0.14f * life);
 
                 // Half blended, a quarter flat ember, a quarter flat azure. The blended sprite
@@ -296,6 +333,30 @@ namespace Dovahkiin
         }
 
         /// <summary>
+        /// How wide the pawn's body actually draws, in world units, read off the mesh itself.
+        ///
+        /// GraphicMeshSet does not expose the width it was built with, and PawnRenderer does
+        /// not expose the pawn's body width either - so it is measured from the mesh bounds,
+        /// which is the one source that is always right. That covers vanilla body types and
+        /// any mod that registers a custom mesh set, without needing to know about either.
+        /// </summary>
+        private static float BodyScaleOf(Mesh mesh)
+        {
+            if (mesh == null)
+            {
+                return RefBodyWidth;
+            }
+            float w = mesh.bounds.size.x;
+            // A degenerate or unexpected mesh falls back to the size the art was drawn for
+            // rather than collapsing the overlay to nothing.
+            if (w <= 0.01f || w > 12f)
+            {
+                return RefBodyWidth;
+            }
+            return w;
+        }
+
+        /// <summary>
         /// Deterministic 0..1 hash, the same one the preview used. Deterministic matters:
         /// a reloaded save keeps its particle sequence instead of resynchronising.
         /// </summary>
@@ -329,13 +390,16 @@ namespace Dovahkiin
             // Graphic_Multi wants _north/_east/_south. A missing _west is mirrored from _east
             // automatically - confirmed empirically, since the body sprites this art was sized
             // against ship exactly three files and render correctly in game.
-            Vector2 body = new Vector2(BodyDrawSize, BodyDrawSize);
+            //
+            // The drawSize passed here is irrelevant to the armour: DrawAt uses the PAWN's
+            // mesh, not the graphic's. These graphics are only ever asked for their Material.
+            Vector2 body = new Vector2(RefBodyWidth, RefBodyWidth);
             bodyL1 = GraphicDatabase.Get<Graphic_Multi>(TexRoot + "DragonAspect_L1",
                 ShaderDatabase.Transparent, body, Color.white);
             bodyL2 = GraphicDatabase.Get<Graphic_Multi>(TexRoot + "DragonAspect_L2",
                 ShaderDatabase.Transparent, body, Color.white);
             helm = GraphicDatabase.Get<Graphic_Multi>(TexRoot + "DragonAspectHelm",
-                ShaderDatabase.Transparent, new Vector2(HelmDrawSize, HelmDrawSize), Color.white);
+                ShaderDatabase.Transparent, body, Color.white);
 
             // MoteGlow for the aura: it is light, not a surface, and should add rather than
             // occlude. The armour above uses Transparent because it IS a surface.

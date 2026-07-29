@@ -29,7 +29,9 @@ overlay the whole spec hangs on.
 
 1. Raise **Dragon Aspect** to level 1. Select the Dovahkiin, click **mul**.
 2. ✅ It does **not** ask you to aim. The shout goes off on you where you stand.
-3. ✅ An **orange ring** snaps outward from your feet.
+3. ✅ An **orange ring** snaps outward from your feet — and then a second ring travels
+   **back inward** to you, turning **blue** as it comes home.
+   - The return only starts once the outgoing ring has finished, so watch for about a second.
 4. ✅ Health tab shows **dragon aspect**, stage **Mul**, with a countdown.
 
 If the button does nothing at all, stop — that is the specific failure this shout shape is
@@ -42,6 +44,10 @@ built to avoid and I want to know immediately.
 1. With **mul** active, look at the Dovahkiin closely.
 2. ✅ **Arm armour only** — spectral plates down both arms, two small spikes at each elbow.
    Nothing on the chest yet.
+   - **Check the fit.** The armour should match the pawn's own width, not sit inside it.
+     It now borrows the pawn's own body mesh, so it should be right for any body type
+     or body mod. If it still looks the wrong size, tell me what that pawn is —
+     body type, xenotype, child or adult.
 3. **Walk the pawn around.** ✅ The armour follows exactly, with no lag and no drift.
 4. **Turn the pawn** so it faces up, down, left and right.
    ✅ The armour turns with them. ✅ Facing left is the mirror of facing right.

@@ -379,6 +379,15 @@ namespace Dovahkiin
         public bool spawnOverlay = false;
 
         /// <summary>
+        /// After the outgoing ring has finished, send a second one back INWARD, grading from
+        /// ringTint to this colour as it returns to the caster. Alpha zero disables it.
+        ///
+        /// The return is cosmetic by construction - Thing_ShoutWave skips its whole strike loop
+        /// for an inward wave - so it cannot hit anyone a second time on the way home.
+        /// </summary>
+        public Color ringReturnTint = new Color(0f, 0f, 0f, 0f);
+
+        /// <summary>
         /// Slow Time's other half: a slow laid on EVERY other pawn in range, allies included,
         /// so the world appears to crawl while the caster does not.
         ///
@@ -470,6 +479,17 @@ namespace Dovahkiin
                 ShoutTargeting.SpawnRingBurst(caster, Props.ringRadius, Props.ringTint,
                     Props.ringFleck, Props.ringFleckScale, Props.ringCellsPerSecond,
                     Props.ringDistortion, Props.ringAlpha);
+
+                // The return leg. Queued behind the outgoing ring by exactly its flight time,
+                // so it starts as the first one finishes rather than overlapping it.
+                if (Props.ringReturnTint.a > 0f)
+                {
+                    int flight = Mathf.Max(8, Mathf.RoundToInt(
+                        Props.ringRadius / Mathf.Max(1f, Props.ringCellsPerSecond) * 60f));
+                    ShoutTargeting.SpawnRingBurst(caster, Props.ringRadius, Props.ringTint,
+                        Props.ringFleck, Props.ringFleckScale, Props.ringCellsPerSecond,
+                        false, Props.ringAlpha, true, Props.ringReturnTint, flight);
+                }
             }
             if (Props.spawnOverlay)
             {
@@ -1109,7 +1129,8 @@ namespace Dovahkiin
         /// </summary>
         internal static void SpawnRingBurst(Pawn caster, float radius, Color tint,
             FleckDef fleck, float fleckScale, float cellsPerSecond, bool distortion,
-            float alphaScale = 1f)
+            float alphaScale = 1f, bool inward = false, Color? endTint = null,
+            int startDelayTicks = 0)
         {
             if (caster == null || caster.Map == null)
             {
@@ -1118,7 +1139,8 @@ namespace Dovahkiin
             // targetCell is the caster's own cell: a ring has no facing. Thing_ShoutWave handles
             // that degenerate case explicitly rather than emitting nothing.
             Thing_ShoutWave.Spawn(caster, caster.Position, radius, 360f, tint,
-                fleck, fleckScale, cellsPerSecond, 0f, 0f, 22f, alphaScale);
+                fleck, fleckScale, cellsPerSecond, 0f, 0f, 22f, alphaScale,
+                inward, endTint, startDelayTicks);
 
             if (distortion && DovahkiinVanillaDefOf.Fleck_HeatWaveDistortion != null)
             {

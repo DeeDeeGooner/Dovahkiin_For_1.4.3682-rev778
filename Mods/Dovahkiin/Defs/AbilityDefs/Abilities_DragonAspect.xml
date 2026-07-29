@@ -63,6 +63,9 @@
         <ringFleckScale>2.0</ringFleckScale>
         <ringCellsPerSecond>26</ringCellsPerSecond>
         <ringDistortion>true</ringDistortion>
+        <!-- The return leg: a second ring travelling back INWARD, grading from the ember above
+             to this deep azure as it comes home. Alpha must be non-zero or it is skipped. -->
+        <ringReturnTint>(0.282, 0.596, 0.933, 1.0)</ringReturnTint>
         <spawnOverlay>true</spawnOverlay>
       </li>
       <li Class="CompProperties_AbilityRequiresCapacity">
@@ -94,6 +97,9 @@
         <ringFleckScale>2.2</ringFleckScale>
         <ringCellsPerSecond>28</ringCellsPerSecond>
         <ringDistortion>true</ringDistortion>
+        <!-- The return leg: a second ring travelling back INWARD, grading from the ember above
+             to this deep azure as it comes home. Alpha must be non-zero or it is skipped. -->
+        <ringReturnTint>(0.282, 0.596, 0.933, 1.0)</ringReturnTint>
         <spawnOverlay>true</spawnOverlay>
       </li>
       <li Class="CompProperties_AbilityRequiresCapacity">
@@ -125,6 +131,9 @@
         <ringFleckScale>2.4</ringFleckScale>
         <ringCellsPerSecond>30</ringCellsPerSecond>
         <ringDistortion>true</ringDistortion>
+        <!-- The return leg: a second ring travelling back INWARD, grading from the ember above
+             to this deep azure as it comes home. Alpha must be non-zero or it is skipped. -->
+        <ringReturnTint>(0.282, 0.596, 0.933, 1.0)</ringReturnTint>
         <spawnOverlay>true</spawnOverlay>
       </li>
       <li Class="CompProperties_AbilityRequiresCapacity">

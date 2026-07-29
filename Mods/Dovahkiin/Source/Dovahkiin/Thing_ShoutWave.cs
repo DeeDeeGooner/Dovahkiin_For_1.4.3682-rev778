@@ -48,10 +48,28 @@ namespace Dovahkiin
         private float appliedHediffSeverity = 1f;
         private HashSet<Pawn> alreadyHit;
 
+        /// <summary>
+        /// Runs the front from the OUTER edge back to the caster instead of outward.
+        ///
+        /// An inward wave is cosmetic by construction: StrikeBand is skipped entirely for one,
+        /// so it can never damage, stun or apply anything. That is deliberate - a returning
+        /// wave passes back over ground the outgoing wave already hit, and hitting everyone a
+        /// second time on the way home is not what "the shout comes back" should mean.
+        /// </summary>
+        private bool inward;
+
+        /// <summary>Colour at the END of the wave's life. Lerped from headColor over progress.</summary>
+        private Color endColor;
+        private bool hasEndColor;
+
+        /// <summary>Ticks to wait before moving. Lets a return wave be queued behind an outgoing one.</summary>
+        private int startDelayTicks;
+
         public static Thing_ShoutWave Spawn(Pawn caster, IntVec3 targetCell, float range,
             float coneAngle, Color headColor, FleckDef fleckDef, float fleckScale,
             float cellsPerSecond = CellsPerSecond, float laneWidth = 0f,
-            float vortexRadius = 0f, float vortexSpinPerTick = 22f, float alphaScale = 1f)
+            float vortexRadius = 0f, float vortexSpinPerTick = 22f, float alphaScale = 1f,
+            bool inward = false, Color? endColor = null, int startDelayTicks = 0)
         {
             if (caster == null || caster.Map == null || DovahkiinDefOf.Dovahkiin_ShoutWave == null)
             {
@@ -75,6 +93,10 @@ namespace Dovahkiin
             wave.vortexRadius = vortexRadius;
             wave.vortexSpinPerTick = vortexSpinPerTick;
             wave.alphaScale = Mathf.Clamp(alphaScale, 0.05f, 1f);
+            wave.inward = inward;
+            wave.endColor = endColor.HasValue ? endColor.Value : headColor;
+            wave.hasEndColor = endColor.HasValue;
+            wave.startDelayTicks = Mathf.Max(0, startDelayTicks);
             wave.lifespanTicks = Mathf.Max(8, Mathf.RoundToInt(range / wave.cellsPerSecond * 60f));
             GenSpawn.Spawn(wave, caster.Position, caster.Map);
             return wave;
@@ -476,6 +498,12 @@ namespace Dovahkiin
 
         public override void Tick()
         {
+            // Queued behind an outgoing wave: sit still and draw nothing until our turn.
+            if (startDelayTicks > 0)
+            {
+                startDelayTicks--;
+                return;
+            }
             age++;
             if (rings == null || age > lifespanTicks)
             {
@@ -494,17 +522,25 @@ namespace Dovahkiin
             float progress = (float)age / lifespanTicks;
             int bands = rings.Count - 1;
 
-            // The bright leading edge, plus a short fading tail behind it.
-            int head = Mathf.RoundToInt(progress * bands);
+            // The bright leading edge, plus a short fading tail behind it. An inward wave runs
+            // the same front backwards, from the outer edge home to the caster.
+            int head = Mathf.RoundToInt((inward ? 1f - progress : progress) * bands);
 
             // Deliver the hit exactly where the front is now. Every band between the last tick
             // and this one is struck, so nobody is skipped when the front moves more than one
             // cell per tick.
-            for (int b = lastStruckBand + 1; b <= head; b++)
+            //
+            // Skipped entirely when inward: a returning wave is cosmetic by construction. It
+            // travels back over ground the outgoing wave already covered, and striking everyone
+            // a second time on the way home is not what a returning wave should mean.
+            if (!inward)
             {
-                StrikeBand(b);
+                for (int b = lastStruckBand + 1; b <= head; b++)
+                {
+                    StrikeBand(b);
+                }
+                lastStruckBand = Mathf.Max(lastStruckBand, head);
             }
-            lastStruckBand = Mathf.Max(lastStruckBand, head);
             for (int back = 0; back <= trailBands; back++)
             {
                 int band = head - back;
@@ -522,7 +558,9 @@ namespace Dovahkiin
                 {
                     continue;
                 }
-                Color c = headColor;
+                // Grade towards endColor over the wave's life when one was given - this is how
+                // Dragon Aspect's returning ring turns from ember to azure as it comes home.
+                Color c = hasEndColor ? Color.Lerp(headColor, endColor, progress) : headColor;
                 c.a = alpha;
 
                 // A vortex is drawn as a FUNNEL, not as scattered cell dust - see DrawFunnel.
@@ -624,6 +662,10 @@ namespace Dovahkiin
             // load rather than persisting half-drawn state.
             Scribe_Values.Look(ref age, "age", 0);
             Scribe_Values.Look(ref lifespanTicks, "lifespanTicks", 45);
+            // A queued return wave has not started yet, so unlike age this genuinely has to
+            // survive a save - otherwise it fires the instant the game reloads.
+            Scribe_Values.Look(ref startDelayTicks, "startDelayTicks", 0);
+            Scribe_Values.Look(ref inward, "inward", false);
         }
     }
 }

@@ -645,10 +645,22 @@ function BuildHelm([string]$rot) {
   $g.SmoothingMode      = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
   $g.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
 
+  # The helm is drawn on the pawn's BODY mesh (see Thing_DragonAspectOverlay), so it has to be
+  # sized inside this 256 frame the way a head occupies a body-sized quad - not the way a head
+  # fills its own head texture.
+  #
+  # A head is about 60x74 px of a 192 head frame, and head and body quads are both 1.5 wide
+  # (MeshPool.HumanlikeHeadAverageWidth = HumanlikeBodyWidth = 1.5). So a head covers 0.31 x
+  # 0.39 of a quad, which in this 256 frame is about 80 x 100 px - half-width 40, half-height
+  # 50. A helm sits slightly proud of the skull, hence 44 and 54.
+  #
+  # The first version used 31 and 38, which made the helm barely two thirds of a head. On top
+  # of a fixed 0.93 draw size that came out at less than half, and the user reported the helm
+  # as literally smaller than the pawn.
   $hcx = 128.0
   $hcy = 128.0
-  $hw  = if ($rot -eq "east") { 27.0 } else { 31.0 }   # half-width of the skull cap
-  $hh  = 38.0                                          # half-height
+  $hw  = if ($rot -eq "east") { 39.0 } else { 44.0 }   # half-width of the skull cap
+  $hh  = 54.0                                          # half-height
 
   # skull cap - round at the front, serrated across the back
   $cap = BuildCapPath $hcx $hcy $hw $hh $rot

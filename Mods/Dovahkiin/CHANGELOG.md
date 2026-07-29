@@ -1,5 +1,55 @@
 # CHANGELOG
 
+## Phase 2i fix — armour smaller than the pawn, and the wave never returned (2026-07-29)
+
+Second playtest. Both reports correct, and the first one was a better guess than it looked.
+
+### "The helmet is literally smaller than the pawn, the shoulder pikes are inside its width"
+
+The user wondered whether their body mod was to blame. **Essentially yes** — though the fault
+was mine for hardcoding a size rather than asking the pawn.
+
+*Root cause:* `Thing_DragonAspectOverlay` drew at a fixed `1.5` world units.
+`MeshPool.HumanlikeBodyWidth` is indeed 1.5, but that is only the DEFAULT. `MeshPool` also
+holds `humanlikeBodySet_Male`, `_Female`, `_Hulk`, `_Fat`, `_Thin` and a
+`humanlikeMeshSet_Custom` dictionary that body mods populate. Any pawn not on the default
+width got an overlay that did not match them.
+
+*Fix:* draw with `PawnRenderer.GetBodyOverlayMeshSet().MeshAt(rot)` — public, and the same
+mesh firefoam and wounds use to paint onto a body. It fits any body type, child or modded
+frame without the mod knowing anything about them. Everything else — helm, aura rings,
+particle orbits and sizes — is now expressed as a FRACTION of that mesh, measured off
+`mesh.bounds.size.x`, so it all scales together. Rejected: enumerating the body-type mesh sets
+by hand, which would have needed updating for every body mod ever installed.
+
+*Second, separate cause for the helm.* Head and body quads are both 1.5
+(`HumanlikeHeadAverageWidth` = `HumanlikeBodyWidth`). What differs is how much of the texture
+the art fills: a head is about 60×74 of a 192 frame, so 0.31 × 0.39 of its quad. The helm was
+drawn at 62×76 in a 256 frame — 0.24 × 0.30 — **and** at draw size 0.93, which stacked into
+less than half a head. Redrawn at 88×108 and drawn on the body mesh.
+
+### "The wave isn't coming back at all"
+
+Correct, and it was never built. Earlier in the session I established that
+`Thing_ShoutWave` travels one way with a single fixed colour, said the return needed three new
+fields, and then shipped the outgoing half without flagging the gap in the test script. That
+is on me — the test script should have listed it as absent, as it does for the summon.
+
+*Fix:* three fields on `Thing_ShoutWave`, all optional so no existing caller changes meaning.
+
+- `inward` — runs the front from the outer edge home instead of outward
+- `endColor` — `Color.Lerp(headColor, endColor, progress)` across the wave's life
+- `startDelayTicks` — lets the return be queued behind the outgoing ring by exactly its flight
+  time, so it begins as the first finishes rather than overlapping it
+
+**An inward wave skips `StrikeBand` entirely** and is cosmetic by construction. That is
+deliberate rather than incidental: a returning wave passes back over ground the outgoing wave
+already hit, and striking everyone a second time on the way home is not what "the shout comes
+back" should mean. `startDelayTicks` and `inward` are in `ExposeData` — unlike `age`, a queued
+return has not started yet, so without saving it the wave would fire the instant a save loaded.
+
+---
+
 ## Phase 2i fix — log spam on every tick, and near-invisible plates (2026-07-29)
 
 First playtest of Dragon Aspect. Two reports, both real.
