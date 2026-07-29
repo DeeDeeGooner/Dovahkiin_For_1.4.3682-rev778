@@ -1,5 +1,127 @@
 # CHANGELOG
 
+## Phase 2j — second playtest: four fixes, the echo, and the spectral halberd (2026-07-30)
+
+He manifested and expired correctly. Everything below came out of that round.
+
+### The armour and aura vanished about four seconds after he arrived
+
+*Root cause:* `Thing_DragonAspectOverlay.StillValid()` looked for `Dovahkiin_DragonAspect`
+specifically. The summon carries `Dovahkiin_AncientDragonborn`, so the overlay judged itself
+orphaned on its first rare tick and deleted itself while he walked on without it.
+
+*Fix:* the watched hediff is now a field set by `Attach`, defaulting to Dragon Aspect. Null on
+an old save falls back to Dragon Aspect rather than destroying a good overlay on load.
+
+### The axe was invisible — and had been equipped the whole time
+
+*Root cause:* `PawnRenderer.DrawEquipment` gates on `CarryWeaponOpenly()`, which is **false for
+an undrafted pawn**. Verified by reading the method's IL. He is autonomous and never drafted, so
+his axe only appeared mid-swing.
+
+*Fix:* the overlay draws it. That also keeps it off the pawn render path, which is the same
+reason the overlay is a follower Thing at all. It reads the graphic and `drawSize` from
+whichever ThingDef is actually equipped, so the drawn axe and the carried one cannot diverge.
+
+### A red error every single time he expired
+
+*Root cause:* Ideology treats a player-faction pawn as a colony **member**, so destroying him
+fired `Ideo.Notify_MemberCorpseDestroyed` → `RitualObligationTrigger_MemberCorpseDestroyed`,
+which dereferenced null because he deliberately has no ideo. The exception is Ideology's own.
+
+*Fix:* he leaves the player faction immediately before being destroyed, so he never looks like a
+member. `Hediff_DeadPuppet` already does this for the same class of reason. Guarding code we do
+not own was the wrong instinct.
+
+### He wandered off after fights
+
+Now walks back when he drifts past `ancientDragonbornFollowRadius` (8 cells, tunable).
+Deliberately light-touch: only fires when he is idle or wandering, never when he holds a real
+job, so it cannot interrupt a fight or re-order a pawn already returning. There is **no
+`JobMaker` type in 1.4** — checked, not assumed — so the job is constructed directly.
+
+### The invisibility comp named a type that does not exist
+
+Caught while building a preview. The def used `<li Class="HediffCompProperties_Invisibility">`
+with a `visibleToPlayer` field. **Neither exists in 1.4**; both were invented. RimWorld logs an
+XML error, drops the comp, and loads the def anyway — so he would have walked around fully
+visible while every comment, commit message and test line claimed otherwise.
+
+Corrected to the form Royalty's `PsychicInvisibility` uses, and the form this mod's own Become
+Ethereal already used **two hediffs away in the same file**. The right answer was on disk and
+was not looked at.
+
+*Known side effect, flagged for playtest:* vanilla invisibility also makes a pawn hard to
+**target**, so he is far harder to kill than his health suggests. Deleting the one comp makes
+him an ordinary visible ally if that is unwanted.
+
+### The fallen Dovahkiin's echo — user's idea
+
+Once a Dovahkiin dies, later summons wear **that Dovahkiin's face**: body type, head, hair, hair
+colour, skin, gender. Captured on every death, so it is always the most recent.
+
+**Appearance only** — no name, traits, backstory, skills or relations. A summon carrying a dead
+colonist's identity is something the colony could recognise or grieve, and each of those is a
+hook into a system expecting the pawn to persist. Scribed **deep**, unlike the pawn lists either
+side of it: it is a record of how someone looked, not a reference to them, and must outlive a
+pawn that may be discarded. `ApplyTo` ends with `SetAllGraphicsDirty` — without it every field
+is set correctly in data and ignored on screen.
+
+### Armour, and the ladder
+
+1.00 → **0.75** sharp and blunt on the user's instruction once the scale was spelled out.
+RimWorld armour is a fraction, so 0.75 is 75 percentage points. The ladder is recorded in the
+def so a later session cannot reverse it:
+
+| | sharp | blunt |
+|---|---|---|
+| Ancient Dragonborn | 0.75 | 0.75 |
+| Call of Valor hero *(not built)* | 0.66 | 0.33 |
+
+The hero's numbers are not invented: vanilla plate armour is `StuffEffectMultiplierArmor` 0.73
+and steel is `StuffPower_Armor_Sharp` 0.9 / Blunt 0.45, giving 0.657 / 0.329. That satisfies both
+constraints at once — "full plated value" and "weaker than the Ancient Dragonborn" — and makes
+the hero much softer against blunt, which is what plate really is.
+
+### The spectral halberd
+
+The user's design call, and a better one than what preceded it: ship **our** art with the full
+blue-to-orange gradient and borrow only the **behaviour** of a Medieval Overhaul weapon. No
+`MayRequire`, no fallback, no second def, identical for every player. The earlier
+recolour-their-texture approach is deleted along with its tweak file and a runtime def lookup.
+
+The weapon it behaves as is `DankPyon_MeleeWeapon_Halberd`, and everything borrowed is verbatim:
+tools (shaft 13 blunt/poke, blade 27 cut at 0.3 AP), Mass 2.75, `drawSize` (1.5,1.5),
+`equippedAngleOffset` 45 from `DankPyon_Base_Sharp_Oversize`, and the halberd's whole Melee
+Animation entry — **`MeleeWeaponType` 7**, a polearm, not the axe type 2 first used.
+
+**Melee Animation compatibility ships in our own `WeaponTweakData/` folder.** Checked rather
+than assumed that a mod may do this: `XenotypeSatyr` does, which proves the convention. Writing
+into Melee Animation's folder would have worked and been wiped by its next update. It is not a
+dependency — no `MayRequire`, no assembly reference; absent that mod the folder is never read.
+
+*The art had to be mirrored, and that was measured.* Opaque pixels per quadrant: their halberd
+is topLeft 105 / **topRight 5583** / botLeft 3252 / botRight 105 — bottom-left to top-right, head
+at top-right. Ours ran the opposite diagonal. Their tweak values live in their texture's frame,
+so on a mirrored sprite the pawn would have gripped it by the blade.
+
+*Then reshaped to their proportions*, again measured along the weapon axis rather than eyeballed:
+
+| as a fraction of length | theirs | ours before | ours now |
+|---|---|---|---|
+| haft half-width | 0.029 | 0.051 | **0.0292** |
+| head half-width | 0.137 | 0.217 | **0.1192** |
+
+Three faults: the **haft tapered** 50% from butt to head where theirs is a constant 9.9px
+parallel pole — that, more than the head, is why it read as a wedge; it was **too short**; and it
+had **no spear point**, which is what makes a halberd a halberd rather than an axe on a pole.
+
+Also fixed: the dark keyline was a fixed 6px. Fine on the old oversized head, but once the head
+shrank it was proportionally enormous and swallowed every facet, so the blade reverted to a blob.
+It now scales with the shape it outlines.
+
+---
+
 ## Phase 2j fix — the summon never appeared: the axe had no CompEquippable (2026-07-29)
 
 First playtest. Reported as "the ancient dragonborn didn't appear" with the Dovahkiin both
