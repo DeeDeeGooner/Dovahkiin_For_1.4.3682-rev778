@@ -36,8 +36,23 @@ namespace Dovahkiin
     {
         private int ticksRemaining = 3750;   // 1.5 in-game hours; overwritten at summon
 
-        /// <summary>False = Fire Breath, true = Frost Breath. Rolled once, at summon.</summary>
-        private bool usesFrost;
+        // HE KNOWS THREE SHOUTS, NOT ONE.
+        //
+        // The original design rolled fire OR frost once at summon and kept it for his whole life.
+        // The user removed that rule: he is the Dragonborn's own shard and should have Fire
+        // Breath, Frost Breath and Unrelenting Force alike. The notebook recorded the 50/50 roll
+        // as settled - it has been superseded deliberately, not forgotten.
+        private const int SHOUT_FIRE  = 0;
+        private const int SHOUT_FROST = 1;
+        private const int SHOUT_FORCE = 2;
+
+        /// <summary>
+        /// Which shout comes next, cycling 0-1-2. Seeded at summon so two summons do not open
+        /// with the same one. Cycled rather than rolled: he only gets three or four casts in a
+        /// 1.5-hour life, and at that sample size a random roll routinely produces a whole
+        /// summoning using one shout - which is the thing being fixed.
+        /// </summary>
+        private int shoutCycle;
 
         private int breathCooldown;
         private int scanCounter;
@@ -58,15 +73,15 @@ namespace Dovahkiin
             get { return ticksRemaining; }
         }
 
-        public bool UsesFrost
-        {
-            get { return usesFrost; }
-        }
-
+        /// <summary>
+        /// <paramref name="frost"/> no longer decides his only element - he has all three now.
+        /// It seeds which shout he opens with, so the coin flip the summon code already makes
+        /// still varies him instead of being discarded.
+        /// </summary>
         public void Configure(int lifetimeTicks, bool frost)
         {
             ticksRemaining = Mathf.Max(60, lifetimeTicks);
-            usesFrost = frost;
+            shoutCycle = frost ? SHOUT_FROST : SHOUT_FIRE;
             // He does not open with a breath the instant he lands - that reads as a scripted
             // cutscene rather than an ally joining a fight.
             breathCooldown = Tuning != null ? Tuning.ancientDragonbornBreathFirstDelayTicks : 120;
@@ -119,12 +134,144 @@ namespace Dovahkiin
 
             if (p.Spawned && !p.Downed && p.Map != null)
             {
+                // Resolved once per scan and shared by the breath and the melee nudge, so the two
+                // can never disagree about what he is fighting.
+                Pawn assist = FindAssistTarget(p);
+
                 if (breathCooldown <= 0)
                 {
-                    TryBreathe(p);
+                    TryBreathe(p, assist);
                 }
-                KeepNearDovahkiin(p);
+                if (!TryAssistDovahkiin(p, assist))
+                {
+                    KeepNearDovahkiin(p);
+                }
             }
+        }
+
+        /// <summary>
+        /// What, if anything, the Dovahkiin is currently fighting that this summon should join.
+        ///
+        /// WHY THIS IS NEEDED AT ALL: a wild animal is not hostile to anybody.
+        /// `GenHostility.HostileTo` returns true only for faction hostility, a manhunter mental
+        /// state (`MentalState.ForceHostileTo`), a predator hunting us, a prison break or a slave
+        /// rebellion - read out of its IL, not assumed. So when the user sent the Dovahkiin at a
+        /// wild boar, the boar was an enemy to no one: the breath scan skipped it, and his own AI
+        /// had no reason to touch it either, since hunting is a work job and he has no work types.
+        /// He stood and watched, which the user reported.
+        ///
+        /// Returns null when there is nothing to help with, which is the normal case.
+        /// </summary>
+        private static Pawn FindAssistTarget(Pawn p)
+        {
+            DovahkiinTuningDef t = Tuning;
+            float radius = t != null ? t.ancientDragonbornAssistRadius : 24f;
+            if (radius <= 0f)
+            {
+                return null;      // switched off by tuning
+            }
+
+            GameComponent_DragonbornRegistry reg = GameComponent_DragonbornRegistry.Get;
+            if (reg == null)
+            {
+                return null;
+            }
+            Pawn dov = reg.CurrentDovahkiin;
+            if (dov == null || dov.Dead || !dov.Spawned || dov.Map != p.Map)
+            {
+                return null;
+            }
+
+            // A player-ordered attack lands in CurJob; an AI-chosen one in mindState.enemyTarget.
+            // Both are checked because the Dovahkiin is a colonist and can be either.
+            Thing target = null;
+            Job dovJob = dov.CurJob;
+            if (dovJob != null && dovJob.def != null
+                && (dovJob.def == JobDefOf.AttackMelee
+                    || dovJob.def == JobDefOf.AttackStatic
+                    || dovJob.def == JobDefOf.Hunt))
+            {
+                if (dovJob.targetA.IsValid)
+                {
+                    target = dovJob.targetA.Thing;
+                }
+            }
+            if (target == null && dov.mindState != null)
+            {
+                target = dov.mindState.enemyTarget;
+            }
+
+            Pawn victim = target as Pawn;
+            if (victim == null || victim == p || victim == dov)
+            {
+                return null;
+            }
+            if (victim.Dead || !victim.Spawned || victim.Map != p.Map || victim.Downed)
+            {
+                return null;      // already beaten - let the Dovahkiin finish it
+            }
+
+            // NEVER join an attack on our own side. The Dovahkiin can be ordered to attack a
+            // colonist or a tamed animal, and a summoned ally piling onto one would be far worse
+            // than the summon doing nothing. Anything in the player faction is off limits.
+            if (victim.Faction != null && victim.Faction.IsPlayer)
+            {
+                return null;
+            }
+
+            if (p.Position.DistanceTo(victim.Position) > radius)
+            {
+                return null;      // bounded, or he abandons the man he exists to protect
+            }
+            return victim;
+        }
+
+        /// <summary>
+        /// Send him at whatever the Dovahkiin is fighting, if he is not already busy.
+        ///
+        /// Same light-touch rule as <see cref="KeepNearDovahkiin"/>: only overrides idling and
+        /// wandering, never a real job. If he is already in a fight of his own that fight is his,
+        /// and if he is already attacking this target there is nothing to do.
+        ///
+        /// Returns true when he has been given, or already holds, an attack job - which is the
+        /// signal to skip the follow nudge, because otherwise the two would fight each other for
+        /// his attention every scan.
+        /// </summary>
+        private static bool TryAssistDovahkiin(Pawn p, Pawn victim)
+        {
+            if (victim == null || p.jobs == null)
+            {
+                return false;
+            }
+
+            Job cur = p.CurJob;
+            if (cur != null && cur.def == JobDefOf.AttackMelee
+                && cur.targetA.IsValid && cur.targetA.Thing == victim)
+            {
+                return true;      // already on it
+            }
+            if (cur != null
+                && cur.def != JobDefOf.Wait
+                && cur.def != JobDefOf.Wait_Wander
+                && cur.def != JobDefOf.Wait_Combat
+                && cur.def != JobDefOf.GotoWander
+                && cur.def != JobDefOf.Goto)
+            {
+                return false;     // his own fight, or some other real job
+            }
+
+            // JobMaker does not exist in 1.4 - jobs are constructed directly.
+            Job job = new Job(JobDefOf.AttackMelee, victim);
+            // Fight until it is down, rather than landing one blow and wandering off. Set
+            // explicitly rather than trusting the field's default.
+            job.maxNumMeleeAttacks = int.MaxValue;
+            job.killIncappedTarget = false;
+            // Re-decide periodically instead of locking on: if the target flees, or the Dovahkiin
+            // moves on, the next scan picks that up.
+            job.expiryInterval = 300;
+            job.checkOverrideOnExpire = true;
+            job.locomotionUrgency = LocomotionUrgency.Jog;
+            return p.jobs.TryTakeOrderedJob(job, null, false);
         }
 
         /// <summary>
@@ -191,28 +338,56 @@ namespace Dovahkiin
         /// Writing a second, separate "is anyone in front of me" test is how a safety check
         /// drifts away from where the flames actually land.
         /// </summary>
-        private void TryBreathe(Pawn p)
+        private void TryBreathe(Pawn p, Pawn assist)
         {
             DovahkiinTuningDef t = Tuning;
             float range = t != null ? t.ancientDragonbornBreathRange : 9f;
             float cone = t != null ? t.ancientDragonbornBreathCone : 46f;
 
-            Pawn target = FindBreathTarget(p, range);
+            Pawn target = FindBreathTarget(p, range, assist);
             if (target == null)
             {
                 return;
             }
-            if (!ConeIsClearOfAllies(p, target.Position, range, cone))
+            if (!ConeIsClearOfAllies(p, target.Position, range, cone, assist))
             {
                 return;
             }
 
-            Color head = usesFrost
-                ? new Color(0.62f, 0.85f, 1f)
-                : new Color(1f, 0.52f, 0.16f);
-            FleckDef fleck = usesFrost
-                ? DovahkiinDefOf.Dovahkiin_Fleck_ForceWave
-                : DovahkiinDefOf.Dovahkiin_Fleck_FireWave;
+            // WHICH OF THE THREE. He is a Dragonborn, not an elemental - the user removed the
+            // one-element rule, so Fire, Frost and Force all belong to him.
+            //
+            // CYCLED, not rolled. A per-cast random roll produces streaks, and at three or four
+            // casts in a 1.5-hour life a streak means a whole summoning where he only ever used
+            // one shout - which is the very thing being fixed. Cycling guarantees all three
+            // appear. The starting point is rolled at summon so two summons do not open
+            // identically.
+            int which = ((shoutCycle % 3) + 3) % 3;
+            shoutCycle = which + 1;
+
+            Color head;
+            FleckDef fleck;
+            SoundDef snd;
+            if (which == SHOUT_FROST)
+            {
+                head = new Color(0.62f, 0.85f, 1f);
+                fleck = DovahkiinDefOf.Dovahkiin_Fleck_ForceWave;
+                snd = DovahkiinVanillaDefOf.PsychicSoothePulserCast;
+            }
+            else if (which == SHOUT_FORCE)
+            {
+                // Unrelenting Force has no element - it is pressure. Same blue-white the
+                // Dovahkiin's own fus ro uses, so the two read as the same shout.
+                head = new Color(0.45f, 0.75f, 1f);
+                fleck = DovahkiinDefOf.Dovahkiin_Fleck_ForceWave;
+                snd = SoundDefOf.Thunder_OnMap;
+            }
+            else
+            {
+                head = new Color(1f, 0.52f, 0.16f);
+                fleck = DovahkiinDefOf.Dovahkiin_Fleck_FireWave;
+                snd = DovahkiinVanillaDefOf.Explosion_Flame;
+            }
 
             Thing_ShoutWave wave = Thing_ShoutWave.Spawn(
                 p, target.Position, range, cone, head, fleck, 1.6f);
@@ -224,12 +399,24 @@ namespace Dovahkiin
             float dmg = t != null ? t.ancientDragonbornBreathDamage : 18f;
             int parts = t != null ? t.ancientDragonbornBreathInstances : 5;
 
-            if (usesFrost)
+            if (which == SHOUT_FROST)
             {
                 // Mirrors Frost Breath's shape at a reduced strength: spread, chilling, with a
                 // short stun, and no ignition.
                 wave.SetPayload(DamageDefOf.Frostbite, dmg, 0f, 90, false, false,
                     null, 1f, parts, 0.35f, null, 1f, true, 0f, null, 0f, 0.35f);
+            }
+            else if (which == SHOUT_FORCE)
+            {
+                // Mirrors the Dovahkiin's fus ro: Blunt, spread, knocked back and stunned. Blunt
+                // and spread together on purpose - cutting damage spread over many parts kills by
+                // cumulative blood loss, which is not what a push is meant to do.
+                float force = t != null ? t.ancientDragonbornForceDamage : 7f;
+                int fParts = t != null ? t.ancientDragonbornForceInstances : 3;
+                float push = t != null ? t.ancientDragonbornForceKnockbackCells : 3f;
+                int fStun = t != null ? t.ancientDragonbornForceStunTicks : 150;
+                wave.SetPayload(DamageDefOf.Blunt, force, push, fStun, false, false,
+                    null, 1f, fParts, 0f, null, 1f, true, 0f, null, 0f, 0f);
             }
             else
             {
@@ -240,9 +427,6 @@ namespace Dovahkiin
                     null, 1f, parts, 0f, null, 1f, false, 0.25f, null, 0f, 0.35f);
             }
 
-            SoundDef snd = usesFrost
-                ? DovahkiinVanillaDefOf.PsychicSoothePulserCast
-                : DovahkiinVanillaDefOf.Explosion_Flame;
             if (snd != null)
             {
                 snd.PlayOneShot(new TargetInfo(p.Position, p.Map, false));
@@ -251,7 +435,12 @@ namespace Dovahkiin
             breathCooldown = t != null ? t.ancientDragonbornBreathCooldownTicks : 420;
         }
 
-        private static Pawn FindBreathTarget(Pawn p, float range)
+        /// <summary>
+        /// Nearest thing worth breathing on. <paramref name="assist"/> is whatever the Dovahkiin
+        /// is fighting, and counts as a valid target even though it is not hostile to anyone -
+        /// a wild animal never is. See FindAssistTarget for why.
+        /// </summary>
+        private static Pawn FindBreathTarget(Pawn p, float range, Pawn assist)
         {
             List<Pawn> all = p.Map.mapPawns.AllPawnsSpawned;
             Pawn best = null;
@@ -263,7 +452,7 @@ namespace Dovahkiin
                 {
                     continue;
                 }
-                if (!other.HostileTo(p))
+                if (!other.HostileTo(p) && other != assist)
                 {
                     continue;
                 }
@@ -293,7 +482,8 @@ namespace Dovahkiin
         /// "acceptable" collateral - a summoned ally that burns the colony is worse than one
         /// that does nothing.
         /// </summary>
-        private static bool ConeIsClearOfAllies(Pawn p, IntVec3 targetCell, float range, float cone)
+        private static bool ConeIsClearOfAllies(Pawn p, IntVec3 targetCell, float range, float cone,
+            Pawn assist)
         {
             Map map = p.Map;
             HashSet<IntVec3> cells = new HashSet<IntVec3>(
@@ -307,7 +497,12 @@ namespace Dovahkiin
                 {
                     continue;
                 }
-                if (other.HostileTo(p))
+                // The assist target is NOT hostile - a wild animal never is - so without this it
+                // would count as an ally standing in the cone and block the very breath aimed at
+                // it. Adding the target to the breath's whitelist without adding it here too is a
+                // self-cancelling change, and the sort that reads as "the breath still does not
+                // work" rather than as a new bug.
+                if (other.HostileTo(p) || other == assist)
                 {
                     continue;
                 }
@@ -417,7 +612,9 @@ namespace Dovahkiin
         {
             base.ExposeData();
             Scribe_Values.Look(ref ticksRemaining, "ticksRemaining", 3750);
-            Scribe_Values.Look(ref usesFrost, "usesFrost", false);
+            // "usesFrost" is gone. An old save simply has no shoutCycle node, so it loads as 0
+            // and he opens with Fire - harmless, and better than carrying a dead field forward.
+            Scribe_Values.Look(ref shoutCycle, "shoutCycle", 0);
             Scribe_Values.Look(ref breathCooldown, "breathCooldown", 0);
         }
     }

@@ -161,10 +161,39 @@ namespace Dovahkiin
         public int ancientDragonbornBreathInstances = 5;
 
         /// <summary>
+        /// His Unrelenting Force. He knows three shouts, not one - Fire, Frost and Force - and
+        /// cycles them, so all three appear within a single summoning.
+        ///
+        /// Scaled off the Dovahkiin's own level-2 fus ro (knockback 4, damage 7 over 3 parts,
+        /// stun 180) and pulled slightly below it: he is support, not a second Dovahkiin. It
+        /// reuses the breath's range and cone deliberately, so the one ally-safety check covers
+        /// all three shouts rather than each needing its own.
+        /// </summary>
+        public float ancientDragonbornForceDamage = 7f;
+        public int ancientDragonbornForceInstances = 3;
+        public float ancientDragonbornForceKnockbackCells = 3f;
+        public int ancientDragonbornForceStunTicks = 150;
+
+        /// <summary>
         /// How far he may drift from the Dovahkiin before walking back. He is a bodyguard,
         /// not a wanderer. Only nudges him when idle - never interrupts a fight.
         /// </summary>
         public float ancientDragonbornFollowRadius = 8f;
+
+        /// <summary>
+        /// How far he will go to join something the Dovahkiin has picked a fight with.
+        ///
+        /// Needed because a wild animal is NOT hostile. `GenHostility.HostileTo` is true only for
+        /// faction hostility, a manhunter mental state, a predator hunting us, a prison break or a
+        /// slave rebellion - verified by reading its IL. So a boar the Dovahkiin attacks is not an
+        /// enemy to anyone, his own AI has no work types to hunt with, and he stood and watched.
+        /// The user reported exactly that.
+        ///
+        /// Bounded on purpose: without a radius he would chase a hunt across the whole map and
+        /// abandon the person he exists to protect. 24 cells is three times the follow leash.
+        /// Set to 0 to turn the behaviour off entirely.
+        /// </summary>
+        public float ancientDragonbornAssistRadius = 24f;
 
         // --- Dragon Aspect (SPEC.md 4.4d) ---
 

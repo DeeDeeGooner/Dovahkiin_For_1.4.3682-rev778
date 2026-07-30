@@ -65,19 +65,94 @@ Point 4 is the one I would most expect to go wrong. If you ever see two, tell me
 
 ---
 
-## Test 4 — The breath, and the friendly-fire rule
+## Test 4 — The three shouts, and the friendly-fire rule
 
-He rolls **fire or frost** when summoned, 50/50, and keeps it for his whole life.
+**Changed 2026-07-30:** he no longer has one element for life. He knows **Fire Breath, Frost
+Breath and Unrelenting Force**, and cycles through all three.
 
-1. Watch him in a fight. ✅ After a few seconds he breathes a cone at a hostile.
-2. ✅ It is **always the same element** for that summon. A new summon may differ.
-3. **THE IMPORTANT ONE:** manoeuvre a colonist so they stand **between him and an enemy**.
-   ✅ He does **not** breathe. He waits, or attacks with the axe instead.
-4. ✅ Move your colonist clear → he breathes again once the line is clear.
-5. ✅ Fire breath may set **pawns** alight but should **not** set the ground or your base on fire.
+1. Watch him in a long fight. ✅ After a few seconds he shouts at a hostile.
+2. ✅ Over three casts you should see **all three**, not the same one repeatedly:
+   - **fire** — orange cone, sets pawns alight
+   - **frost** — pale blue cone, chills and briefly stuns, leaves snow
+   - **force** — blue-white cone, a thunder crack, enemies **knocked backwards** and stunned
+3. ✅ Two different summons should not always open with the same shout.
+4. **THE IMPORTANT ONE:** manoeuvre a colonist so they stand **between him and an enemy**.
+   ✅ He does **not** shout — *any* of the three. The safety rule covers all of them, not just
+   the breaths.
+5. ✅ Move your colonist clear → he shouts again once the line is clear.
+6. ✅ Fire breath may set **pawns** alight but should **not** set the ground or your base on fire.
+7. Force knocks enemies **away from him**. ✅ Say if that pulls them out of the Dovahkiin's reach
+   annoyingly — the knockback distance is one tunable number (currently 3 cells).
 
 If he ever breathes through one of your own, stop and tell me — that is a hard rule, not a
 tuning preference.
+
+---
+
+## Test 4d — He joins the Dovahkiin's fight  ← NEW, fixed after round 4
+
+He used to ignore anything that was not *hostile* — and a wild animal is hostile to nobody, so
+sending the Dovahkiin at a boar left him standing there. He now joins in.
+
+1. Summon him, then order the Dovahkiin to attack a **wild animal** (a boar, a deer, anything
+   peaceful). ✅ He goes for it too, in melee.
+2. ✅ He will also **breathe** on it once his cooldown allows — that was blocked before as well.
+3. ✅ **He still will not breathe through one of your own.** Put a colonist between him and the
+   animal; he should wait. That rule is not allowed to bend for this.
+4. **THE IMPORTANT NEGATIVE:** order the Dovahkiin to attack **one of your own colonists** or a
+   **tamed animal**. ✅ He must **NOT** join in. Player-faction targets are excluded deliberately.
+5. ✅ He does not chase a hunt across the map. Beyond about **24 cells** he loses interest and
+   comes back to the Dovahkiin.
+6. ✅ If he is already fighting a raider, that fight stays his — he does not abandon it to go and
+   help with a rabbit.
+
+If he stands and watches again, tell me **what the Dovahkiin was doing** (drafted attack, hunting
+designation, or an auto-attack), because those are three different code paths.
+
+---
+
+## Test 4c — The weapon's new shape and how he carries it  ← NEW
+
+The weapon is now a **dragonbone battleaxe** rather than a halberd: curved haft, ring pommel at
+the butt, wrapped grip with two bands, a riveted collar, two spikes on the far side from the
+blade, and the blade shape traced from your own painted drawing. Colours are unchanged.
+
+1. ✅ It looks like the preview — one clean blade, no hole, two spikes, ring pommel.
+2. **He should carry it head UP, blade over his shoulder** — not head-down with the pommel in
+   the air. The old angle did the latter and nobody spotted it while the weapon was a
+   symmetrical halberd.
+3. **Check all FOUR facings** — south, north, east and west. South and east were previewed and
+   approved; **north and west were not**, they are set by the same arithmetic and are guesswork.
+   If a facing looks wrong, tell me *which one* and whether the head points the wrong way or
+   the whole weapon sits in the wrong place.
+4. ✅ The swing itself should be unchanged — it is still Medieval Overhaul's halberd animation,
+   which you already confirmed as correct.
+5. It is about **8.5% shorter** than the old halberd looked. That is expected, not a bug — say
+   if it now reads as too small.
+
+---
+
+## Test 4b — ONE halberd, never two  ← fixed after round 3, please re-check
+
+Round 3 found **two** halberds on him mid-fight: the animated one plus a static one. The cause was
+that we drew it ourselves all the time, not realising the game starts drawing it too the moment he
+picks up an attack job.
+
+1. Watch him **idle / following you**. ✅ Exactly **one** halberd, held at his side.
+2. Send him into a melee fight and watch him swing. ✅ Still exactly **one** — the swinging one.
+3. ✅ At the moment he stops fighting and walks back, still **one**. There may be a small pop as
+   it changes hands between the game's drawing and ours; a *second* axe appearing is the bug.
+4. ✅ The swing animation itself is unchanged — it should still look like Medieval Overhaul's
+   halberd, which you already confirmed as correct.
+5. **The one that survived round 3 — watch the moment a swing FINISHES**, especially facing
+   **north**. The melee cooldown lasts about a second longer than the attack itself, and that was
+   the window where the second axe reappeared. ✅ Still one throughout.
+6. ✅ Check the log once at load for a line reading `Melee Animation detected` — it should say the
+   animator lookup **resolved**. If it says "NOT resolved", tell me: the fix falls back to a
+   narrower check and the doubling may survive in animations.
+
+If you ever see two again, tell me **which state he was in** — idle, mid-swing, just-finished a
+swing, or walking back. Those are now four different code paths and that detail says which.
 
 ---
 

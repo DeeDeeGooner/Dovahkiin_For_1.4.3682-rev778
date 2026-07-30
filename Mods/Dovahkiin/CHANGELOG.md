@@ -1,5 +1,228 @@
 # CHANGELOG
 
+## The Ancient Dragonborn knows three shouts, not one (2026-07-30)
+
+The user's call, overriding a rule this project had recorded as settled: he was rolling **fire OR
+frost** once at summon and keeping it for his whole life. He is the Dragonborn's own shard, so he
+now has **Fire Breath, Frost Breath and Unrelenting Force** alike.
+
+*Cycled, not rolled.* He gets only three or four casts in a 1.5-hour life. At that sample size a
+per-cast random pick routinely produces an entire summoning using one shout — which is precisely
+the thing being removed. Cycling 0-1-2 guarantees all three appear. The coin flip the summon code
+already makes now **seeds which he opens with** rather than being discarded, so two summons still
+don't open identically.
+
+Unrelenting Force is scaled off the Dovahkiin's own level-2 *fus ro* (knockback 4, 7 damage over
+3 parts, stun 180) and pulled slightly under it — he is support, not a second Dovahkiin. Defaults:
+7 damage over 3 parts, 3 cells of knockback, 150-tick stun, all in `DovahkiinTuningDef`.
+
+Two details worth keeping:
+
+- **It reuses the breath's range and cone deliberately.** One ally-safety check then covers all
+  three shouts. Giving Force its own cone would have meant a second `ConeIsClearOfAllies` call
+  with its own numbers, and a safety check that can drift from the thing it is guarding is how
+  the "never breathe through an ally" rule would quietly stop holding.
+- **Blunt and spread together**, as the Dovahkiin's own version does. Cutting damage spread over
+  many body parts kills by cumulative blood loss, which is not what a shove is supposed to do.
+
+`usesFrost` is gone rather than carried forward dead. An old save has no `shoutCycle` node, loads
+as 0, and he opens with Fire — harmless.
+
+---
+
+## Phase 2j — the duplicated weapon, the other half of it (2026-07-30)
+
+The round-3 fix removed most of the doubling but not all. Reported precisely: *"a few times the 2
+weapon glitch still happens, not as much as before... when the ancient dragonborn swings facing
+north."* The "not as much" and the swing were both the clue.
+
+*Root cause: mirroring vanilla's rule was necessary but not sufficient, because Melee Animation
+draws the weapon in one MORE case than vanilla does.* Read out of its own IL:
+
+- **`Patch_PawnRenderer_DrawEquipment.Prefix` always returns false.** It suppresses vanilla's
+  `DrawEquipment` entirely and draws the weapon itself. So vanilla's rule is not the one in force.
+- **`IdleControllerComp.ShouldBeActive`** draws when `CarryWeaponOpenly()` is true **OR** when the
+  pawn is in a `Stance_Busy` with a valid `focusTarg` and not `neverAimWeapon`.
+
+That second branch is the melee swing and its **cooldown stance, which outlives the attack job**.
+In the gap between the job ending and the stance expiring, `CarryWeaponOpenly()` is false — so our
+overlay resumed drawing while Melee Animation was still drawing. A brief window, which is exactly
+why it went from constant to occasional rather than disappearing.
+
+*Fix:* the gate now also stands down for a `Stance_Busy` with a valid focus target, and for an
+active Melee Animation animator (`AM.AnimRenderer.TryGetAnimator`, public and static).
+
+**Only when Melee Animation is actually loaded.** Detected once via `AccessTools.TypeByName`, so
+the baseline environment keeps vanilla's condition exactly and cannot lose the axe for a second
+after every swing — which is what applying the stance rule unconditionally would have caused.
+Reflection with null guards throughout; no assembly reference, per `CLAUDE.md`. The probe logs
+what it found, because a silent fallback is indistinguishable from the bug it hides.
+
+*Why north made it visible:* nothing in the draw branches on rotation before the gate, so the
+mechanism is rotation-independent. Facing north our axe is drawn behind the pawn at −62°, far from
+where the animation puts it, so the pair separates clearly instead of overlapping.
+
+---
+
+## Phase 2j — fourth playtest: he ignored a wild boar (2026-07-30)
+
+Reported precisely: the Dovahkiin was sent at some wild boar and the Ancient Dragonborn stood and
+watched.
+
+*Root cause: a wild animal is hostile to nobody, and he had no other reason to act.*
+`GenHostility.HostileTo` returns true only for faction hostility, a manhunter mental state
+(`MentalState.ForceHostileTo`), a predator hunting us, a prison break or a slave rebellion — read
+out of its IL rather than assumed. A boar the player attacks is none of those. So:
+
+- `FindBreathTarget` filtered on `other.HostileTo(p)` and skipped it, correctly by its own logic
+- his vanilla AI had nothing to offer either — **hunting is a work job and he has no work types**,
+  and he is never drafted
+
+So this was not a broken check. It was a **missing behaviour**: nothing connected "the Dovahkiin
+is fighting something" to "help him". Which is odd for a pawn whose entire reason to exist is to
+come to the Dovahkiin's aid.
+
+*Fix:* he now joins whatever the Dovahkiin is fighting. The target is resolved once per scan and
+shared by the breath and the melee nudge, so those two can never disagree about what he is
+fighting.
+
+Guards, each there for a reason:
+
+| guard | why |
+|---|---|
+| player-faction targets excluded | the Dovahkiin can be ordered to attack a colonist or a tamed animal; a summoned ally piling on would be far worse than doing nothing |
+| bounded by `ancientDragonbornAssistRadius` (24 cells, tunable, 0 disables) | unbounded he would chase a hunt across the map and abandon the man he exists to protect |
+| downed targets ignored | already beaten — let the Dovahkiin finish it |
+| only overrides idling, wandering and Goto | same light-touch rule the follow nudge uses: if he is already in a fight, that fight is his |
+| the follow nudge is skipped while assisting | otherwise the two behaviours fight over him every scan, one pulling him back to the Dovahkiin and the other sending him at the target |
+
+Both `CurJob` (player-ordered attacks) and `mindState.enemyTarget` (AI-chosen ones) are checked,
+because the Dovahkiin is a colonist and can be either.
+
+### One trap this fix walked into and back out of
+
+`ConeIsClearOfAllies` skips anything `HostileTo(p)` and treats everything else as a friend to
+avoid burning. A wild boar is not hostile — so whitelisting it as a breath *target* without also
+whitelisting it *there* would have had it count as an ally standing in the cone and **block the
+very breath aimed at it**. A self-cancelling change, and one that would have read as "the breath
+still does not work on animals" rather than as a new bug. Both sites now take the same target.
+
+---
+
+## The spectral weapon reshaped: a dragonbone battleaxe, traced from the user's own drawing (2026-07-30)
+
+The user asked for the halberd to be reshaped to Skyrim's **Dragonbone Battleaxe** — thematically
+the right weapon for the Ancient Dragonborn anyway. Colours are untouched; this was a shape-only
+request and it still carries the armour's ember-to-blue ramp.
+
+Now shipping: a **curved haft** (cubic Bezier, bend concentrated in the upper half so the grip
+stays straight under the hand), a **ring pommel**, a wrapped grip with two bands, a small riveted
+**collar**, **two spikes** roughly perpendicular on the side opposite the blade, and a blade
+**traced from the user's own painted drawing**.
+
+### The reference orientation mattered enormously
+
+The first reference was mirrored relative to our sprite, and three features were read wrong from
+it. The user's second reference arrived already head-at-top-right, which allowed measurement
+instead of guesswork, and corrected all three:
+
+| first reading | what measurement showed |
+|---|---|
+| haft bowing away from the blade | bows **toward** it — the haft sits ~68px right of the pommel→socket chord at mid-height |
+| a spear point running **along** the haft | two spikes roughly **perpendicular**, on the **far side** from the blade, leaning ~8° toward the head |
+| solid blade | a hole pierced through it, ~0.086 of weapon length across |
+
+### The blade is measured, not designed — and the first attempt at it was wrong twice
+
+The user painted white over a render to mark what to remove, then said it "still feels chaotic".
+
+**First mistake: the drawing was overridden.** The traced result was dismissed as "ragged brush
+strokes" and a 6-point cleaver of our own invention was substituted. That was not what was asked
+for.
+
+**Second mistake, and the cause of the first:** the white threshold was >225 brightness, so only
+the solid core of each stroke counted as painted-out. A **1–2px anti-aliased rim** along every
+stroke edge came through as "keep", and *that* is what made the traced polygon look like a
+scribble — the drawing's edges were straight all along. Widening to >198 plus a close+open
+morphological pass made the contour follow the real edges.
+
+**A third, nearly invisible one:** after the cleaver was swapped in, the extractor — which
+dot-sources the generator — re-measured against **the new blade instead of the one that had been
+painted over** (2262px of blade rather than 4659). The base polygon is now pinned in the generator
+with a comment saying it must not be edited, and the traced result lives in a separate
+`$TRACED_BLADE` variable.
+
+Final method, all reproducible by `Tools/extract_blade.ps1`:
+
+| step | result |
+|---|---|
+| align the screenshot to the render (ring pommel + spike tip) | scale 2.0093, **0.0px** error on both cross-checks |
+| subtract the white paint from the known blade polygon | 65.2% removed, one connected blob |
+| trace the boundary | 201 contour points |
+| Douglas-Peucker at 1.8px | **20 points** |
+| convert back through the published blade basis | pasted verbatim |
+
+Verified: **98.1% coverage** of the shape the user left, 41px missed. The remaining difference is
+the old hole (kept by their mask, so solid now) and keyline pixels.
+
+### The hold angle was wrong, and had been all along
+
+The art runs bottom-left to top-right, so its head points up-right at ~48° above horizontal and
+the drawn direction is `angle − 48`. The shipped **145° therefore gave +97 — head pointing at the
+ground, pommel in the air.** True of the halberd too; its near-symmetric head simply hid it. Now
+**−70°** for south and east, the pose the user reviewed. West and north are set by the same
+arithmetic but were **not** previewed and remain eyeballed, like the offsets beside them.
+
+*Consequences to watch:* the weapon is **8.5% shorter** in apparent bbox diagonal, and the head
+sits slightly nearer along the axis, so `BladeStart 0.8519` / `BladeEnd 1.5263` may want a look.
+`drawSize` stays **(1.5,1.5)** because the tweak data's `Scale` must match it. The orientation
+check passes — TR 3862 dominant, head at top-right — so the tweak file remains valid.
+
+---
+
+## Phase 2j — third playtest: the duplicated weapon (2026-07-30)
+
+Reported precisely: the halberd behaves correctly and animates like Medieval Overhaul's, but when
+he swings there are **two** of them on the pawn — the animated one plus a static one.
+
+*Root cause: the previous fix treated a conditional as a constant.* Round 2 established that
+`PawnRenderer.DrawEquipment` gates on `CarryWeaponOpenly()`, which is false for an undrafted pawn,
+so the summon's axe was invisible — and the fix was to draw it ourselves in the overlay,
+unconditionally. But **`CarryWeaponOpenly()` is job-dependent, not constant.** It returns true when
+`CurJob.def.alwaysShowWeapon` is set, and vanilla sets that on **`AttackMelee`**, **`AttackStatic`**
+and **`Wait_Combat`** — every state he occupies in a fight. So the moment he engages, the game
+starts drawing the weapon too, and ours was still going. Right about the idle case, silently wrong
+about the combat case.
+
+*Fix:* the overlay now draws the axe only when the game is **not** already drawing it, by mirroring
+vanilla's own gate rather than inventing an "is he fighting" test of our own. Two independent
+conditions could drift apart and give a frame with two axes or a frame with none; one mirrored
+condition cannot.
+
+`CarryWeaponOpenly()` is **private** on `Verse.PawnRenderer`, but its IL shows **every member it
+touches is public** — each verified against 1.4's assembly before writing — so it is reimplemented
+directly, with no reflection and no private-member dependency:
+
+```
+carryTracker.CarriedThing != null   -> false
+Drafted                             -> true
+CurJob.def.alwaysShowWeapon         -> true
+mindState.duty.def.alwaysShowWeapon -> true
+GetLord().LordJob.AlwaysShowWeapon  -> true
+otherwise                           -> false
+```
+
+Behaviour now: idle, following or wandering, **we** draw it (which is what round 2 fixed); fighting,
+**the game and Melee Animation** draw it and we stand down. No gap in either direction, and the
+animation the user confirmed as correct is untouched.
+
+Also settled this round: the armour had **not** got darker — the user's PC was in a power-saving
+mode that dimmed the whole display. The art is byte-identical, which git confirmed independently.
+The measurement below about the summon reading darker than the Dovahkiin still stands on its own,
+and is a separate, real effect.
+
+---
+
 ## Tooling — a faithful preview of the Ancient Dragonborn (2026-07-30)
 
 No behaviour change; `Tools/PreviewAncientDragonborn.ps1` is new and reads the shipping art
@@ -35,11 +258,31 @@ against a bad picture.
 aliased the armour's regular scale field into a fishnet that is not in the texture. On signed-off
 art that is worse than useless. The sheet now renders at native 256.
 
-**"Fully hidden" is worth much less than it sounds.** The user asked for the summon to be fully
-invisible, which needs the pawn-render patch `RISKS.md` §10 calls the most fragile thing available
-under RocketMan. Composited both ways over identical ground and diffed: **mean 4.2/255, median
-1.0/255, only 15% of the frame differing by more than 8**, concentrated in the lower torso where
-the plates are thinnest. The sheet shows both side by side so the call can be made on evidence.
+**The pawn underneath is a BRIGHTNESS SOURCE — so the summon's armour is darker than the
+Dovahkiin's, by construction.** The user reported the armour looking darker than they remembered
+and assumed they were imagining it. They were not. Measured over the armour's own footprint, same
+lit ground, same texture, Rec.709 luma:
+
+| armour over | median | vs the Dovahkiin |
+|---|---|---|
+| an **opaque** pawn (the Dovahkiin) | 154.9 | — |
+| an **invisible** pawn (the summon) | 135.4 | **−12.6%** |
+| **no pawn at all** | 111.5 | **−28.0%** |
+
+The plates run 10–35% alpha and the palette is authored *for translucency* — the pale body supplies
+the brightness. The summon is 50% invisible, so half that source is gone. **No art differs.** At
+12.6% this is five times the 2% median shift the user correctly caught by eye once before.
+
+**Correction to an earlier claim in this entry.** A first pass called the fully-hidden change
+"small" on the strength of mean 4.2/255, median 1.0/255 — but that diffed the whole 256 frame,
+which is mostly bare ground identical in both variants, so the average was diluted by area that
+could not change. Restricted to the 12146 pixels the armour covers, hiding the pawn is a further
+**17.7%** median drop. The rule was already written down and broken anyway: measure the median
+**over the region in question**, never over a frame padded with pixels that cannot move.
+
+Consequence for the open question: the render patch is **not** cosmetically free. It would also
+need the palette re-authored lighter for the summon — a second change to signed-off art. That is a
+stronger argument against it than the wrong one it replaces, but it is a different argument.
 
 ### And a PowerShell trap, for the third time
 

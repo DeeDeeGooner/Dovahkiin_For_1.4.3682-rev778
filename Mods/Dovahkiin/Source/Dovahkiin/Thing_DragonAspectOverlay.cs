@@ -264,27 +264,45 @@ namespace Dovahkiin
             // The spectral axe, drawn by us. See the drawAxe field for why RimWorld will not.
             // Placed at the pawn's side and angled, roughly where a carried weapon sits, and
             // BEHIND the pawn when they face north so it does not cover their back.
-            if (drawAxe && axeGraphic != null)
+            //
+            // ONLY WHEN THE GAME IS NOT ALREADY DRAWING IT. RimWorld skips the weapon for an
+            // undrafted pawn, which is the whole reason this draw exists - but the moment he
+            // engages, his job becomes AttackMelee, whose JobDef sets alwaysShowWeapon, so
+            // CarryWeaponOpenly() flips true and DrawEquipment starts drawing it as well.
+            // Drawing unconditionally therefore put TWO axes on him mid-fight: Melee Animation's
+            // swinging one plus our static one. Found in playtest.
+            if (drawAxe && axeGraphic != null && !GameAlreadyDrawsWeapon(target))
             {
+                // HOLD ANGLES. The weapon art runs bottom-left to top-right, so its head points
+                // up-and-right at about 48 degrees above the horizontal. The drawn direction is
+                // therefore (angle - 48) measured clockwise, and the old 145 gave +97 - head
+                // pointing at the GROUND with the pommel in the air. That went unnoticed while
+                // the weapon was a near-symmetric halberd; the dragonbone axe has a ring pommel
+                // at one end and a big blade at the other, so it reads as dragging it.
+                //
+                // -70 gives -118: head up and back, a shouldered greataxe. That is the pose the
+                // user reviewed and approved. West and north are set to comparable poses by the
+                // same arithmetic, but were NOT previewed - like the offsets beside them they
+                // are eyeballed, and the test script asks for all four facings to be checked.
                 Vector3 axePos = basePos;
                 float axeAngle;
                 if (rot == Rot4.North)
                 {
                     axePos.y = AltitudeLayer.PawnState.AltitudeFor() - 0.006f;
                     axePos.x -= 0.34f * scale / RefBodyWidth;
-                    axeAngle = 205f;
+                    axeAngle = -62f;
                 }
                 else if (rot == Rot4.West)
                 {
                     axePos.y = AltitudeLayer.PawnState.AltitudeFor() + 0.006f;
                     axePos.x -= 0.30f * scale / RefBodyWidth;
-                    axeAngle = 200f;
+                    axeAngle = -10f;
                 }
                 else
                 {
                     axePos.y = AltitudeLayer.PawnState.AltitudeFor() + 0.006f;
                     axePos.x += 0.34f * scale / RefBodyWidth;
-                    axeAngle = 145f;
+                    axeAngle = -70f;
                 }
                 axePos.z -= 0.06f * scale / RefBodyWidth;
                 DrawQuad(axeGraphic, axePos, axeDrawSize * scale / RefBodyWidth, axeAngle, false,
@@ -439,6 +457,166 @@ namespace Dovahkiin
                     propBlockInt = new MaterialPropertyBlock();
                 }
                 return propBlockInt;
+            }
+        }
+
+        /// <summary>
+        /// Is the GAME already drawing this pawn's weapon? If it is, we must not draw ours too.
+        ///
+        /// This mirrors the PRIVATE <c>Verse.PawnRenderer.CarryWeaponOpenly()</c>, which is the
+        /// exact gate <c>PawnRenderer.DrawEquipment</c> uses. Reimplemented rather than reflected
+        /// because **every member it touches is public** - each one verified against 1.4's
+        /// Assembly-CSharp before this was written - so there is no private-member dependency and
+        /// no per-frame reflection cost.
+        ///
+        /// Read straight out of that method's IL, in its own order:
+        ///   carrying something -> false, Drafted -> true, CurJob.def.alwaysShowWeapon -> true,
+        ///   duty.def.alwaysShowWeapon -> true, Lord.LordJob.AlwaysShowWeapon -> true, else false.
+        ///
+        /// The one that matters here is <c>CurJob.def.alwaysShowWeapon</c>: vanilla sets it on
+        /// **AttackMelee**, **AttackStatic** and **Wait_Combat**, which is every state the summon
+        /// is in during a fight. Idle, following or wandering it is false, and we draw.
+        ///
+        /// Mirroring vanilla rather than testing for "is he fighting" ourselves is deliberate: the
+        /// two conditions then cannot disagree, so there is no frame where both draw and none
+        /// where neither does.
+        /// </summary>
+        private static bool GameAlreadyDrawsWeapon(Pawn pawn)
+        {
+            if (pawn == null)
+            {
+                return false;
+            }
+            if (pawn.carryTracker != null && pawn.carryTracker.CarriedThing != null)
+            {
+                return false;
+            }
+            if (pawn.Drafted)
+            {
+                return true;
+            }
+            if (pawn.CurJob != null && pawn.CurJob.def != null && pawn.CurJob.def.alwaysShowWeapon)
+            {
+                return true;
+            }
+            if (pawn.mindState != null && pawn.mindState.duty != null
+                && pawn.mindState.duty.def != null && pawn.mindState.duty.def.alwaysShowWeapon)
+            {
+                return true;
+            }
+            // Fully qualified rather than adding a using for Verse.AI.Group, which this file
+            // otherwise has no need of.
+            Verse.AI.Group.Lord lord = Verse.AI.Group.LordUtility.GetLord(pawn);
+            if (lord != null && lord.LordJob != null && lord.LordJob.AlwaysShowWeapon)
+            {
+                return true;
+            }
+
+            // ------------------------------------------------------------------------------
+            // MELEE ANIMATION DRAWS THE WEAPON IN ONE MORE CASE THAN VANILLA DOES
+            // ------------------------------------------------------------------------------
+            // Mirroring CarryWeaponOpenly alone was not enough, and the user caught the
+            // remainder: the axe still doubled occasionally, most visibly mid-swing facing
+            // north. Read out of Melee Animation's own IL:
+            //
+            //   Patch_PawnRenderer_DrawEquipment.Prefix ALWAYS returns false - it suppresses
+            //   vanilla's DrawEquipment entirely and draws the weapon itself.
+            //
+            //   IdleControllerComp.ShouldBeActive draws when CarryWeaponOpenly() is true OR
+            //   when the pawn is in a Stance_Busy that has a valid focusTarg and is not
+            //   neverAimWeapon - and that second branch is the melee swing and its cooldown.
+            //
+            // The cooldown stance outlives the attack JOB. So in the gap between the job
+            // ending and the stance expiring, CarryWeaponOpenly() is false while Melee
+            // Animation is still drawing - and we drew a second one on top.
+            //
+            // Only consulted when Melee Animation is actually loaded, so the baseline
+            // environment keeps vanilla's condition exactly and cannot lose the axe for a
+            // second or two after each swing.
+            if (MeleeAnimationPresent && pawn.stances != null)
+            {
+                Stance_Busy busy = pawn.stances.curStance as Stance_Busy;
+                if (busy != null && !busy.neverAimWeapon && busy.focusTarg.IsValid)
+                {
+                    return true;
+                }
+            }
+            // And while a full animation is playing, its own renderer draws the weapon.
+            if (MeleeAnimationIsAnimating(pawn))
+            {
+                return true;
+            }
+            return false;
+        }
+
+        // --- Melee Animation interop. Reflection with null guards, never a hard reference:
+        // CLAUDE.md permits an assembly reference to Harmony and HugsLib and nothing else. ---
+        private static bool maResolved;
+        private static bool maPresent;
+        private static System.Reflection.MethodInfo maTryGetAnimator;
+
+        private static bool MeleeAnimationPresent
+        {
+            get
+            {
+                ResolveMeleeAnimation();
+                return maPresent;
+            }
+        }
+
+        private static void ResolveMeleeAnimation()
+        {
+            if (maResolved)
+            {
+                return;
+            }
+            maResolved = true;
+            try
+            {
+                // AccessTools.TypeByName searches every loaded assembly, so this finds the mod
+                // without naming its file or referencing it.
+                System.Type idle = HarmonyLib.AccessTools.TypeByName("AM.Idle.IdleControllerComp");
+                System.Type renderer = HarmonyLib.AccessTools.TypeByName("AM.AnimRenderer");
+                maPresent = idle != null || renderer != null;
+                if (renderer != null)
+                {
+                    // public static AnimRenderer TryGetAnimator(Pawn) - verified against the
+                    // shipped assembly before this was written.
+                    maTryGetAnimator = renderer.GetMethod("TryGetAnimator",
+                        System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static,
+                        null, new System.Type[] { typeof(Pawn) }, null);
+                }
+                if (maPresent)
+                {
+                    Log.Message("[Dovahkiin] Melee Animation detected; the spectral weapon will "
+                        + "stand down whenever it is drawing. Animator lookup "
+                        + (maTryGetAnimator != null ? "resolved." : "NOT resolved - stance check only."));
+                }
+            }
+            catch (System.Exception e)
+            {
+                // A silent fallback is indistinguishable from the bug it hides, so say so.
+                maPresent = false;
+                maTryGetAnimator = null;
+                Log.Warning("[Dovahkiin] Could not probe Melee Animation, falling back to "
+                    + "vanilla's weapon-drawing rule only: " + e.Message);
+            }
+        }
+
+        private static bool MeleeAnimationIsAnimating(Pawn pawn)
+        {
+            ResolveMeleeAnimation();
+            if (maTryGetAnimator == null || pawn == null)
+            {
+                return false;
+            }
+            try
+            {
+                return maTryGetAnimator.Invoke(null, new object[] { pawn }) != null;
+            }
+            catch
+            {
+                return false;
             }
         }
 
