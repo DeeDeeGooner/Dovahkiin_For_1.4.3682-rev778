@@ -1,4 +1,25 @@
-# The spectral halberd — exact working preset
+# The spectral weapon — exact working preset
+
+> ## ⚠ SUPERSEDED IN PART, 2026-07-30 — THE ART IS NOW A DRAGONBONE BATTLEAXE
+>
+> At the user's request the weapon was reshaped from a halberd to Skyrim's Dragonbone Battleaxe.
+> **Sections 1–4 and 7–8 are still exactly right** — the ThingDef, the Melee Animation tweak
+> data, the two things not to do, and the rebuild steps are all unchanged, and the weapon still
+> *behaves* as `DankPyon_MeleeWeapon_Halberd`.
+>
+> **What changed:**
+> - the generator is now `Tools/GenerateAncientAxeDragonbone.ps1`, not `GenerateAncientAxe.ps1`
+> - the art has a **curved haft**, a **ring pommel**, a wrapped grip, a riveted collar, **two
+>   spikes perpendicular on the far side from the blade**, and a blade **traced from a drawing
+>   the user painted** — 20 measured points, reproducible via `Tools/extract_blade.ps1`
+> - the **quadrant counts in section 5 are superseded**: it is now TL 0 / TR 3862 / BL 1862 /
+>   BR 320 at alpha > 8. Head still at TOP-RIGHT, so the tweak values in section 4 remain valid
+> - the geometry constants listed in section 5 belong to the old halberd and no longer apply
+> - **the hold angles in section 6 have changed** — see the note there
+>
+> Sections 5 and 6 are kept because the *rules* in them (orientation, keyline, parallel haft,
+> measure along the weapon axis) all still hold and were all paid for.
+
 
 **Hand this whole file to the session that is struggling.** Every number here was read off disk,
 not remembered. If a value here disagrees with what that session has, this file is right.
@@ -127,14 +148,35 @@ quadrant:
 
 | sprite | topLeft | topRight | botLeft | botRight |
 |---|---|---|---|---|
-| their halberd | 105 | **5583** | 3252 | 105 |
-| ours (correct) | 45 | **4040** | 2039 | 58 |
+| their halberd | 105 | **5641** | 3254 | 105 |
+| ours, shipping at `af6f580` | 48 | **4470** | 2098 | 60 |
+
+**Re-measured 2026-07-30 against the files actually on disk**, with the method stated below so it
+reproduces. The numbers previously in this table (theirs `105 / 5583 / 3252 / 105`, ours
+`45 / 4040 / 2039 / 58`) were close but not reproducible:
+
+- **Theirs was within ~1%** — two quadrants matched exactly. A threshold or rounding difference.
+- **Ours was 10.6% low on the top-right quadrant**, which is too far out to be a threshold. The
+  axe texture has not changed since `af6f580`, and no committed version of it produces the old
+  figures — `0c3f431` gives `124 / 6592 / 2179 / 131` and `aa4c0f6` gives
+  `4184 / 44 / 40 / 1220`. So those numbers were almost certainly taken from an **intermediate,
+  uncommitted render** during the reshaping passes and written up without a final re-measure.
+
+**Method, so this is reproducible:** count pixels with **alpha > 8** in a 256x256 frame, split at
+x=128 and y=128. Record the threshold whenever this table is updated — without it the table
+cannot be checked, which is how it drifted.
+
+**The load-bearing conclusion is unaffected and still holds:** the shipping sprite runs
+**bottom-left → top-right with the head at TOP-RIGHT**, overwhelmingly so (4470 top-right against
+60 bottom-right). The original wrong-diagonal version is unmistakable by contrast — `aa4c0f6` put
+4184 in the top-LEFT. So the tweak values in section 4 remain valid.
 
 **Every value in section 4 is expressed in their texture's frame.** If our sprite runs the other
 diagonal, the pawn grips the weapon *by the blade*. Ours was mirrored once already for this reason.
 
-**If the art is ever redrawn, re-run that quadrant count.** It is the only thing that silently
-invalidates the whole tweak file.
+**If the art is ever redrawn, re-run that quadrant count** — and compare the ORIENTATION, which is
+what the tweak file depends on, rather than chasing exact pixel totals. It is the only thing that
+silently invalidates the whole tweak file.
 
 ### Geometry constants, exactly as they are in `GenerateAncientAxe.ps1`
 
@@ -202,10 +244,22 @@ sprite running the other way.
 
 ## 6. How it is drawn on the summon
 
-**RimWorld will not draw it.** `PawnRenderer.DrawEquipment` gates on `CarryWeaponOpenly()`, which
-is **false for an undrafted pawn** — and the summon is autonomous and never drafted, so his axe
-would appear only mid-swing. `Thing_DragonAspectOverlay` draws it instead, which also keeps it off
-the pawn render path entirely.
+**RimWorld will not draw it — most of the time.** `PawnRenderer.DrawEquipment` gates on
+`CarryWeaponOpenly()`, which is **false for an undrafted pawn** — and the summon is autonomous and
+never drafted, so his axe would appear only mid-swing. `Thing_DragonAspectOverlay` draws it
+instead, which also keeps it off the pawn render path entirely.
+
+**BUT THAT GATE IS JOB-DEPENDENT, NOT CONSTANT, AND DRAWING UNCONDITIONALLY DUPLICATES THE
+WEAPON.** `CarryWeaponOpenly()` returns true when `CurJob.def.alwaysShowWeapon` is set, and vanilla
+sets it on **`AttackMelee`**, **`AttackStatic`** and **`Wait_Combat`** — every state he occupies in
+a fight. So in combat the game draws the weapon too, and the player sees **two**: Melee Animation's
+swinging one plus our static one. Reported in playtest round 3 and fixed.
+
+The overlay therefore draws the axe **only when the game is not already drawing it**, mirroring
+vanilla's gate rather than testing "is he fighting" independently — two conditions could drift and
+give a frame with two axes or none, one mirrored condition cannot. `CarryWeaponOpenly()` is private
+on `Verse.PawnRenderer`, but every member it touches is public, so it is reimplemented with no
+reflection (see `GameAlreadyDrawsWeapon` in that file for the logic, taken from its IL).
 
 From `Thing_DragonAspectOverlay.DrawAt`, with `RefBodyWidth = 1.5f`:
 
@@ -221,9 +275,21 @@ DrawQuad(axeGraphic, axePos, axeDrawSize * scale / RefBodyWidth, axeAngle, false
 hardcoded — so the drawn axe and the carried one cannot diverge. A hardcoded draw size gave two
 very different apparent sizes for two textures that fill their frames differently.
 
-These offsets and angles are **eyeballed, not measured**, and are the one part of the weapon still
-unverified in game. If the axe sits wrongly in his hand, this block is where to change it — not
-the tweak data, not the def.
+**THE ANGLES ABOVE ARE SUPERSEDED, 2026-07-30. 145 HAD HIM HOLDING IT HEAD-DOWN.**
+
+The art runs bottom-left to top-right, so its head points up-and-right at about **48° above the
+horizontal**, and the drawn direction is `angle − 48` measured clockwise. So 145 gave **+97 — the
+head pointing at the ground with the pommel in the air.** That was true of the halberd as well;
+its near-symmetric head simply made it impossible to tell. A ring pommel at one end made it
+obvious in the first preview.
+
+Now shipping: **south and east −70** (giving −118, head up and back over the shoulder — the pose
+the user reviewed and approved), **west −10**, **north −62**. West and north follow the same
+arithmetic but were **not** previewed.
+
+These offsets and angles remain **eyeballed, not measured**, and are the one part of the weapon
+still unverified in game. If the axe sits wrongly in his hand, this block is where to change it —
+not the tweak data, not the def. `Test 4c` in `TESTS/phase2j.md` asks for all four facings.
 
 ---
 

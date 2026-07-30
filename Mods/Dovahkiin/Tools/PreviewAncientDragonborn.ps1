@@ -51,6 +51,10 @@ Add-Type -AssemblyName System.Drawing
 $MOD  = Split-Path -Parent $PSScriptRoot
 $TEX  = Join-Path $MOD "Textures\Things\Pawn\DragonAspect"
 $AXET = Join-Path $MOD "Textures\Things\Item\Equipment\DovahkiinAncientAxe.png"
+# DOVAH_AXE_OVERRIDE lets a candidate weapon be previewed in his hand WITHOUT writing it into
+# the mod. Judging a weapon on its own and judging it held are different questions, and the
+# shipping texture must not be touched to answer the second one.
+if ($env:DOVAH_AXE_OVERRIDE -and (Test-Path $env:DOVAH_AXE_OVERRIDE)) { $AXET = $env:DOVAH_AXE_OVERRIDE }
 $BODY_DIR = "C:\Games\Rimworld\RimWorld\RimWorldFolder\Mods\B.B\Textures\Things\Pawn\Humanlike\Bodies"
 $HEAD_DIR = "C:\Games\Rimworld\RimWorld\RimWorldFolder\Mods\Gloomy Face Mod\Textures\Things\Pawn\Humanlike\Heads\Male"
 $HEAD_KIND = "Male_Average_Pointy"   # the user's Dovahkiin "Leonid", per the notebook
@@ -321,6 +325,10 @@ function DrawCell($gfx, [double]$x, [double]$y, [string]$rot,
   if ($withAxe -and $rot -ne "north") {
     $adx = if ($rot -eq "west") { -0.30 } else { 0.34 }
     $ang = if ($rot -eq "west") { 200.0 } else { 145.0 }
+    # DOVAH_AXE_ANGLE overrides the south/east hold angle, so alternatives can be compared
+    # without editing the shipping code. DrawAt's 145 was eyeballed, never measured - the
+    # preset says so - and with a weapon that has a distinctive pommel it reads head-DOWN.
+    if ($env:DOVAH_AXE_ANGLE -and $rot -ne "west") { $ang = [double]$env:DOVAH_AXE_ANGLE }
     DrawTex $gfx $axe ($cx + $adx * $px) ($cy + 0.06 * $px) ($AXE_SIZE * $px) ($AXE_SIZE * $px) $C_WHITE 1.0 $false $ang
   }
 
