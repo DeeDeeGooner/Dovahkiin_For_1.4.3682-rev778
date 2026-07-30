@@ -1,5 +1,56 @@
 # CHANGELOG
 
+## Tooling — a faithful preview of the Ancient Dragonborn (2026-07-30)
+
+No behaviour change; `Tools/PreviewAncientDragonborn.ps1` is new and reads the shipping art
+without regenerating any of it. Deliberately separate from `GenerateDragonAspect.ps1`, which
+REWRITES 36 signed-off textures and must not be run to look at something.
+
+*Why a second preview at all:* the generator's sheet answers "does each body type's armour fit
+that body". It draws the pawn **opaque** and has no axe, so it has never shown the summon — who
+is an **invisible** pawn in the level-3 armour carrying the halberd. This one composites exactly
+what `Thing_DragonAspectOverlay.DrawAt` does at level 3 with `drawAxe`, over lit ground.
+
+Nothing in it is eyeballed: the orbit/flare/ring fractions, the Ember and Azure colours, the
+21-slot crescent table and its hash all come straight out of the overlay class, so a frame on the
+sheet is a real frame of the 3.4-second loop. The head offset `(0.04, 0.34)` is read from Core's
+`BodyTypes.xml`, and the body and head art are the ones this modlist actually loads — Beautiful
+Bodies and Gloomy Face, both verified active in `ModsConfig.xml`, with `Male_Average_Pointy` to
+match the user's Dovahkiin.
+
+**The invisible pawn is drawn with vanilla's own numbers: `(0.75, 0.93, 0.98)` at 50% alpha.**
+Recovered by scanning `InvisibilityMatPool`'s static constructor IL for its `ldc.r4` constants —
+reading the field directly throws, because Unity is not initialised outside the game.
+
+### Three things this turned up
+
+**The generator's sheet draws the helm at about 60% of its real size.** It scales the helm into
+`$CELL*0.62` and offsets it by eye, with a comment admitting as much. The game draws it on the
+**full body mesh** at `BaseHeadOffsetAt`, so the shipping art covers 110px on a 232px pawn where
+that sheet showed 69px. The helm art itself is fine — it was tuned against the game in a playtest
+round — but the old sheet misreports it, and that is now recorded so nobody re-tunes good art
+against a bad picture.
+
+**A resampling preview can invent a defect.** Drawing the 256-frame sprites into 208px cells
+aliased the armour's regular scale field into a fishnet that is not in the texture. On signed-off
+art that is worse than useless. The sheet now renders at native 256.
+
+**"Fully hidden" is worth much less than it sounds.** The user asked for the summon to be fully
+invisible, which needs the pawn-render patch `RISKS.md` §10 calls the most fragile thing available
+under RocketMan. Composited both ways over identical ground and diffed: **mean 4.2/255, median
+1.0/255, only 15% of the frame differing by more than 8**, concentrated in the lower torso where
+the plates are thinnest. The sheet shows both side by side so the call can be made on evidence.
+
+### And a PowerShell trap, for the third time
+
+A function parameter named `$cell` alongside a script constant `$CELL` is **one variable**, so
+`if ($cell -le 0) { $cell = $CELL }` assigned the parameter to itself. Every cell drew at size 0,
+`SetClip` clipped a 0x0 rect, and the sheet came back **blank with no error** while the function
+still returned the right number. Cells that passed an explicit size worked, which disguised it as
+a layout bug. Parameters now use distinct words (`$cellPx`, `$groundPx`), not distinct cases.
+
+---
+
 ## Phase 2j — second playtest: four fixes, the echo, and the spectral halberd (2026-07-30)
 
 He manifested and expired correctly. Everything below came out of that round.
