@@ -235,9 +235,15 @@ overlay cannot be made to work, that is a stop-and-report, not a silent downgrad
 
 TES5-accurate reference — match these, translated into RimWorld's flat top-down style:
 
-- **Spectral dragon-scale armour** layered over the pawn: translucent overlapping plates in
-  **burnished bronze-gold**, brightest at the edges, semi-transparent over the body so the
-  pawn's own apparel still reads underneath.
+- **Spectral dragon-scale armour** layered over the pawn: translucent overlapping plates,
+  brightest at the edges, semi-transparent over the body so the pawn's own apparel still reads
+  underneath.
+  > **AMENDED at the user's request, 2026-07-29. This line said "burnished bronze-gold".**
+  > The shipped armour runs **bronze at the shoulders and chest into Unrelenting Force's exact
+  > blue (95,165,240) at the waist**. That blue is not invented: it is the one Dragon Aspect's
+  > own shout icon already uses at its head, on the reasoning that Dragon Aspect is the blue
+  > shout and the fire shout at once — so the overlay matches its own icon. The art was signed
+  > off in play. **Do not "restore" bronze-gold.**
 - **Shoulder spurs / vestigial wing shapes** breaking the pawn's silhouette — this is what makes
   it recognisable at colony zoom. The silhouette change matters more than the texture detail.
 - **Ember glow** — a soft amber rim-light, and slow drifting motes rising from the pawn.
@@ -404,6 +410,26 @@ gain more. They are not the Dovahkiin and never can be while one lives.
 a single shout by element, fixed on the `PawnKindDef`, not rolled per spawn. Nothing from §4.4a
 beyond these three ever appears on a normal dragon — no Dragon Aspect, no Soul Tear, no Storm
 Call.
+
+> **CARVE-OUT, granted by the user 2026-07-30: NAMED UNIQUE DRAGONS ARE EXEMPT.**
+>
+> The rule above governs **normal** dragons, and it stays exactly as written for them.
+> **Durnehviir** carries three shouts (Frost Breath, Drain Vitality, and his own *Diil Qoth
+> Zaam*) and **Odahviing** carries two (Fire Breath and Frost Breath).
+>
+> The balance reasoning below is why the rule exists and why the exception is safe: one shout
+> means one telegraphed pattern to learn, which matters when dragons arrive *unbidden* at a
+> wealth threshold. Durnehviir and Odahviing are neither normal nor unbidden — they are
+> **summoned by the player**, once, from a quest-locked shout they had to earn. The player
+> chooses when to face what they bring, so an unreadable fight is not a risk they can be
+> ambushed by.
+>
+> **This exemption is for named uniques only.** It is not a licence to give a second shout to
+> anything that spawns on its own.
+>
+> Separately, and worth stating because it now looks like a contradiction: **the Ancient
+> Dragonborn is not a dragon**, so this rule never governed him. He carries Fire Breath, Frost
+> Breath and Unrelenting Force by the user's decision of 2026-07-30.
 
 This is a real balance constraint, not flavour: one shout means a dragon fight has **one**
 telegraphed pattern to learn and counter. Two would make dragons unreadable at the wealth levels

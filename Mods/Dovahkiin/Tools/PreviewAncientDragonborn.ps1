@@ -50,6 +50,9 @@ Add-Type -AssemblyName System.Drawing
 
 $MOD  = Split-Path -Parent $PSScriptRoot
 $TEX  = Join-Path $MOD "Textures\Things\Pawn\DragonAspect"
+# DOVAH_OVERLAY_DIR previews a DIFFERENT overlay set - Call of Valor's champion uses the same
+# geometry with a spectral palette, and this shows him without writing anything into the mod.
+if ($env:DOVAH_OVERLAY_DIR -and (Test-Path $env:DOVAH_OVERLAY_DIR)) { $TEX = $env:DOVAH_OVERLAY_DIR }
 $AXET = Join-Path $MOD "Textures\Things\Item\Equipment\DovahkiinAncientAxe.png"
 # DOVAH_AXE_OVERRIDE lets a candidate weapon be previewed in his hand WITHOUT writing it into
 # the mod. Judging a weapon on its own and judging it held are different questions, and the
@@ -200,6 +203,10 @@ function DrawFlare($gfx, $img, [double]$cx, [double]$cy, [double]$size, [double]
 # produces, not what looked good here. Returns how many were alight.
 function DrawCrescents($gfx, [double]$cx, [double]$cy, [double]$t, $flare, $plain, [double]$px) {
   $lit = 0
+  # No sprites means no aura - either the textures are missing, or DOVAH_NO_AURA stripped
+  # them for Call of Valor, who has none. Returning 0 keeps the caption's "N crescents
+  # alight" honest instead of reporting a count of things that were never drawn.
+  if ($null -eq $flare -or $null -eq $plain) { return 0 }
   for ($i = 0; $i -lt $SLOTS.Count; $i++) {
     $k       = [int]$SLOTS[$i][0]
     $phase   = [double]$SLOTS[$i][1]
@@ -357,6 +364,19 @@ $ringImg  = LoadPng (Join-Path $TEX "DragonAspectAuraRing.png")
 $flareImg = LoadPng (Join-Path $TEX "DragonAspectFlare.png")
 $plainImg = LoadPng (Join-Path $TEX "DragonAspectFlarePlain.png")
 $axeImg   = LoadPng $AXET
+
+# DOVAH_NO_AURA strips the underglow ring and the crescent particles. Call of Valor has NO
+# aura - that is the Dovahkiin's signature, and the user's rule - but he shares this
+# harness, which was written for the Ancient Dragonborn and draws one unconditionally.
+# Nulling the images rather than branching at each draw site: the ring is already
+# null-guarded, and DrawCrescents now returns early, so a missing texture and a deliberate
+# omission take the same path.
+if ($env:DOVAH_NO_AURA) {
+  if ($ringImg  -ne $null) { $ringImg.Dispose();  $ringImg  = $null }
+  if ($flareImg -ne $null) { $flareImg.Dispose(); $flareImg = $null }
+  if ($plainImg -ne $null) { $plainImg.Dispose(); $plainImg = $null }
+  Write-Output "AURA: stripped (DOVAH_NO_AURA)"
+}
 
 # --- sheet ---------------------------------------------------------------------
 # Captions are kept short and sit inside their own column. The first two versions ran

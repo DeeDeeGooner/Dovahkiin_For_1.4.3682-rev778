@@ -36,6 +36,11 @@
 Add-Type -AssemblyName System.Drawing
 
 $DEST    = "C:\Games\Rimworld\RimWorld\RimWorldFolder\Mods\Dovahkiin\Textures\Things\Pawn\DragonAspect"
+# DOVAH_DEST redirects the 36 textures somewhere else. THIS SCRIPT OVERWRITES SIGNED-OFF ART
+# BY DEFAULT - that is what $DEST above points at - so any run that is not deliberately
+# re-shipping Dragon Aspect must set this. It is what makes previewing an alternative palette
+# (DOVAH_PALETTE=valor, further down) a safe thing to do rather than a destructive one.
+if ($env:DOVAH_DEST) { $DEST = $env:DOVAH_DEST }
 $PREVIEW = "C:\Users\User\AppData\Local\Temp\claude\C--Games-Rimworld-RimWorld-RimWorldFolder-DovahkiinClaudePluged\8fd789e0-037c-4f64-847d-50fcce95451a\scratchpad"
 $SIZE    = 256
 $SS      = 4
@@ -137,6 +142,68 @@ $C_BLUE_LIT  = @( 58,124,216)  # was Unrelenting Force's (95,165,240)
 $C_BLUE_MID  = @( 36, 80,150)
 $C_BLUE_DEEP = @( 14, 32, 66)
 $C_BLUE_HOT  = @(132,186,246)
+
+# =================================================================================
+# PALETTE OVERRIDE - Call of Valor's champion. OFF unless DOVAH_PALETTE says otherwise.
+# =================================================================================
+# Call of Valor summons a ghostly bright-white hero, and his weapon should take its colours
+# from him exactly as the Ancient Dragonborn's halberd takes the Dragon Aspect ramp. Rather
+# than redraw a whole pawn overlay, this reuses ALL of the geometry below - which is
+# measured per body type, fits real silhouettes, and is signed off - and swaps only the
+# fourteen named colours.
+#
+# THE DEFAULT PATH IS UNCHANGED AND MUST STAY THAT WAY. Dragon Aspect's 36 textures are
+# signed off; this block does nothing at all unless the environment variable is set, and
+# that was verified by generating the default set into a scratch folder and hashing it
+# against the shipped files.
+#
+# Placed HERE deliberately: after the base stops, but BEFORE the $C_DEEP_RAW capture and the
+# brightness lift further down, so the lift machinery operates on these colours the same way
+# it does on the bronze ones. Putting it after the lift would bypass it silently.
+#
+# The roles are kept, only the hues change - a ghost lit from within rather than a burnished
+# bronze plate: shadow to near-white through pale steel-blue, with the rim light cyan-white.
+if ($env:DOVAH_PALETTE -eq "valor") {
+  $C_DEEP  = @( 34, 58, 84)     # deep cool shadow, where bronze had its darkest body
+  $C_MID   = @(120,162,200)     # pale steel-blue
+  $C_GOLD  = @(206,232,252)     # the lit face
+  $C_HOT   = @(255,255,255)     # hot edge - pure light
+  $C_EMBER = @(214,240,255)     # rim light. A ghost's rim is cold, not amber.
+  $C_ORANGE= @(168,214,250)     # crest
+  $C_OCORE = @(255,255,255)     # crest hot centre
+  $C_AZURE = @(120,196,255)     # aura's second colour
+  $C_BLEND_MID = @(232,246,255) # the midtone the crescent blend passes through
+  $C_BLUE_LIT  = @(150,196,236)
+  $C_BLUE_MID  = @( 92,140,186)
+  $C_BLUE_DEEP = @( 28, 52, 82)
+  $C_BLUE_HOT  = @(226,246,255)
+  Write-Output "PALETTE: valor - the ghostly champion, not Dragon Aspect's bronze"
+}
+
+# =================================================================================
+# SHOULDER STYLE - "fins" (Dragon Aspect) or "pauldron" (Call of Valor)
+# =================================================================================
+# The user's brief, 2026-07-31: make the champion *different enough* from the Ancient
+# Dragonborn while still looking good, one detail at a time. First detail: the three
+# swept fins per shoulder become an ARMOUR PAULDRON - "from the top of his shoulders to
+# over his chest", with curves.
+#
+# THIS IS A THIRD A/B SWITCH IN A FILE THAT ALREADY WARNS ABOUT HAVING TWO, so it is
+# named for what it selects rather than "A"/"B" - $PARTICLE_SHAPE and $VERSION are the
+# other two, and the whole point of naming them apart is that a session reading the
+# notebook rather than the code cannot flip the wrong one.
+#
+# It follows the palette by default because in practice the champion always wants both,
+# and one environment variable for "make the champion" is harder to get half-right than
+# two. DOVAH_SHOULDER overrides it in either direction, so the combinations are still
+# reachable for comparison.
+#
+# DRAGON ASPECT'S DEFAULT PATH IS UNCHANGED: no palette override means fins, exactly as
+# the 36 signed-off textures have them. Prove it with the hash check, never by reading.
+$SHOULDER_STYLE = "fins"
+if ($env:DOVAH_PALETTE -eq "valor") { $SHOULDER_STYLE = "pauldron" }
+if ($env:DOVAH_SHOULDER) { $SHOULDER_STYLE = $env:DOVAH_SHOULDER }
+if ($SHOULDER_STYLE -ne "fins") { Write-Output ("SHOULDERS: " + $SHOULDER_STYLE) }
 
 # ---------------------------------------------------------------------------------
 # OPACITY / BRIGHTNESS KNOBS, and why there are three rather than one.
@@ -804,6 +871,457 @@ function DrawShoulderFins($g, [double]$bx, [double]$by, [double]$len, [double]$t
   DrawSpur $g ($bx - $dir*$len*0.10)  $by                 $len        $thick        $dir $alpha              0.0  $cool
 }
 
+# =====================================================================================
+#  CALL OF VALOR'S CUIRASS - a muscled breastplate that meets the pauldrons.
+# =====================================================================================
+#  The brief: a chest plate running up to the shoulder pauldrons, curved, precise, and
+#  "it looks like it follows the chest muscles".
+#
+#  WHY THIS IS DRAWABLE WHEN THE BANDED CUIRASS WAS NOT. Earlier in this project a normal
+#  plate cuirass was built and rejected as dull, and the stated reason was that its
+#  detail - banding, fur strands, buckles - is 2-4px on a ~102px pawn and becomes noise.
+#  That reason still holds and is not being walked back. A MUSCLED plate is a different
+#  proposition: a pectoral is a LARGE form, roughly 26 x 30px here, and the thing that
+#  makes it read is not fine detail but the SHADING of a broad curved mass. Big forms
+#  survive the downscale to 48px; hatching does not. So the pecs get domes and creases,
+#  and there is deliberately no attempt at striations or rivets.
+#
+#  HOW A MUSCLE IS DRAWN: not with outlines. A pectoral reads as a rounded mass because it
+#  is lit across the top and shadowed underneath. Each pec is therefore a closed CURVE
+#  filled with a PathGradientBrush - a radial gradient with its bright centre set at the
+#  upper-middle of the dome - and then the single most important stroke on the whole
+#  piece: the UNDER-PEC CREASE, a dark arc with a lit lower lip. Without the crease, two
+#  bright ovals on a plate read as bosses. With it, they read as muscle.
+#
+#  EVERY horizontal measurement is a fraction of the body's OWN half-width at that row,
+#  read from the measured profile - so the plate follows each of the five silhouettes'
+#  taper instead of imposing Male's, exactly as the fins and arm bands do.
+# ---------------------------------------------------------------------------------
+#  The cuirass outline, as (fraction down the body, plate half-width as a fraction of the
+#  body's half-width at that row). Narrow at the neck, flaring across the chest, drawing
+#  back in at the waist. The chest values sit around 0.72-0.76 deliberately: the arm bands
+#  occupy the outer $F_ARM_W of the silhouette, so a plate wider than this would be drawn
+#  over the arms rather than over the trunk.
+$PLATE_PROFILE = @(
+  @(0.085, 0.300),   # neckline
+  @(0.127, 0.600),   # clavicle line
+  @(0.180, 0.710),
+  @(0.285, 0.755),   # widest, across the nipple line
+  @(0.410, 0.725),   # the under-pec crease
+  @(0.470, 0.665),
+  @(0.520, 0.580)    # lower edge, over the upper abdomen
+)
+$F_PLATE_TOP = 0.085
+$F_PLATE_BOT = 0.520
+$F_PEC_TOP   = 0.155
+$F_PEC_WIDE  = 0.285
+$F_PEC_BOT   = 0.410
+
+# Smoothstepped lookup into $PLATE_PROFILE. Same interpolation ProfCol uses on the body
+# profile, so the plate's edge and the body's edge curve in the same way.
+function PlateFracAt([double]$hFrac) {
+  $last = $PLATE_PROFILE.Count - 1
+  if ($hFrac -le $PLATE_PROFILE[0][0])     { return [double]$PLATE_PROFILE[0][1] }
+  if ($hFrac -ge $PLATE_PROFILE[$last][0]) { return [double]$PLATE_PROFILE[$last][1] }
+  for ($idx = 0; $idx -lt $last; $idx++) {
+    $h0 = [double]$PLATE_PROFILE[$idx][0]; $h1 = [double]$PLATE_PROFILE[$idx + 1][0]
+    if ($hFrac -ge $h0 -and $hFrac -le $h1) {
+      $tt = ($hFrac - $h0) / ($h1 - $h0)
+      $tt = $tt * $tt * (3.0 - (2.0 * $tt))
+      return ([double]$PLATE_PROFILE[$idx][1] + (([double]$PLATE_PROFILE[$idx + 1][1] - [double]$PLATE_PROFILE[$idx][1]) * $tt))
+    }
+  }
+  return [double]$PLATE_PROFILE[$last][1]
+}
+
+# absolute y for a fraction of the body's height
+function PlateY([double]$hFrac) { return ($Y_TOP + (($Y_BOT - $Y_TOP) * $hFrac)) }
+
+# the plate's own edge at a given row, on one side, in 256-frame coords
+function PlateEdge($prof, [double]$yy, [double]$side) {
+  $hFrac = ($yy - $Y_TOP) / ($Y_BOT - $Y_TOP)
+  return ($CX + ($side * (HalfSideAt $prof $yy $side) * (PlateFracAt $hFrac)))
+}
+
+function DrawChestPlate($g, $prof, [string]$rot, [int]$alpha, [double]$cool) {
+  $bodyH = $Y_BOT - $Y_TOP
+  $yTop  = PlateY $F_PLATE_TOP
+  $yBot  = PlateY $F_PLATE_BOT
+  $pDeep = Lerp3 $C_DEEP $C_BLUE_DEEP $cool
+  $pMid  = Lerp3 $C_MID  $C_BLUE_MID  $cool
+  $pLit  = Lerp3 $C_GOLD $C_BLUE_LIT  $cool
+  $pHot  = Lerp3 $C_HOT  $C_BLUE_HOT  $cool
+  # The plate is a broad lit surface, so unlike the pauldron lames it CAN carry the deep
+  # stop - that is exactly the distinction: deep stops shade wide forms and hole out
+  # narrow ones.
+  $pShade = Lerp3 $pDeep $pMid 0.30
+
+  # ---- the outline: down the right edge, across the bottom, up the left, then the
+  #      neckline back across the top with a dip in the middle for the throat.
+  $pts = New-Object System.Collections.ArrayList
+  for ($yy = $yTop; $yy -le $yBot; $yy += 1.0) {
+    [void]$pts.Add((New-Object System.Drawing.PointF ([single]((PlateEdge $prof $yy 1.0) * $SS)), ([single]($yy * $SS))))
+  }
+  # lower edge, dipping at the centre - a cuirass points down over the belly, it is not
+  # cut off square
+  $bottomDip = $bodyH * 0.030
+  foreach ($across in @(0.62, 0.30, 0.0, -0.30, -0.62)) {
+    $edgeX = $CX + ($across * ((PlateEdge $prof $yBot 1.0) - $CX))
+    $sag = $bottomDip * (1.0 - ([Math]::Abs($across) * [Math]::Abs($across)))
+    [void]$pts.Add((New-Object System.Drawing.PointF ([single]($edgeX * $SS)), ([single](($yBot + $sag) * $SS))))
+  }
+  for ($yy = $yBot; $yy -ge $yTop; $yy -= 1.0) {
+    [void]$pts.Add((New-Object System.Drawing.PointF ([single]((PlateEdge $prof $yy -1.0) * $SS)), ([single]($yy * $SS))))
+  }
+  # the neckline, left to right, dipping to the throat
+  $neckDip = $bodyH * 0.048
+  foreach ($across in @(-0.62, -0.28, 0.0, 0.28, 0.62)) {
+    $edgeX = $CX + ($across * ((PlateEdge $prof $yTop 1.0) - $CX))
+    $dip = $neckDip * (1.0 - ($across * $across))
+    [void]$pts.Add((New-Object System.Drawing.PointF ([single]($edgeX * $SS)), ([single](($yTop + $dip) * $SS))))
+  }
+  $plate = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $plate.AddPolygon([System.Drawing.PointF[]]$pts.ToArray([System.Drawing.PointF]))
+  $plate.CloseFigure()
+
+  # ---- the plate body: lit at the chest, falling away towards the waist
+  $rect = $plate.GetBounds()
+  if ($rect.Width -lt 1) { $rect.Width = 1 }
+  if ($rect.Height -lt 1) { $rect.Height = 1 }
+  $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rect, (RGB $pLit[0] $pLit[1] $pLit[2] $alpha), (RGB $pShade[0] $pShade[1] $pShade[2] ([int]($alpha * 0.92))), ([single]90.0)
+  $g.FillPath($brush, $plate); $brush.Dispose()
+
+  # ---- the muscle. South is the chest; north is the back and gets a spine instead of a
+  #      sternum; east sees one pec edge-on.
+  $sides = if ($rot -eq "east") { @(-1.0) } else { @(-1.0, 1.0) }
+  if ($rot -ne "north") {
+    foreach ($side in $sides) { DrawPectoral $g $prof $side $alpha $pDeep $pMid $pLit $pHot }
+  } else {
+    foreach ($side in $sides) { DrawShoulderBlade $g $prof $side $alpha $pDeep $pMid $pLit }
+  }
+
+  # ---- the centre line. Sternum on the front, spine on the back. Drawn as a GROOVE - a
+  #      dark channel with a lit lip on each side - because a single dark line reads as a
+  #      crack in the plate rather than as a valley between two masses.
+  if ($rot -ne "east") {
+    $grooveTop = PlateY ($F_PLATE_TOP + 0.045)
+    $grooveBot = if ($rot -eq "north") { PlateY ($F_PLATE_BOT - 0.02) } else { PlateY ($F_PEC_BOT + 0.028) }
+    $grooveW = (HalfWidthAt $prof (PlateY $F_PEC_WIDE)) * 0.052
+    $groove = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $groovePts = @(
+      (New-Object System.Drawing.PointF ([single]($CX * $SS)), ([single]($grooveTop * $SS))),
+      (New-Object System.Drawing.PointF ([single](($CX + ($grooveW * 0.18)) * $SS)), ([single](($grooveTop + (($grooveBot - $grooveTop) * 0.42)) * $SS))),
+      (New-Object System.Drawing.PointF ([single]($CX * $SS)), ([single]($grooveBot * $SS)))
+    )
+    $groove.AddCurve([System.Drawing.PointF[]]$groovePts, [single]0.4)
+    $penDark = New-Object System.Drawing.Pen (RGB $pDeep[0] $pDeep[1] $pDeep[2] ([int]($alpha * 0.85))), ([single]($grooveW * $SS))
+    $penDark.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $penDark.EndCap   = [System.Drawing.Drawing2D.LineCap]::Round
+    $g.DrawPath($penDark, $groove); $penDark.Dispose()
+    # the lit lips, one either side, offset by half the groove's width
+    foreach ($lip in @(-1.0, 1.0)) {
+      $lipPath = New-Object System.Drawing.Drawing2D.GraphicsPath
+      $lipPts = @()
+      foreach ($srcPt in $groovePts) {
+        $lipPts += (New-Object System.Drawing.PointF ([single]($srcPt.X + ($lip * $grooveW * 0.62 * $SS))), ([single]$srcPt.Y))
+      }
+      $lipPath.AddCurve([System.Drawing.PointF[]]$lipPts, [single]0.4)
+      $penLip = New-Object System.Drawing.Pen (RGB $pHot[0] $pHot[1] $pHot[2] ([int]($alpha * 0.55))), ([single]($grooveW * 0.34 * $SS))
+      $g.DrawPath($penLip, $lipPath); $penLip.Dispose(); $lipPath.Dispose()
+    }
+    $groove.Dispose()
+  }
+
+  # ---- the plate's own rim, last so it reads as the edge of everything under it
+  $penRim = New-Object System.Drawing.Pen (RGB $pHot[0] $pHot[1] $pHot[2] ([int]([Math]::Min(235, $alpha * 1.45)))), ([single]((HalfWidthAt $prof (PlateY $F_PEC_WIDE)) * 0.030 * $SS))
+  $penRim.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+  $g.DrawPath($penRim, $plate); $penRim.Dispose()
+  $plate.Dispose()
+}
+
+# One pectoral: a closed curve filled with a RADIAL gradient, then its crease.
+function DrawPectoral($g, $prof, [double]$side, [int]$alpha, $pDeep, $pMid, $pLit, $pHot) {
+  $yPecTop  = PlateY $F_PEC_TOP
+  $yPecWide = PlateY $F_PEC_WIDE
+  $yPecBot  = PlateY $F_PEC_BOT
+  $pecH = $yPecBot - $yPecTop
+  $hwTop  = HalfSideAt $prof $yPecTop  $side
+  $hwWide = HalfSideAt $prof $yPecWide $side
+  $hwBot  = HalfSideAt $prof $yPecBot  $side
+
+  # Seven control points round one pec. Every element parenthesised - the comma operator
+  # binds tighter than arithmetic in PowerShell and an unparenthesised numeric array
+  # literal comes back EMPTY, with the only symptom appearing three functions away.
+  $raw = @(
+    @(($CX + ($side * $hwTop  * 0.10)), ($yPecTop + ($pecH * 0.06))),   # inner top, by the sternum
+    @(($CX + ($side * $hwTop  * 0.40)), ($yPecTop)),                     # the crown of the pec
+    @(($CX + ($side * $hwTop  * 0.64)), ($yPecTop + ($pecH * 0.14))),    # sweeping out to the shoulder
+    @(($CX + ($side * $hwWide * 0.735)),($yPecWide)),                    # widest
+    @(($CX + ($side * $hwBot  * 0.630)),($yPecBot - ($pecH * 0.12))),
+    @(($CX + ($side * $hwBot  * 0.340)),($yPecBot)),                     # lowest, near the middle
+    @(($CX + ($side * $hwBot  * 0.090)),($yPecBot - ($pecH * 0.20)))     # back up to the sternum
+  )
+  $pecPts = @()
+  foreach ($rawPt in $raw) {
+    $pecPts += (New-Object System.Drawing.PointF ([single]($rawPt[0] * $SS)), ([single]($rawPt[1] * $SS)))
+  }
+  $pec = New-Object System.Drawing.Drawing2D.GraphicsPath
+  # AddClosedCurve here, NOT AddPolygon - the opposite of the crest shards and the pauldron
+  # lames. Those wanted angular facets and cut ends; muscle is the one thing in this file
+  # that genuinely must be round, and a polygon through seven points reads as a gemstone.
+  $pec.AddClosedCurve([System.Drawing.PointF[]]$pecPts, [single]0.45)
+
+  # The dome. PathGradientBrush puts the bright centre where the light lands and falls to
+  # the surround colour at the boundary - which is what a rounded mass does and what no
+  # linear gradient can express. The centre sits UPPER-MIDDLE of the pec, symmetric about
+  # the body's centre line, because a RimWorld sprite is lit near enough head-on and two
+  # pecs lit from one side would read as the pawn standing at an angle.
+  $bright = New-Object System.Drawing.Drawing2D.PathGradientBrush $pec
+  $bright.CenterPoint = New-Object System.Drawing.PointF ([single](($CX + ($side * $hwWide * 0.40)) * $SS)), ([single](($yPecTop + ($pecH * 0.32)) * $SS))
+  $bright.CenterColor = (RGB $pHot[0] $pHot[1] $pHot[2] ([int]([Math]::Min(255, $alpha * 1.15))))
+  $bright.SurroundColors = [System.Drawing.Color[]]@((RGB $pMid[0] $pMid[1] $pMid[2] ([int]($alpha * 0.68))))
+  $g.FillPath($bright, $pec); $bright.Dispose()
+
+  # THE UNDER-PEC CREASE. This is the stroke that decides whether the whole piece reads as
+  # muscle or as two bosses riveted to a plate: a dark arc where the pec overhangs, with a
+  # LIT LIP just below it where the light catches the abdomen plate underneath. A crease
+  # with no lip is a smudge; the pairing is what makes it a fold.
+  $creaseRaw = @(
+    @(($CX + ($side * $hwBot * 0.660)), ($yPecBot - ($pecH * 0.16))),
+    @(($CX + ($side * $hwBot * 0.470)), ($yPecBot - ($pecH * 0.01))),
+    @(($CX + ($side * $hwBot * 0.245)), ($yPecBot - ($pecH * 0.04))),
+    @(($CX + ($side * $hwBot * 0.095)), ($yPecBot - ($pecH * 0.19)))
+  )
+  $creasePts = @()
+  foreach ($rawPt in $creaseRaw) {
+    $creasePts += (New-Object System.Drawing.PointF ([single]($rawPt[0] * $SS)), ([single]($rawPt[1] * $SS)))
+  }
+  $creaseW = $pecH * 0.115
+  $crease = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $crease.AddCurve([System.Drawing.PointF[]]$creasePts, [single]0.45)
+  $penCrease = New-Object System.Drawing.Pen (RGB $pDeep[0] $pDeep[1] $pDeep[2] ([int]($alpha * 0.90))), ([single]($creaseW * $SS))
+  $penCrease.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+  $penCrease.EndCap   = [System.Drawing.Drawing2D.LineCap]::Round
+  $g.DrawPath($penCrease, $crease); $penCrease.Dispose()
+
+  $lipPts = @()
+  foreach ($srcPt in $creasePts) {
+    $lipPts += (New-Object System.Drawing.PointF ([single]$srcPt.X), ([single]($srcPt.Y + ($creaseW * 0.80 * $SS))))
+  }
+  $lip = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $lip.AddCurve([System.Drawing.PointF[]]$lipPts, [single]0.45)
+  $penLip = New-Object System.Drawing.Pen (RGB $pLit[0] $pLit[1] $pLit[2] ([int]($alpha * 0.62))), ([single]($creaseW * 0.42 * $SS))
+  $penLip.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+  $penLip.EndCap   = [System.Drawing.Drawing2D.LineCap]::Round
+  $g.DrawPath($penLip, $lip); $penLip.Dispose(); $lip.Dispose()
+  $crease.Dispose()
+
+  # a thin hot edge along the pec's upper curve, where a polished plate would catch light
+  $topRaw = @($raw[0], $raw[1], $raw[2], $raw[3])
+  $topPts = @()
+  foreach ($rawPt in $topRaw) {
+    $topPts += (New-Object System.Drawing.PointF ([single]($rawPt[0] * $SS)), ([single]($rawPt[1] * $SS)))
+  }
+  $topEdge = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $topEdge.AddCurve([System.Drawing.PointF[]]$topPts, [single]0.45)
+  $penTop = New-Object System.Drawing.Pen (RGB $pHot[0] $pHot[1] $pHot[2] ([int]($alpha * 0.70))), ([single]($pecH * 0.055 * $SS))
+  $g.DrawPath($penTop, $topEdge); $penTop.Dispose(); $topEdge.Dispose()
+  $pec.Dispose()
+}
+
+# The back's equivalent: a shoulder blade. Flatter and higher than a pec, and with no
+# crease under it - a back has no overhang - so it is a dome and an upper edge only.
+function DrawShoulderBlade($g, $prof, [double]$side, [int]$alpha, $pDeep, $pMid, $pLit) {
+  $yTop  = PlateY ($F_PEC_TOP + 0.012)
+  $yBot  = PlateY ($F_PEC_BOT - 0.030)
+  $bladeH = $yBot - $yTop
+  $hwMid = HalfSideAt $prof (PlateY $F_PEC_WIDE) $side
+  $raw = @(
+    @(($CX + ($side * $hwMid * 0.155)), ($yTop + ($bladeH * 0.10))),
+    @(($CX + ($side * $hwMid * 0.480)), ($yTop)),
+    @(($CX + ($side * $hwMid * 0.690)), ($yTop + ($bladeH * 0.34))),
+    @(($CX + ($side * $hwMid * 0.520)), ($yBot)),
+    @(($CX + ($side * $hwMid * 0.185)), ($yBot - ($bladeH * 0.22)))
+  )
+  $bladePts = @()
+  foreach ($rawPt in $raw) {
+    $bladePts += (New-Object System.Drawing.PointF ([single]($rawPt[0] * $SS)), ([single]($rawPt[1] * $SS)))
+  }
+  $blade = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $blade.AddClosedCurve([System.Drawing.PointF[]]$bladePts, [single]0.45)
+  $bright = New-Object System.Drawing.Drawing2D.PathGradientBrush $blade
+  $bright.CenterPoint = New-Object System.Drawing.PointF ([single](($CX + ($side * $hwMid * 0.42)) * $SS)), ([single](($yTop + ($bladeH * 0.38)) * $SS))
+  $bright.CenterColor = (RGB $pLit[0] $pLit[1] $pLit[2] ([int]($alpha * 0.95)))
+  $bright.SurroundColors = [System.Drawing.Color[]]@((RGB $pMid[0] $pMid[1] $pMid[2] ([int]($alpha * 0.45))))
+  $g.FillPath($bright, $blade); $bright.Dispose()
+  $penEdge = New-Object System.Drawing.Pen (RGB $pDeep[0] $pDeep[1] $pDeep[2] ([int]($alpha * 0.55))), ([single]($bladeH * 0.055 * $SS))
+  $g.DrawPath($penEdge, $blade); $penEdge.Dispose(); $blade.Dispose()
+}
+
+# Which shoulder piece this build wears. A single dispatch rather than an `if` repeated
+# at all four call sites: the two styles then take exactly the same arguments in exactly
+# the same order, and no rotation can end up half-converted.
+function DrawShoulderPiece($g, [double]$bx, [double]$by, [double]$len, [double]$thick,
+                           [double]$dir, [int]$alpha, [double]$cool = 0.0) {
+  if ($SHOULDER_STYLE -eq "pauldron") {
+    DrawShoulderPauldron $g $bx $by $len $thick $dir $alpha $cool
+  } else {
+    DrawShoulderFins $g $bx $by $len $thick $dir $alpha $cool
+  }
+}
+
+# =====================================================================================
+#  CALL OF VALOR'S PAULDRON - a curved shoulder cap, in overlapping lames.
+# =====================================================================================
+#  The brief: "as if the pawn had armor pauldron, from the top of his shoulders to over
+#  his chest, meaning you gotta use a bit of curves."
+#
+#  So this is NOT the fin with different numbers. A fin is a straight tapering blade
+#  swung about its root; a pauldron is a band of PLATE that follows the shoulder's own
+#  curve. It is built as concentric arc bands about a pivot sitting just below and
+#  inboard of the shoulder point, each band swept from outboard-low, up over the top of
+#  the shoulder, and down INBOARD across the upper chest.
+#
+#  Three things make it read as armour rather than as a hoop, and all three are curves:
+#
+#   1. THE SWEEP IS ASYMMETRIC about the top of the shoulder. It reaches further inboard
+#      (over the chest) than outboard, which is what the brief actually asks for. A sweep
+#      centred on the shoulder reads as a shoulder pad, not a pauldron.
+#   2. THE BAND TAPERS TO A POINT at the chest end and stays full width outboard. A
+#      constant-width arc is a croissant. The taper is what gives it a direction.
+#   3. SUCCESSIVE LAMES ARE LONGER AS WELL AS LARGER. Real pauldron lames fan: each one
+#      below the last reaches a little further round at both ends. Growing the radius
+#      alone stacks concentric rings, which reads as a target, not as plate. This is the
+#      same lesson the fins already carry - repeated shapes must be fanned, not just
+#      resized - restated because the axis of the fan is different here.
+#
+#  It BREAKS THE SILHOUETTE by design: at the widest lame it projects ~16px past the
+#  body edge on a male south sprite. Anything drawn inside the outline at this size is a
+#  ten-pixel stripe and will not read - which is exactly why the procedural normal-plate
+#  armour was rejected as dull.
+#
+#  Geometry is expressed entirely in multiples of $len, which the caller derives from the
+#  body's own half-width AT THE SHOULDER LINE - so it fits all five silhouettes without a
+#  second set of numbers, and a Fat pawn's belly cannot inflate it.
+# ---------------------------------------------------------------------------------
+function SmoothStep([double]$t) {
+  if ($t -le 0.0) { return 0.0 }
+  if ($t -ge 1.0) { return 1.0 }
+  return ($t * $t * (3.0 - 2.0 * $t))
+}
+
+# One lame: a curved band of plate. $phiLo is the inboard end (over the chest), $phiHi
+# the outboard end. Angles are measured from the INBOARD horizontal, rising through 90
+# at the top of the shoulder - so the same numbers serve both shoulders and only the
+# sign of the x offset changes.
+function DrawLame($g, [double]$px, [double]$py, [double]$rMid, [double]$band,
+                  [double]$phiLo, [double]$phiHi, [double]$dir, [int]$alpha, [double]$cool) {
+  $sDeep = Lerp3 $C_DEEP $C_BLUE_DEEP $cool
+  $sGold = Lerp3 $C_GOLD $C_BLUE_LIT  $cool
+  $sHot  = Lerp3 $C_HOT  $C_BLUE_HOT  $cool
+  $inb = -$dir          # inboard is +x for the left shoulder, -x for the right
+
+  $steps = 34
+  $outer = @()
+  $inner = @()
+  for ($stepIdx = 0; $stepIdx -le $steps; $stepIdx++) {
+    $along = $stepIdx / [double]$steps                    # 0 at the chest end, 1 outboard
+    $phi = ($phiLo + (($phiHi - $phiLo) * $along)) * [Math]::PI / 180.0
+    # TAPER AT BOTH ENDS, fattest over the shoulder itself. The first version tapered only
+    # the chest end and left the outboard end at full width, which made the lame read as a
+    # hoop with a cut edge rather than as a plate that wraps and stops.
+    $width = $band *
+             (0.18 + (0.82 * (SmoothStep ($along / 0.38)))) *
+             (0.45 + (0.55 * (SmoothStep ((1.0 - $along) / 0.22))))
+    $rOut = $rMid + ($width * 0.5)
+    $rIn  = $rMid - ($width * 0.5)
+    $cosP = [Math]::Cos($phi); $sinP = [Math]::Sin($phi)
+    # EVERY element parenthesised - the comma operator binds tighter than arithmetic here
+    $outer += (New-Object System.Drawing.PointF ([single]($px + ($inb * $rOut * $cosP))), ([single]($py - ($rOut * $sinP))))
+    $inner += (New-Object System.Drawing.PointF ([single]($px + ($inb * $rIn  * $cosP))), ([single]($py - ($rIn  * $sinP))))
+  }
+  # walk out along the outer edge, back along the inner one
+  $pts = @()
+  $pts += $outer
+  for ($backIdx = $inner.Count - 1; $backIdx -ge 0; $backIdx--) { $pts += $inner[$backIdx] }
+
+  $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+  # AddPolygon, not AddClosedCurve. The arc is already sampled at 34 steps so it is
+  # smooth on its own, and a curve tension would round off the lame's cut ends - which
+  # are the edges that make it read as a plate with a boundary rather than as a smear.
+  $path.AddPolygon([System.Drawing.PointF[]]$pts)
+
+  if ($SPUR_SEP -gt 0.0) {
+    $sGold = BrightLift $sGold (0.18 * $SPUR_SEP)
+    $sHot  = BrightLift $sHot  (0.18 * $SPUR_SEP)
+    $rimBase = Lerp3 $C_DEEP_RAW $C_BLUE_DEEP_RAW $cool
+    $rimCol = @(([int]($rimBase[0] * 0.72)), ([int]($rimBase[1] * 0.72)), ([int]($rimBase[2] * 0.72)))
+    $penRim = New-Object System.Drawing.Pen (RGB $rimCol[0] $rimCol[1] $rimCol[2] ([int]([Math]::Min(255, $alpha * 1.45)))), ([single]($band * 0.30 * $SPUR_SEP))
+    $penRim.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+    $g.DrawPath($penRim, $path); $penRim.Dispose()
+  }
+
+  $rect = $path.GetBounds()
+  if ($rect.Width -lt 1) { $rect.Width = 1 }
+  if ($rect.Height -lt 1) { $rect.Height = 1 }
+  # 300 degrees, the same lighting direction the fins and scales use - a pauldron lit from
+  # a different angle than the plate under it reads as a sticker.
+  #
+  # The dark end of the gradient is lifted 42% towards the lit tone. A fin is a compact
+  # blob and can carry the full deep-to-lit range; a LAME IS A THIN BAND, and running it
+  # from (34,58,84) - near black - to lit across ten pixels reads as a shadow with a bright
+  # rim, not as a plate. The whole piece then looked like wire hoops laid over the pawn.
+  # Same trap as the crest shards, which were filled down to C_BLUE_DEEP and came out with
+  # a dark hole punched through each one: a "deep" palette stop shades a broad lit surface,
+  # it does not fill a narrow one.
+  $sFill = Lerp3 $sDeep $sGold 0.42
+  $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rect, (RGB $sFill[0] $sFill[1] $sFill[2] $alpha), (RGB $sGold[0] $sGold[1] $sGold[2] ([int]([Math]::Min(255, $alpha * 1.25)))), ([single]300.0)
+  $g.FillPath($brush, $path); $brush.Dispose()
+
+  # 0.09, not 0.20. The edge has to OUTLINE the band, not BE it - at 0.20 the stroke was
+  # most of a tapered lame's width and the fill never showed.
+  $pen = New-Object System.Drawing.Pen (RGB $sHot[0] $sHot[1] $sHot[2] ([int]([Math]::Min(230, $alpha * 1.4)))), ([single]($band * 0.09))
+  $pen.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+  $g.DrawPath($pen, $path)
+  $pen.Dispose(); $path.Dispose()
+}
+
+# Three lames per shoulder. Drawn OUTERMOST FIRST so the top lame overlaps the ones below
+# it, which is the way real plate is riveted and the way it has to stack to read.
+function DrawShoulderPauldron($g, [double]$bx, [double]$by, [double]$len, [double]$thick,
+                              [double]$dir, [int]$alpha, [double]$cool = 0.0) {
+  # Pivot: essentially ON the shoulder joint. The first version put it a long way below
+  # and used radii up to 0.80 of $len, which threw the top of every arc 16px ABOVE the
+  # shoulder line - up beside the neck - so it read as a raised collar rather than as
+  # something worn on the shoulder. Small radii about a pivot at the joint keep the mass
+  # where the shoulder actually is.
+  # The pivot is pulled INBOARD, which is what buys the reach across the chest. Note the
+  # trade being made: moving it inboard also pulls the outboard end back inside the body
+  # outline, and an overlay that does not break the silhouette does not read at all. 0.18
+  # with a slightly larger base radius keeps ~9px of overhang past the body edge while
+  # bringing the inboard tip to within ~15px of the centre line - i.e. genuinely over the
+  # pectoral rather than stopping at the collarbone.
+  $px = $bx - ($dir * $len * 0.18)
+  $py = $by + ($len * 0.16)
+  $rBase = $len * 0.38
+  $band  = $len * 0.42          # a LAME IS PLATE. Thin bands read as wire, however lit.
+  $lames = 3
+  for ($lameIdx = $lames - 1; $lameIdx -ge 0; $lameIdx--) {
+    # 0.55 of the band, so consecutive lames overlap by nearly half and the three read as
+    # one wrapped mass with seams. At 0.78 they were separated into concentric rings,
+    # which reads as a target rather than as riveted plate.
+    $rMid = $rBase + ($lameIdx * $band * 0.55)
+    # BOTH ends sit BELOW the horizontal: the inboard end reaches down over the chest, the
+    # outboard end hangs down the outside of the arm. Running the sweep entirely above the
+    # pivot - which the first version did - is what made it a collar.
+    $phiLo = -28.0  - ($lameIdx * 6.0)
+    $phiHi = 186.0 + ($lameIdx * 5.0)
+    # the top lame reads brightest; the ones under it fall back a little
+    $lameAlpha = [int]($alpha * (1.0 - (0.10 * $lameIdx)))
+    DrawLame $g $px $py $rMid $band $phiLo $phiHi $dir $lameAlpha $cool
+  }
+}
+
 # ---------------------------------------------------------------------------------
 # The TES5 crest: two rows of jagged crystal SHARDS running from the clavicles down the
 # abdomen, each one growing outward from the centre line.
@@ -908,14 +1426,28 @@ function BuildBody([string]$rot, [int]$level) {
     # in version A, blue in version B. Leaving them on a fixed gold put warm fins on a cool
     # chest the moment the ramp was reversed.
     $finCool = CoolAt (($shoulderY - $Y_TOP) / ($Y_BOT - $Y_TOP))
-    if ($rot -eq "east") {
-      # facing right, so BOTH fans sweep back to the left; drawing one forward crossed them
-      DrawShoulderFins $g (($CX - $hwSL*0.10)*$SS) (($shoulderY+8)*$SS) ($spurLen*0.70) ($spurThick*0.72) -1.0 90 $finCool
-      DrawShoulderFins $g (($CX - $hwSL*0.45)*$SS) ($shoulderY*$SS)     $spurLen        $spurThick       -1.0 170 $finCool
-    } else {
-      DrawShoulderFins $g (($CX - $hwSL*0.80)*$SS) ($shoulderY*$SS) $spurLen $spurThick -1.0 170 $finCool
-      DrawShoulderFins $g (($CX + $hwSR*0.80)*$SS) ($shoulderY*$SS) $spurLen $spurThick  1.0 170 $finCool
+    # One dispatch, so the four call sites below stay identical between the two styles and
+    # cannot drift apart. $SHOULDER_STYLE is "fins" unless the champion is being built.
+    #
+    # DRAW ORDER DIFFERS BETWEEN THE TWO STYLES, AND IT HAS TO.
+    #   fins:     fins first, then the scale field over their roots, so the fins look
+    #             GROWN OUT of the body rather than stuck on it.
+    #   pauldron: scales, then the cuirass, then the pauldrons LAST - because plate is
+    #             worn, not grown, and a pauldron laps OVER the cuirass it is strapped to.
+    #             Drawing them in the fins' order put the breastplate on top of the
+    #             shoulder piece, which reads as a bib.
+    $shoulderCalls = {
+      if ($rot -eq "east") {
+        # facing right, so BOTH sweep back to the left; drawing one forward crossed them
+        DrawShoulderPiece $g (($CX - $hwSL*0.10)*$SS) (($shoulderY+8)*$SS) ($spurLen*0.70) ($spurThick*0.72) -1.0 90 $finCool
+        DrawShoulderPiece $g (($CX - $hwSL*0.45)*$SS) ($shoulderY*$SS)     $spurLen        $spurThick       -1.0 170 $finCool
+      } else {
+        DrawShoulderPiece $g (($CX - $hwSL*0.80)*$SS) ($shoulderY*$SS) $spurLen $spurThick -1.0 170 $finCool
+        DrawShoulderPiece $g (($CX + $hwSR*0.80)*$SS) ($shoulderY*$SS) $spurLen $spurThick  1.0 170 $finCool
+      }
     }
+
+    if ($SHOULDER_STYLE -ne "pauldron") { & $shoulderCalls }
 
     # --- torso plates. SPEC 4.4d wants apparel to read underneath, so these are faint:
     #     26 at the centre line rising to 88 at the edges. The first version used 96-170
@@ -923,6 +1455,19 @@ function BuildBody([string]$rot, [int]$level) {
     $g.SetClip($torso)
     FillScales $g $prof 26.0 88.0
     $g.ResetClip()
+
+    if ($SHOULDER_STYLE -eq "pauldron") {
+      # The cuirass takes the ramp at the CHEST, not at the shoulder line - it is a chest
+      # piece, and reading the ramp where the fins read it would tint it for a height it
+      # does not occupy.
+      $plateCool = CoolAt (($F_PLATE_TOP + $F_PLATE_BOT) * 0.5)
+      # 152, not the 132 this started at. The scale field is drawn UNDER the cuirass and
+      # its regular pattern shows straight through a thin plate, which muddies exactly the
+      # broad smooth shading the pectorals depend on to read as rounded. Still well short
+      # of opaque - SPEC 4.4d wants the pawn's own apparel visible underneath.
+      DrawChestPlate $g $prof $rot 152 $plateCool
+      & $shoulderCalls
+    }
   }
 
   # --- arm bands: present at EVERY level, and the only thing present at level 1.
@@ -982,6 +1527,19 @@ function BuildBody([string]$rot, [int]$level) {
     }
 
     # --- the jagged crest, growing out of each side of the chest ---
+    #
+    # SUPPRESSED FOR THE PAULDRON BUILD, and this is a real decision rather than a tidy-up.
+    # The crest is two rows of bright crystal shards running down the middle of the chest -
+    # exactly the surface the muscled cuirass occupies. Drawn together, the shards win: they
+    # are the brightest thing on the sprite, and the pectorals underneath simply stop
+    # existing. There is no alpha at which both read, because they are not layered, they are
+    # competing for the same forms. So the champion gets the plate and loses the crest.
+    #
+    # It is also the right call thematically - the crest is a dragon's spine breaking out
+    # through the skin, which is the Dovahkiin's signature, and this hero is a man in armour.
+    # Reversible in one line if the crest is wanted back.
+    if ($SHOULDER_STYLE -eq "pauldron") { $drawCrest = $false } else { $drawCrest = $true }
+    if ($drawCrest) {
     # NOT clipped to the torso, unlike the rings it replaced: these are an EXTENSION and
     # their whole point is that the tips break past the body outline. Clipping them shaved
     # every tip flat against the silhouette and they read as a painted stripe again.
@@ -1009,6 +1567,7 @@ function BuildBody([string]$rot, [int]$level) {
       DrawShardCrest $g ($CX - $dxTopL) $cTopY ($CX - $dxBotL) $cBotY 10 $SHARD_TOP $SHARD_BOT -1.0 224
       DrawShardCrest $g ($CX + $dxTopR) $cTopY ($CX + $dxBotR) $cBotY 10 $SHARD_TOP $SHARD_BOT  1.0 224
     }
+    }   # end if ($drawCrest)
   }
 
   $torso.Dispose(); $arms.Dispose(); $g.Dispose()

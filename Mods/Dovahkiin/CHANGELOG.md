@@ -1,5 +1,267 @@
 # CHANGELOG
 
+## Call of Valor: a MUSCLED CUIRASS, meeting the pauldrons (2026-07-31)
+
+The next detail in the user's one-at-a-time pass: a chest plate running up to the pauldrons,
+curved, precise, and *"it looks like it follows the chest muscles"*.
+
+**Why this was drawable when the banded cuirass was not, since that looks like a contradiction.**
+The normal-plate armour was rejected partly because its detail — banding, fur, buckles — is 2–4px
+on a ~102px pawn and becomes noise. That reason still stands. A *muscled* plate is a different
+proposition: a pectoral is a **large form**, ~26×30px here, and what makes it read is the shading
+of a broad curved mass, not fine detail. Big forms survive the downscale to 48px; hatching does
+not. So the pecs get domes and creases, and there is deliberately no attempt at striations, rivets
+or strap detail.
+
+**How the muscle is drawn — not with outlines.** Each pectoral is a closed `AddClosedCurve` filled
+with a **`PathGradientBrush`**, whose bright centre sits at the upper-middle of the dome and falls
+to a mid tone at the boundary. That is a radial falloff inside an arbitrary shape, which is what a
+rounded mass does and what no linear gradient can express. Then the single most important stroke on
+the piece: **the under-pec crease** — a dark arc with a *lit lip* just beneath it. A crease alone is
+a smudge; the pairing is what makes it a fold. Without it, two bright ovals read as bosses riveted
+to a plate.
+
+`AddClosedCurve` here, note — the **opposite** of the crest shards and the pauldron lames, which
+both need `AddPolygon` because their read is angular. Muscle is the one thing in this generator
+that genuinely must be round.
+
+Per rotation, because a back is not a front: **south/east get pectorals and a sternum groove;
+north gets shoulder blades and a spine groove, and no crease at all** — a back has no overhang.
+The centre line is drawn as a *groove* (dark channel, lit lip either side), not a line: a single
+dark stroke reads as a crack in the plate rather than as a valley between two masses.
+
+Every horizontal measurement is a fraction of the body's **own half-width at that row**, read from
+the measured profile, so the plate follows all five silhouettes' taper instead of imposing Male's.
+The outline is built row-by-row like `BuildTorsoPath`, with a `$PLATE_PROFILE` table smoothstepped
+between landmarks — neckline 0.30 of the body's half-width, flaring to 0.755 across the nipple
+line, drawing back to 0.58 at the waist. Chest values sit near 0.72–0.76 deliberately: the arm
+bands occupy the outer `$F_ARM_W`, so anything wider would be drawn over the arms.
+
+### Two things that had to change around it
+
+- **DRAW ORDER IS NOW STYLE-DEPENDENT.** Fins are drawn *before* the scale field so the plates lap
+  their roots and they look grown out of the body. Plate is the opposite — it is **worn**, so the
+  order is scales → cuirass → pauldrons, and the pauldron laps *over* the cuirass it is strapped
+  to. Using the fins' order put the breastplate on top of the shoulder piece, which read as a bib.
+- **THE CREST SHARDS ARE SUPPRESSED for the pauldron build.** This is a real decision, not a
+  tidy-up, and the first render is what forced it: the crest is two rows of bright crystal shards
+  running down the middle of the chest — exactly the surface the cuirass occupies. Drawn together
+  the shards win outright, because they are the brightest thing on the sprite, and the pectorals
+  underneath simply stopped existing. **There is no alpha at which both read: they are not layered,
+  they are competing for the same forms.** It is also right thematically — the crest is a dragon's
+  spine breaking through the skin, which is the Dovahkiin's signature, and this hero is a man in
+  armour. One line to restore.
+
+Plate alpha ended at 152, up from 132: the scale field is drawn underneath and its regular pattern
+shows through a thin plate, muddying exactly the broad smooth shading the pectorals depend on.
+
+Dragon Aspect untouched throughout — **36 of 36 shipped textures byte-identical** after every run.
+
+---
+
+## Call of Valor: aura off, shoulder fins become PAULDRONS (2026-07-31)
+
+The user's plan, in their words: *"slowly correct the details little by little to make it
+different enough from the ancient dragonborn while it still looks good."* First two details.
+
+**The aura is gone.** `DOVAH_NO_AURA` on `PreviewAncientDragonborn.ps1`, which was written for the
+Ancient Dragonborn and drew one unconditionally. It nulls the ring and crescent images rather than
+branching at each draw site — the ring was already null-guarded, and `DrawCrescents` now returns 0
+early, so a missing texture and a deliberate omission take the same path and the caption's
+"N crescents alight" stays honest. In game this is simply the valor overlay not drawing them.
+
+**The three swept fins per shoulder become a pauldron** — `$SHOULDER_STYLE`, which follows
+`DOVAH_PALETTE=valor` and is overridable with `DOVAH_SHOULDER`. Dragon Aspect's default path is
+untouched: **36 of 36 shipped textures verified byte-identical** after every run in this session.
+
+It is a genuinely different construction, not the fin with new numbers. A fin is a straight
+tapering blade swung about its root; a lame is a band of plate swept along an arc about a pivot at
+the shoulder joint, from outboard-below, over the joint, and down inboard across the chest. Three
+lames, overlapping by nearly half, drawn outermost-first so the top one laps the ones beneath.
+
+### Three passes, and each failure was the shape — as it always is here
+
+- **They read as hollow wire hoops.** The hot edge stroke was `band * 0.20`, which on a *tapered*
+  band is most of its width, so the fill never showed. Cut to `0.09`, and the band widened from
+  `len*0.26` to `len*0.42`. **The edge has to outline the band, not be it.**
+- **The fill was near-black through the middle.** The gradient ran from `C_DEEP` (34,58,84) to the
+  lit tone across about ten pixels and read as a shadow with a bright rim. The dark stop is now
+  lifted 42% towards the lit one. *This is the third time in this project that a "deep" palette
+  stop has been used to fill a narrow shape and produced a hole* — the crest shards and the aura
+  rings did the same. **A deep stop shades a broad lit surface; it does not fill a thin one.**
+- **It sat too high — a raised collar, not a shoulder piece.** The sweep ran entirely *above* the
+  pivot (φ 2°→150°) with radii up to `len*0.80`, throwing the top of every arc ~16px above the
+  shoulder line, beside the neck. Now both ends sit *below* the horizontal (φ −28°→186°, fanning
+  outward per lame) about a pivot on the joint itself.
+
+The pivot was then pulled inboard to `len*0.18` to reach across the chest as the brief asks. That
+is a **trade, not a free win**: moving it inboard also pulls the outboard end back inside the body
+outline, and an overlay that does not break the silhouette does not read at all. The base radius
+was raised with it to keep ~9px of overhang past the body edge.
+
+### Still Dragon Aspect's, and deliberately not touched yet
+
+The **elbow spikes down the arms** and the **helm horns** both go through `DrawSpur` and are
+unchanged — the user asked for the shoulders. They are the obvious next details.
+
+---
+
+## Call of Valor wears DRAGON ASPECT'S ARMOUR after all — the user's reversal (2026-07-31)
+
+**The user's decision, reversing their own governing statement of earlier the same day. It is
+recorded here so it is not "corrected" back.**
+
+That statement was *"he is a hero of Sovngarde, not a second Ancient Dragonborn"*, and its first
+consequence was that his armour must be **normal armour in shape** — horned helm, fur-trimmed
+pauldrons, banded cuirass, belted skirt — with Dragon Aspect's scales, fins and crest explicitly
+forbidden. That was built: measured off vanilla plate's per-rotation ratios, fitted to each body
+silhouette's own outline, rendered over lit ground at play distance. Shown. Verdict: *"the armor
+still looks very...dull."* Replaced by: *"let's use the ancient dragonborn's armor model first but
+with call of valor's gradient."*
+
+**Why the first version lost, stated plainly, because it is the general lesson:** a pawn is ~102px
+wide in a 256 frame. Banding, fur strands, buckles and cloth folds are 2–4px each — they are noise
+at the 48px the game is actually played at, and no amount of tuning changes that. Only two things
+survived the downscale: the horned helm's silhouette and the rim light. Dragon Aspect's geometry
+works for the opposite reason — **its fins and crest break the outline**, and a silhouette reads at
+any zoom. This is the same rule this changelog already recorded from three failed passes at the
+plate ("if a pawn overlay is not breaking the silhouette, it will not read"); the normal-armour
+brief could not satisfy it, because normal armour does not break a silhouette.
+
+**Consequences 2, 3 and 4 of the original brief are untouched** — no aura, the portal cast effect,
+and the 2× lifetime were not part of the reversal.
+
+*Cost of the change: one environment variable.* `DOVAH_PALETTE=valor` on
+`GenerateDragonAspect.ps1` was already written and already proven inert by default. Nothing was
+redrawn.
+
+### `GenerateDragonAspect.ps1` gained `DOVAH_DEST`, and it is a safety fix
+
+`$DEST` was **hardcoded to the mod's own texture folder**, so simply running the script overwrote
+the 36 signed-off Dragon Aspect textures — which is why the notebook warned it "must not be run
+casually". A warning is not a guard. `DOVAH_DEST` redirects the output, and the valor run was done
+through it, then proved: **36 of 36 shipped textures byte-identical afterwards.**
+
+`Tools/GenerateValorArmour.ps1` is **kept, not deleted**. It holds the measured vanilla-plate
+ratios and the per-rotation body-outline measuring, both of which cost real time and are the
+reference for any future worn-armour art in this project.
+
+**One trap in the preview, worth knowing before reading the sheet:** `DOVAH_OVERLAY_DIR` swaps the
+whole texture set, so on `ancient_dragonborn_preview.png` *every* figure wears the valor palette —
+including the cell captioned "the DOVAHKIIN, Dragon Aspect L3". That caption is wrong under an
+override. The sheet's own labels assume the shipping art.
+
+---
+
+## Call of Valor — THE PORTAL CAST EFFECT, proved as art. No C# yet (2026-07-31)
+
+The user's spec: *"bright white waves circling the TARGET cell like an opening portal, not a
+wave from the caster."* Preview-only, per the project's own rule — prove a render approach and
+show it before building anything around it. `Tools/GenerateValorPortal.ps1`,
+`$WRITE_TEXTURE = $false`.
+
+### Why this could not be `Thing_ShoutWave`, stated so it is not revisited
+
+Every other shout in the mod is a `Thing_ShoutWave`, so the first question was whether this one
+could be too. It cannot, and the reason is structural rather than a missing parameter:
+
+- `origin` is hard-set to `caster.Position` inside `Spawn()`, and the wave is spawned there
+- `BuildRings` buckets cells purely by **distance from that origin**
+- `Tick` draws band `head = progress * bands` — a front marching outward
+- `inward` reverses that march and does nothing else
+
+There is no rotation anywhere in the class, and no way to seat the effect on a cell that is not
+the caster's. A portal is the opposite shape: it does not travel, it **spins**, and it sits on
+the target. Bending the wave class to cover both would put a rotation branch on the code path
+every shout in the mod already runs through — for one shout's benefit.
+
+So it gets its own effect: in game, `Thing_ValorPortal`, a `RealtimeOnly` Thing on the target
+cell overriding `DrawAt` and drawing rotated quads — the same route `Thing_DragonAspectOverlay`
+already uses for the aura, so **no Harmony patch and nothing on the pawn render path**.
+`Matrix4x4.TRS(pos, AngleAxis(a, up), scale)` + `Graphics.DrawMesh(MeshPool.plane10, …)`.
+`drawOffscreen` will be required — it draws where it is spawned, but the same culling rule that
+killed the Ancient Dragonborn's overlay applies.
+
+Three orbits of tapering arcs, **counter-rotating** (co-rotating rings read as one disc turning),
+arc counts 3/2/4 so the composite does not repeat every 360/N degrees, plus a core and an
+anchoring hairline ring. One arc sprite serves all three orbits: it is baked at `$R_ARC` 0.70 of
+its half-frame, so quad size inverts to `2·R/0.70` — the single piece of arithmetic tying art to
+code, named once.
+
+### Three defects found in three passes, all visual, none of which a build would catch
+
+- **It came out cream, not white.** A glow is *additive*, and the ground is brown ≈ (122,106,84):
+  adding equal R, G and B saturates red long before blue, so a white glow reads warm at anything
+  short of clipping. Fixed by biasing the **tint** cool (206,234,255) — putting the extra light
+  where the ground has least. This is not a preview artefact; the game's additive shader will do
+  the same thing over the same terrain. The sprites stay authored white and are tinted at draw
+  time, per the standing rule.
+- **The waves merged into one solid ring** at every frame past half-open. An arc's world thickness
+  is `T_ARC/R_ARC ×` its orbit radius, so fat arcs are fat in absolute terms and the three orbits'
+  gaussian tails overlapped once the glow was bright enough to read white. `$T_ARC` 0.082 → 0.060,
+  orbits spread to 0.45/0.73/1.02, gain 1.55 → 1.42, core 0.72 → 0.55.
+- **The still sheet's height was guessed** and cropped its own bottom row off.
+
+### The preview composites ADDITIVELY, deliberately
+
+GDI+ has no additive blend, so the portal is drawn into its own layer and summed onto the scene
+with saturation (~30 lines). Alpha-blending it instead would *darken* the ground under the
+effect — the opposite of what light does — and would have made the effect look weaker than it is.
+
+### `Tools/WriteAnimatedGif.ps1` now exists, and this time it is committed
+
+The save notebook has claimed since 2026-07-29 that a working animated-GIF writer lived in
+`Tools/`. **It never did** — `git log --all --diff-filter=A` finds no such file in the repo's
+whole history. It has now been written twice and lost twice. It is a real file now.
+
+**And it was broken in a way worth recording: PowerShell's `-shl` PRESERVES THE LEFT OPERAND'S
+TYPE.** `$bytes[1] -shl 8` on a `byte[]` element returns a **byte**, so the high bits shift
+straight out and the answer is `0` — no error, no warning, no coercion. Every frame's image
+descriptor got width 0 and height 0, and GDI+ rejected the finished file with *"the parameter is
+not valid"*, a message pointing nowhere near the arithmetic. `[int]` casts on both halves fix it.
+Verified empirically rather than reasoned about: `([byte]2 -shl 8).GetType()` is `Byte`.
+
+---
+
+## Call of Valor — art groundwork only, UNCOMMITTED (2026-07-31)
+
+Nothing in this entry is in the mod. Every generator is preview-only (`$WRITE_TEXTURE = $false`)
+and five files sit uncommitted deliberately, because the art is not signed off.
+
+**Done:** the greatsword's shape (user picked the katana/kissaki tip), and his armour built to
+**vanilla plate armour's measured per-rotation ratios** with a horned helm.
+**Not done:** the portal cast effect, the 2× lifetime, the palette handoff from champion to
+sword, and the summon itself.
+
+### What was learned, since the lessons outlive the art
+
+- **Worn armour is WIDER than the body almost everywhere.** Vanilla plate peaks at 1.63× the
+  body's half-width at the gorget and 1.36× through the chest, dipping to 1.02 at the waist.
+  Three passes failed because they drew plates INSET inside the silhouette, which at 256px on a
+  ~102px pawn can only ever be a ten-pixel stripe. **If a pawn overlay is not breaking the
+  silhouette, it will not read.**
+- **Per rotation, always.** From the side vanilla plate is NARROWER than the body's side profile
+  (0.75–1.04 through the torso) while front and back are wider everywhere. Reusing south's
+  numbers on east is the error that once hung 58px of armour off a Hulk.
+- **The helm was drawn at half size**, and that — not its shape — was what read as wrong. A head
+  is 60px in a 192 frame, so ~80px on a 256 frame; a real medieval helm is 1.31× that, half-width
+  ~52. It had been 27. The horns were removed on that same misreading and have been restored.
+- **Vanilla textures cannot be read** — `Core`, `Royalty`, `Ideology` and `Biotech` ship no
+  `Textures` folder at all. Sized Apparel ships vanilla's plate as loose PNGs, which is what was
+  measured. Only ratios are used; no third-party PNG is copied or shipped, the same standard both
+  weapons were held to.
+- **`GenerateDragonAspect.ps1` gained a `DOVAH_PALETTE=valor` override**, proven inert by
+  default: the default run was hashed against the shipped art, **36 of 36 byte-identical**.
+
+### The ceiling, stated plainly
+
+The user's reference is a painted render with muscled plate, fur strands and buckles. Those are
+2–4 pixels each at this scale, are not drawable procedurally, and would be noise at the 48px the
+game is played at. Reaching that fidelity needs hand-drawn sprites. Recorded so the next session
+does not spend rounds implying it is one parameter away.
+
+---
+
 ## The Ancient Dragonborn knows three shouts, not one (2026-07-30)
 
 The user's call, overriding a rule this project had recorded as settled: he was rolling **fire OR
