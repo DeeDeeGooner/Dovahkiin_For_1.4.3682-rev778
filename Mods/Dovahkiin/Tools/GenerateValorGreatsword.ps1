@@ -112,8 +112,29 @@ $C_DARK   = $C_BLUE_DEEP       # ONLY used by variant B, as a faint separation
 # TWO KNOBS, NOT ONE. "Grey-darker" is two requests, and this project has been caught before
 # by treating saturation and value as a single lever - see the notebook on opacity and
 # brightness. Kept apart, either can be retuned without disturbing the other.
-$GREY_MIX  = 0.30   # how far toward neutral
-$VALUE_MUL = 0.88   # and then how much darker
+#
+# BOTH ZEROED 2026-07-31, AND THIS REVERSES AN EARLIER REQUEST OF THE USER'S ON PURPOSE.
+# They asked for grey, then grey-darker, and then reported the weapon as STILL too ghostly
+# and asked for the chestplate's colour instead. Those pull against each other, and
+# measurement settled which way:
+#
+#     chestplate median RGB   (159, 195, 220)   a proper pale steel-blue
+#     sword      median RGB   (168, 186, 202)   flatter, redder, far less blue
+#
+# The grey was the cause of the very thing being complained about. Desaturating a
+# translucent object pushes it TOWARD the mid-tone of the ground behind it, so it loses
+# separation and reads as vapour - which is exactly what "ghostly" describes. Opacity had
+# already been raised twice by then and could not fix it, because opacity was not the
+# problem. **Saturation is what separates a translucent object from lit ground; value and
+# alpha alone cannot.**
+#
+# Left as named knobs at neutral rather than deleted, so the greyer look is one number away
+# if it is ever wanted back.
+$GREY_MIX  = 0.00   # how far toward neutral - ZERO is what fixed "too ghostly"
+$VALUE_MUL = 0.90   # and then how much darker - only enough to sit on the plate's value
+# With grey at zero the blade measured (182,212,236) against the plate's (159,195,220):
+# the right hue at last, but about 13% brighter. 0.90 brings the value onto the plate's
+# without touching saturation, which is the half that was doing the damage.
 
 function GreyToward($colour, [double]$amount) {
   $luma = (0.2126 * $colour[0]) + (0.7152 * $colour[1]) + (0.0722 * $colour[2])
@@ -135,10 +156,49 @@ function DarkenBy($colour, [double]$factor) {
 # light the apparition gives off - and this weapon has no keyline, no bevel and no specular,
 # so the rim is the ONLY thing holding its shape against lit ground. Dimming it would trade
 # a colour note for legibility. The body and the bloom carry the darkening instead.
+# THE INTERIOR, DARKENED FURTHER - and only the interior.
+#
+# Asked for as "as dark as the helmet". Measured rather than matched by eye, because the
+# three pieces are further apart than they look:
+#
+#     helmet      (151,166,179)   darker AND flatter
+#     chestplate  (159,195,220)   the blue one
+#     sword       (164,192,214)   sitting on the chestplate
+#
+# Mean channel ratio helm/sword came to 0.874, so that is the figure.
+#
+# **VALUE ONLY. The helm's flatness is NOT copied.** It is less saturated than the plate
+# because its dome runs down to C_DEEP at the edges - but desaturation is exactly what made
+# this weapon read as vapour two rounds ago, and taking the helm's colour wholesale would
+# walk straight back into it. The ask was "darker"; darker is what it gets.
+#
+# Applied to the BODY and the hilt's blue, NOT to the bloom or the rim. The bloom is the
+# halo outside the weapon and the rim is its luminous edge - neither is interior, and
+# dimming them is how a spectre stops being legible on lit ground.
+$INTERIOR_MUL = 0.874
+
 $C_RIM    = GreyToward $C_RIM    $GREY_MIX   # already neutral, so this is a no-op on it
-$C_BODY   = DarkenBy (GreyToward $C_BODY   $GREY_MIX) $VALUE_MUL
-$C_BODY_D = DarkenBy (GreyToward $C_BODY_D $GREY_MIX) $VALUE_MUL
+$C_BODY   = DarkenBy (DarkenBy (GreyToward $C_BODY   $GREY_MIX) $VALUE_MUL) $INTERIOR_MUL
+$C_BODY_D = DarkenBy (DarkenBy (GreyToward $C_BODY_D $GREY_MIX) $VALUE_MUL) $INTERIOR_MUL
 $C_BLOOM  = DarkenBy (GreyToward $C_BLOOM  $GREY_MIX) $VALUE_MUL
+
+# --- HIS BLUE, through the hilt only ------------------------------------------------
+# A gradient of the hero's blue from the pommel up to the second crossguard, fading out
+# there. The blade above it keeps the grey steel.
+#
+# THE BLUE IS DARKENED BUT NOT GREYED, and that is the point of adding it. $GREY_MIX is
+# what pulled the weapon toward steel; putting the blue through it as well would cancel
+# the request before it drew a pixel. It takes $VALUE_MUL only, so it sits in the same
+# value range as everything around it and reads as more COLOUR rather than as a brighter
+# patch.
+#
+# C_AZURE is the aura's own colour on the armour - the most saturated blue he carries -
+# so the hilt is quoting a part of him rather than a blue chosen to look nice.
+# Takes $INTERIOR_MUL as well - it is mixed INTO the body, so leaving it out would light
+# the hilt brighter than the blade it belongs to.
+$C_HILT_BLUE   = DarkenBy (DarkenBy $C_AZURE $VALUE_MUL) $INTERIOR_MUL
+$HILT_BLUE_END = 0.352   # the second crossguard's upper edge, where it reaches zero
+$HILT_BLUE_MIX = 0.55    # strength at the pommel
 
 # How solid the interior is. Lower = ghostlier.
 #
@@ -154,9 +214,15 @@ $C_BLOOM  = DarkenBy (GreyToward $C_BLOOM  $GREY_MIX) $VALUE_MUL
 # **The shared constant is not the shared appearance.** Two pieces match when their
 # COMPOSITED result matches, and that has to be measured on the finished textures.
 #
-# 196 is the value that brings the blade's measured interior up beside his plate. Still
-# translucent: the ground reads through both.
-$BODY_ALPHA  = 196
+# 196 brought the blade's measured interior level with his plate - 206 against 215. The user
+# then asked for a bit more still, so parity was the waypoint rather than the destination:
+# 220 puts the weapon slightly ABOVE his armour, which is defensible on its own terms since
+# a blade is a forged object and the plate is a translucent overlay on a body.
+#
+# Still translucent, and that is the floor this must not cross - "you can see the ground
+# through it" is the one thing none of the pre-2026-07-30 attempts did and the whole reason
+# this file was rebuilt. Measured after every change, not assumed.
+$BODY_ALPHA  = 220
 $RIM_ALPHA   = 236
 $GLYPH_ALPHA = 150
 
@@ -331,6 +397,16 @@ function BuildSword([bool]$colder, [int]$bodyAlpha, $tipSpec) {
     $tA = $band / [double]$BANDS
     $tB = ($band + 1) / [double]$BANDS
     $col = Lerp3 $bodyLo $bodyHi (($tA + $tB) * 0.5)
+    # his blue through the hilt, strongest at the pommel and gone by the second crossguard.
+    # SMOOTHSTEPPED, so it does not stop dead at the guard - a linear ramp to zero leaves a
+    # visible band edge exactly where two pieces of furniture already meet, and reads as a
+    # drawing seam rather than as colour running out.
+    $midAlong = ($tA + $tB) * 0.5
+    if ($midAlong -lt $HILT_BLUE_END) {
+      $fall = 1.0 - ($midAlong / $HILT_BLUE_END)
+      $fall = $fall * $fall * (3.0 - (2.0 * $fall))
+      $col = Lerp3 $col $C_HILT_BLUE ($HILT_BLUE_MIX * $fall)
+    }
     $quad = @(
       (WPT $tA ( 0.30)), (WPT $tB ( 0.30)), (WPT $tB (-0.30)), (WPT $tA (-0.30))
     )

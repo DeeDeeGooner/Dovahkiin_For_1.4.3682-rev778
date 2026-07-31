@@ -1,5 +1,25 @@
 # CHANGELOG
 
+## Call of Valor: the hero's blue through the hilt (2026-07-31)
+
+A gradient of his blue from the pommel up to the **second crossguard**, fading to nothing there.
+The blade above keeps the grey steel. Two knobs: `$HILT_BLUE_MIX` 0.55 at the pommel,
+`$HILT_BLUE_END` 0.352 where it reaches zero.
+
+**The blue is darkened but NOT greyed, and that is the point of adding it.** `$GREY_MIX` is what
+pulled the weapon toward steel in the first place; putting the blue through it as well would cancel
+the request before it drew a pixel. It takes `$VALUE_MUL` only, so it sits in the same value range
+as everything around it and reads as more *colour* rather than as a brighter patch.
+
+**`C_AZURE` specifically** — the aura's own colour on his armour, the most saturated blue he
+carries. The hilt is quoting a part of him rather than a blue picked because it looked nice.
+
+**Smoothstepped, not linear.** A straight ramp to zero leaves a visible band edge exactly where two
+pieces of furniture already meet, and that reads as a drawing seam rather than as colour running
+out.
+
+---
+
 ## Call of Valor: variant A settled, and the palette handed over properly (2026-07-31)
 
 **Variant A is the weapon** — katana tip, short kissaki. Settled by the user; B (glaive) and C
@@ -49,13 +69,64 @@ lips, then a rim — four or five translucent layers accumulating over one anoth
 is essentially one. **The shared constant is not the shared appearance.** Two pieces match when
 their *composited* results match, and that can only be established on the finished art.
 
-At 196 the blade measures **206 against the plate's 215**, inside 4%. Still translucent: the ground
-reads through both.
+At 196 the blade measured **206 against the plate's 215**, inside 4%. The user then asked for a bit
+more still, so parity turned out to be the waypoint rather than the destination: **220**, measuring
+**225 against 215**, puts the weapon slightly *above* his armour. Defensible on its own terms — a
+blade is a forged object where the plate is a translucent overlay on a body.
 
-### Greyer and slightly darker, weapon only
+**Still translucent, and that is the floor this must not cross.** "You can see the ground through
+it" is the one thing none of the pre-2026-07-30 attempts managed and the whole reason this file was
+rebuilt from scratch. Measured after every change rather than assumed — 225 of a possible 255.
 
-Asked for in two steps — "a tiny bit of grey", then "slightly grey-darker" — and landing at
-`$GREY_MIX = 0.30` with `$VALUE_MUL = 0.88`.
+### The grey went in, then came back out — and measurement is what settled it
+
+Asked for in two steps, "a tiny bit of grey" then "slightly grey-darker", reaching `$GREY_MIX 0.30`
+and `$VALUE_MUL 0.88`. The user then reported the weapon as **still too ghostly** and asked for the
+chestplate's colour instead. Those two requests pull against each other, so the textures were
+sampled rather than argued about:
+
+| | median RGB |
+|---|---|
+| chestplate | (159,195,220) — a proper pale steel-blue |
+| sword, greyed | (168,186,202) — flatter, redder, far less blue |
+
+**The grey was causing the very thing being complained about.** Desaturating a translucent object
+pushes it *toward the mid-tone of the ground behind it*, so it loses separation and reads as
+vapour — which is what "ghostly" describes. Opacity had already been raised twice by then and could
+not fix it, because opacity was never the problem.
+
+**The rule worth keeping: saturation is what separates a translucent object from lit ground. Value
+and alpha alone cannot do it.** This is the cousin of the additive-glow lesson — there, white light
+on brown ground read as cream; here, a desaturated body on brown ground read as nothing at all.
+
+`$GREY_MIX` is now **0.00** and `$VALUE_MUL` **0.90** — grey removed entirely, value trimmed only
+enough to sit on the plate's own brightness. The blade measured **(164,192,214)** against the
+plate's (159,195,220): within 6 in every channel. Both knobs are left in place at neutral rather
+than deleted, so the greyer look is one number away if it is ever wanted back.
+
+### Then the interior alone, down to the helmet's value
+
+Asked for as "as dark as the helmet", and the three pieces turn out to be further apart than they
+look:
+
+| | median RGB | luma |
+|---|---|---|
+| helmet | (151,166,179) | 164 |
+| chestplate | (159,195,220) | 189 |
+
+Mean channel ratio helm/sword gave **0.874**, and that is `$INTERIOR_MUL`. The blade now measures
+**(145,170,189), luma 166** against the helm's 164.
+
+**Value only — the helm's FLATNESS is deliberately not copied.** The helm is less saturated than
+the plate because its dome runs down to `C_DEEP` at the edges, but desaturation is precisely what
+made this weapon read as vapour two rounds earlier. Taking the helm's colour wholesale would have
+walked straight back into it. The ask was *darker*; darker is what it got, and the blade keeps a
+44-point channel spread against the helm's 28.
+
+**Applied to the body and the hilt's blue, NOT to the bloom or the rim.** The bloom is the halo
+outside the weapon and the rim is its luminous edge — neither is interior, and dimming them is how
+a spectre stops being legible on lit ground. The hilt blue does take it, since it is mixed *into*
+the body and would otherwise light the grip brighter than the blade it belongs to.
 
 **Two knobs, not one.** "Grey-darker" is two requests, and this project has already been caught
 treating saturation and value as a single lever. Kept apart, either can be retuned without
