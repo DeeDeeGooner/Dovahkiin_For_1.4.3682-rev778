@@ -95,8 +95,27 @@ Get-Content (Join-Path $snap "SHA256.txt") | ForEach-Object {
 
 Silence means identical.
 
-## The one thing not frozen here
+## The portal is in here too, as of 2026-07-31
 
-The **portal cast effect** is not part of this snapshot — it is a separate effect with its own
-generator (`GenerateValorPortal.ps1`) and it was approved separately. Its sprites are still
-preview-only.
+`ValorPortalArc.png`, `ValorPortalCore.png`, `ValorPortalRing.png` — the three sprites behind the
+cast effect the user called "absolutely gorgeous".
+
+**It was NOT covered until they asked whether it was saved.** The generator had been committed;
+its output had not, so a later edit to `GenerateValorPortal.ps1` could have silently changed
+approved art with nothing to catch it. Every other approved piece was hash-checked here; the
+portal was the one hole.
+
+**Deterministic output is not a substitute for a snapshot.** `GenerateValorPortal.ps1` uses no
+randomness, so the sprites can always be rebuilt — but *being rebuildable does not tell anyone the
+rebuild still matches what was signed off*. That is what the manifest is for.
+
+To regenerate them here without installing them into the mod:
+
+```
+$env:DOVAH_DEST = "Mods\Dovahkiin\Tools\ValorApproved_2026-07-31"
+& "Mods\Dovahkiin\Tools\GenerateValorPortal.ps1"
+```
+
+`DOVAH_DEST` is separate from `$WRITE_TEXTURE`, which is what actually installs into
+`Textures/Things/Effects/ValorPortal/` and is still **false**. Nothing of Call of Valor is in the
+mod yet.

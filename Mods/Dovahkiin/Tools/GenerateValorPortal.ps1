@@ -552,6 +552,26 @@ $sheet.Save($sheetPath, [System.Drawing.Imaging.ImageFormat]::Png)
 $sheet.Dispose()
 Write-Output ("wrote " + $sheetPath)
 
+# DOVAH_DEST writes the three sprites somewhere WITHOUT installing them into the mod - the
+# same escape hatch GenerateDragonAspect.ps1 has, and added for the same reason.
+#
+# The user asked "your portal wave is saved too?" and the honest answer was: only half. The
+# GENERATOR was committed; the sprites it produces were not in any checkpoint, so a later
+# edit here could have silently changed art they had already approved with nothing to catch
+# it. Every other approved piece is hash-checked against Tools/ValorApproved_2026-07-31/;
+# the portal had no such cover.
+#
+# Deterministic output is NOT a substitute for a snapshot. It means the sprites can be
+# rebuilt - it does not tell anyone the rebuild still matches what was signed off.
+$SNAP_DIR = $env:DOVAH_DEST
+if ($SNAP_DIR) {
+  if (-not (Test-Path $SNAP_DIR)) { New-Item -ItemType Directory -Force -Path $SNAP_DIR | Out-Null }
+  $spriteMap["arc"].Save((Join-Path $SNAP_DIR "ValorPortalArc.png"), [System.Drawing.Imaging.ImageFormat]::Png)
+  $spriteMap["core"].Save((Join-Path $SNAP_DIR "ValorPortalCore.png"), [System.Drawing.Imaging.ImageFormat]::Png)
+  $spriteMap["ring"].Save((Join-Path $SNAP_DIR "ValorPortalRing.png"), [System.Drawing.Imaging.ImageFormat]::Png)
+  Write-Output ("wrote 3 sprites to " + $SNAP_DIR + " (NOT installed in the mod)")
+}
+
 if ($WRITE_TEXTURE) {
   if (-not (Test-Path $TEX_DIR)) { New-Item -ItemType Directory -Force -Path $TEX_DIR | Out-Null }
   $spriteMap["arc"].Save((Join-Path $TEX_DIR "ValorPortalArc.png"), [System.Drawing.Imaging.ImageFormat]::Png)
