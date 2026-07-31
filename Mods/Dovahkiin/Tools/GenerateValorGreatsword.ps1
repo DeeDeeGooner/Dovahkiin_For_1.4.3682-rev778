@@ -70,14 +70,93 @@ $SIZE   = 256
 $SS     = 4
 $CANVAS = $SIZE * $SS
 
-# --- spectral palette. Light, not pigment. -----------------------------------------
-$C_RIM    = @(255, 255, 255)   # the luminous edge
-$C_BODY   = @(196, 232, 255)   # the translucent interior, bright end
-$C_BODY_D = @(120, 168, 216)   # the translucent interior, dim end
-$C_BLOOM  = @(168, 216, 255)   # the halo bled into the air
-$C_DARK   = @( 26,  40,  62)   # ONLY used by variant B, as a faint separation
+# =====================================================================================
+#  PALETTE - THE HERO'S OWN, not a lookalike of it.
+# =====================================================================================
+#  This file used to carry its own numbers: (196,232,255), (120,168,216), (168,216,255).
+#  The armour's were (206,232,252), (120,162,200), (120,196,255). Near enough that nobody
+#  could see the difference on the two sprites separately, and far enough that they were
+#  two palettes rather than one - which drifts the moment either side is retuned, and the
+#  drift only shows when the weapon is in his hand.
+#
+#  Now dot-sourced from the single source, and mapped BY ROLE rather than by eye. Each
+#  entry is given the job it already does on the armour:
+#
+#      C_HOT       his hot edge, pure light    -> the weapon's luminous rim
+#      C_GOLD      his lit face                -> the bright end of the blade's gradient
+#      C_MID       his pale steel-blue         -> the dim end of it, at the hilt
+#      C_AZURE     his aura's second colour    -> the weapon's outer bloom
+#
+#  Matching by role is what makes this a handoff rather than a coincidence. C_DEEP is
+#  deliberately NOT used for the body: it shades plate, and at 104 alpha on a translucent
+#  blade it would just make the hilt murky.
+# -------------------------------------------------------------------------------------
+. "$PSScriptRoot\ValorPalette.ps1"
 
-$BODY_ALPHA  = 104             # how solid the interior is. Lower = ghostlier.
+$C_RIM    = $C_HOT             # the luminous edge
+$C_BODY   = $C_GOLD            # the translucent interior, bright end - toward the tip
+$C_BODY_D = $C_MID             # the translucent interior, dim end - at the hilt
+$C_BLOOM  = $C_AZURE           # the halo bled into the air
+$C_DARK   = $C_BLUE_DEEP       # ONLY used by variant B, as a faint separation
+
+# --- a touch of grey, WEAPON ONLY --------------------------------------------------
+# The user's last note: "add a final tiny bit of grey to its color". It belongs HERE and
+# not in ValorPalette.ps1 - that file is shared, and greying it would grey his armour with
+# the weapon. The palette stays canonical; the sword applies a named tweak on top of it.
+# Anyone comparing the two later will find this rather than concluding they have drifted.
+#
+# Desaturated toward each colour's OWN luminance, not toward a fixed grey. Mixing toward
+# mid-grey would darken the bright end and lighten the dim one - which is a contrast change
+# wearing a saturation change's clothes. Rec.709 luma, so the perceived brightness of every
+# stop survives untouched and only the colour comes out of it.
+# TWO KNOBS, NOT ONE. "Grey-darker" is two requests, and this project has been caught before
+# by treating saturation and value as a single lever - see the notebook on opacity and
+# brightness. Kept apart, either can be retuned without disturbing the other.
+$GREY_MIX  = 0.30   # how far toward neutral
+$VALUE_MUL = 0.88   # and then how much darker
+
+function GreyToward($colour, [double]$amount) {
+  $luma = (0.2126 * $colour[0]) + (0.7152 * $colour[1]) + (0.0722 * $colour[2])
+  return @(
+    ([int][Math]::Round($colour[0] + (($luma - $colour[0]) * $amount))),
+    ([int][Math]::Round($colour[1] + (($luma - $colour[1]) * $amount))),
+    ([int][Math]::Round($colour[2] + (($luma - $colour[2]) * $amount)))
+  )
+}
+function DarkenBy($colour, [double]$factor) {
+  return @(
+    ([int][Math]::Round($colour[0] * $factor)),
+    ([int][Math]::Round($colour[1] * $factor)),
+    ([int][Math]::Round($colour[2] * $factor))
+  )
+}
+
+# THE RIM IS GREYED BUT NOT DARKENED, and that is deliberate. It is the luminous edge - the
+# light the apparition gives off - and this weapon has no keyline, no bevel and no specular,
+# so the rim is the ONLY thing holding its shape against lit ground. Dimming it would trade
+# a colour note for legibility. The body and the bloom carry the darkening instead.
+$C_RIM    = GreyToward $C_RIM    $GREY_MIX   # already neutral, so this is a no-op on it
+$C_BODY   = DarkenBy (GreyToward $C_BODY   $GREY_MIX) $VALUE_MUL
+$C_BODY_D = DarkenBy (GreyToward $C_BODY_D $GREY_MIX) $VALUE_MUL
+$C_BLOOM  = DarkenBy (GreyToward $C_BLOOM  $GREY_MIX) $VALUE_MUL
+
+# How solid the interior is. Lower = ghostlier.
+#
+# RAISED FROM 104. The user reported the weapon still reading as more ghostly than the hero,
+# and it was - it had been set at 104 back when the armour was a faint scale field, and the
+# armour has since been rebuilt around solid plate. The weapon's number never followed.
+#
+# THE FIRST CORRECTION WAS 152, TO MATCH THE CUIRASS'S OWN CONSTANT, AND THAT WAS WRONG -
+# measurement caught it. Median interior alpha came back **sword 173, cuirass 215**, still
+# 42 points apart after supposedly matching. The reason: the cuirass is not one fill. It is
+# a plate body, then pectoral domes, then creases and lit lips, then a rim - four or five
+# translucent layers accumulating over each other - while the blade is essentially one.
+# **The shared constant is not the shared appearance.** Two pieces match when their
+# COMPOSITED result matches, and that has to be measured on the finished textures.
+#
+# 196 is the value that brings the blade's measured interior up beside his plate. Still
+# translucent: the ground reads through both.
+$BODY_ALPHA  = 196
 $RIM_ALPHA   = 236
 $GLYPH_ALPHA = 150
 
@@ -284,6 +363,122 @@ function BuildSword([bool]$colder, [int]$bodyAlpha, $tipSpec) {
   $gfx.DrawLine($penSpine, (WPT 0.380 0.0), (WPT 0.862 0.0))
   $penSpine.Dispose()
   $penGlyph.Dispose()
+
+  # =====================================================================================
+  #  THE FURNITURE - pommel, grips and both guards. Added 2026-07-31.
+  # =====================================================================================
+  #  Everything above the blade root used to be bare: the body gradient and the rim, and
+  #  nothing else. The blade had its meander and its centreline while the whole handle
+  #  carried no information at all.
+  #
+  #  ALL OF IT IS INTERIOR. Every stroke below is inside the clip region, so the outline
+  #  cannot move - the silhouette is signed off and this is detail drawn on it, not a
+  #  reshaping of it. That distinction is the one the arms got wrong.
+  #
+  #  CURVES, NOT STRAIGHT LINES, and for a reason rather than for its own sake: every one
+  #  of these features wraps a ROUND object. Cord spiralling a grip, a collar round a
+  #  tang, a langet clasping a blade - seen flat, each is an arc, and drawn as a straight
+  #  line each reads as a sticker laid on top. The bow is small (0.002-0.004 of length,
+  #  about a pixel and a half) but it is the difference between "wrapped" and "striped".
+  # -------------------------------------------------------------------------------------
+  # One arc crossing the weapon: $skew leans it along the axis, $bow bellies it out.
+  function WARC([double]$atAlong, [double]$halfPerp, [double]$skew, [double]$bow) {
+    return @(
+      (WPT ($atAlong - $skew) (-$halfPerp)),
+      (WPT ($atAlong + $bow)  ( 0.0)),
+      (WPT ($atAlong + $skew) ( $halfPerp))
+    )
+  }
+  # A closed rounded shape in weapon space - collars, bosses, the pommel cap.
+  function WBOSS([double]$atAlong, [double]$halfAlong, [double]$halfPerp) {
+    return @(
+      (WPT ($atAlong - $halfAlong) ( 0.0)),
+      (WPT  $atAlong               (-$halfPerp)),
+      (WPT ($atAlong + $halfAlong) ( 0.0)),
+      (WPT  $atAlong               ( $halfPerp))
+    )
+  }
+
+  $penFine = New-Object System.Drawing.Pen (RGB 255 255 255 128), ([single](1.5*$SS))
+  $penFine.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+  $penFine.EndCap   = [System.Drawing.Drawing2D.LineCap]::Round
+  $penPart = New-Object System.Drawing.Pen (RGB 255 255 255 172), ([single](2.1*$SS))
+  $penPart.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+  $penPart.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+  $penPart.EndCap   = [System.Drawing.Drawing2D.LineCap]::Round
+
+  # ---- POMMEL: a cap arc across the butt, a raised boss, and two nicks --------------
+  $capPath = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $capPath.AddCurve([System.Drawing.PointF[]](WARC 0.013 0.0205 0.0 -0.005), [single]0.4)
+  $gfx.DrawPath($penPart, $capPath); $capPath.Dispose()
+  $bossPath = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $bossPath.AddClosedCurve([System.Drawing.PointF[]](WBOSS 0.027 0.0125 0.0140), [single]0.45)
+  $gfx.DrawPath($penPart, $bossPath); $bossPath.Dispose()
+  foreach ($nickSide in @((1.0), (-1.0))) {
+    $nick = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $nick.AddCurve([System.Drawing.PointF[]]@(
+      (WPT 0.0405 ($nickSide * 0.0200)), (WPT 0.0435 ($nickSide * 0.0125)), (WPT 0.0405 ($nickSide * 0.0055))
+    ), [single]0.4)
+    $gfx.DrawPath($penFine, $nick); $nick.Dispose()
+  }
+
+  # ---- GRIP WRAP: cord spiralling a round grip, so every band is an arc and they all
+  #      lean the SAME way. Alternating the lean would read as a lattice, which is a
+  #      different binding and not this one. --------------------------------------------
+  foreach ($gripRun in @( @((0.056), (0.144), (9)), @((0.216), (0.294), (8)) )) {
+    $runFrom = [double]$gripRun[0]; $runTo = [double]$gripRun[1]; $bandCount = [int]$gripRun[2]
+    for ($bandIdx = 0; $bandIdx -lt $bandCount; $bandIdx++) {
+      $atBand = $runFrom + (($runTo - $runFrom) * (($bandIdx + 0.5) / $bandCount))
+      $wrap = New-Object System.Drawing.Drawing2D.GraphicsPath
+      $wrap.AddCurve([System.Drawing.PointF[]](WARC $atBand 0.0165 0.0042 0.0022), [single]0.4)
+      $gfx.DrawPath($penFine, $wrap); $wrap.Dispose()
+    }
+  }
+
+  # ---- THE TWO GUARDS: a collar round the tang, a moulded seam down each arm, and a
+  #      boss near each arm's end. The collar is what makes a guard read as a separate
+  #      forged piece rather than as a wide spot in the outline. ------------------------
+  foreach ($guardSpec in @( @((0.178), (0.0620), (0.0165), (0.0215)), @((0.332), (0.0790), (0.0195), (0.0270)) )) {
+    $guardAt = [double]$guardSpec[0]; $armEnd = [double]$guardSpec[1]
+    $collarA = [double]$guardSpec[2]; $collarP = [double]$guardSpec[3]
+    $collar = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $collar.AddClosedCurve([System.Drawing.PointF[]](WBOSS $guardAt $collarA $collarP), [single]0.45)
+    $gfx.DrawPath($penPart, $collar); $collar.Dispose()
+    foreach ($armSide in @((1.0), (-1.0))) {
+      # the seam runs OUT along the arm and bellies toward the blade - a moulded ridge
+      $seam = New-Object System.Drawing.Drawing2D.GraphicsPath
+      $seam.AddCurve([System.Drawing.PointF[]]@(
+        (WPT ($guardAt + 0.0010) ($armSide * ($collarP + 0.0045))),
+        (WPT ($guardAt + 0.0075) ($armSide * (($collarP + $armEnd) * 0.52))),
+        (WPT ($guardAt + 0.0035) ($armSide * ($armEnd - 0.0070)))
+      ), [single]0.4)
+      $gfx.DrawPath($penFine, $seam); $seam.Dispose()
+      $armBoss = New-Object System.Drawing.Drawing2D.GraphicsPath
+      $armBoss.AddClosedCurve([System.Drawing.PointF[]]@(
+        (WPT ($guardAt - 0.0080) ($armSide * ($armEnd - 0.0175))),
+        (WPT  $guardAt           ($armSide * ($armEnd - 0.0290))),
+        (WPT ($guardAt + 0.0080) ($armSide * ($armEnd - 0.0175))),
+        (WPT  $guardAt           ($armSide * ($armEnd - 0.0060)))
+      ), [single]0.45)
+      $gfx.DrawPath($penFine, $armBoss); $armBoss.Dispose()
+    }
+  }
+
+  # ---- LANGETS: two tongues reaching up from the upper guard onto the blade root and
+  #      clasping it. They curve inward because they wrap the blade's faces. -----------
+  foreach ($langetSide in @((1.0), (-1.0))) {
+    $langet = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $langet.AddCurve([System.Drawing.PointF[]]@(
+      (WPT 0.3540 ($langetSide * 0.0215)),
+      (WPT 0.3760 ($langetSide * 0.0185)),
+      (WPT 0.3980 ($langetSide * 0.0105)),
+      (WPT 0.4080 ($langetSide * 0.0035))
+    ), [single]0.42)
+    $gfx.DrawPath($penPart, $langet); $langet.Dispose()
+  }
+
+  $penFine.Dispose()
+  $penPart.Dispose()
   $gfx.Clip = $oldClip
   $region.Dispose()
 

@@ -1,5 +1,169 @@
 # CHANGELOG
 
+## Call of Valor: variant A settled, and the palette handed over properly (2026-07-31)
+
+**Variant A is the weapon** — katana tip, short kissaki. Settled by the user; B (glaive) and C
+(spirit-blue) stay in the preview sheet as reference only.
+
+And the outstanding palette handoff is done — the one the notebook has listed as *"NOT DONE. His
+colours are settled; the sword still uses its own lookalike ramp."*
+
+### It was a lookalike, and that is a real defect rather than a tidiness complaint
+
+| role | sword had | armour had |
+|---|---|---|
+| bright end | (196,232,255) | (206,232,252) |
+| dim end | (120,168,216) | (120,162,200) |
+| bloom | (168,216,255) | (120,196,255) |
+
+Near enough that nobody could tell on the two sprites separately. Far enough that they were **two
+palettes**, and two palettes drift the moment either is retuned — with the drift only showing when
+the weapon is in his hand, which is the one view nobody renders while tuning either piece.
+
+*Fix:* `Tools/ValorPalette.ps1`, the single source, dot-sourced by both generators. The armour's
+`DOVAH_PALETTE=valor` block no longer carries the fourteen values; it reads them.
+
+**Mapped BY ROLE, not by eye** — each entry given the job it already does on the armour:
+
+- `C_HOT` his hot edge → the weapon's luminous rim
+- `C_GOLD` his lit face → the bright end of the blade's gradient, toward the tip
+- `C_MID` his pale steel-blue → the dim end, at the hilt
+- `C_AZURE` his aura's second colour → the weapon's outer bloom
+
+`C_DEEP` is deliberately **not** used for the body: it shades plate, and at 104 alpha on a
+translucent blade it would only make the hilt murky. Matching by role is what makes this a handoff
+rather than a coincidence.
+
+### And then the opacity, where a shared constant turned out not to be a shared appearance
+
+The user's next note: the weapon still read as **more ghostly than the hero**. It did. It had been
+set at `$BODY_ALPHA` 104 back when the armour was a faint scale field, and the armour has since
+been rebuilt around solid plate — the weapon's number simply never followed.
+
+**The first correction was 152, to match the cuirass's own constant, and it was wrong.** Measuring
+the finished textures caught it: median interior alpha came back **sword 173, cuirass 215** — still
+42 points apart after supposedly matching.
+
+*Why:* the cuirass is not one fill. It is a plate body, then pectoral domes, then creases and lit
+lips, then a rim — four or five translucent layers accumulating over one another — while the blade
+is essentially one. **The shared constant is not the shared appearance.** Two pieces match when
+their *composited* results match, and that can only be established on the finished art.
+
+At 196 the blade measures **206 against the plate's 215**, inside 4%. Still translucent: the ground
+reads through both.
+
+### Greyer and slightly darker, weapon only
+
+Asked for in two steps — "a tiny bit of grey", then "slightly grey-darker" — and landing at
+`$GREY_MIX = 0.30` with `$VALUE_MUL = 0.88`.
+
+**Two knobs, not one.** "Grey-darker" is two requests, and this project has already been caught
+treating saturation and value as a single lever. Kept apart, either can be retuned without
+disturbing the other.
+
+Applied in the sword generator and **not** in `ValorPalette.ps1` — that file is shared, and greying
+it would grey his armour along with the weapon. The palette stays canonical and the sword carries a
+named tweak on top, so anyone comparing the two later finds this rather than concluding they have
+drifted apart again.
+
+**Desaturated toward each colour's own luminance, not toward a fixed grey.** Mixing toward mid-grey
+would darken the bright end and lighten the dim one — a contrast change wearing a saturation
+change's clothes. Rec.709 luma, so the darkening is the *only* thing changing value:
+
+| | original | after |
+|---|---|---|
+| bright end | (206,232,252) | (187,203,216) |
+| dim end | (120,162,200) | (115,141,165) |
+| bloom | (120,196,255) | (122,169,206) |
+
+**The rim is greyed but NOT darkened**, deliberately. It is the luminous edge, and this weapon has
+no keyline, no bevel and no specular — the rim is the only thing holding its shape against lit
+ground. Dimming it would trade legibility for a colour note. The body and the bloom carry the
+darkening instead. Being already neutral, the grey call is a no-op on it; left in place rather than
+special-cased, since an exception is one more thing to get wrong later.
+
+**The refactor is proven inert on the armour:** regenerating against the checkpoint's manifest
+changed **0 of 36** files. A palette move that silently altered signed-off art would be the exact
+failure this file is meant to prevent.
+
+---
+
+## Call of Valor: the greatsword's hilt gets its furniture (2026-07-31)
+
+Everything above the blade root was bare — the body gradient and the rim, nothing else. The blade
+had its meander and its centreline while the whole handle carried no information at all. Now:
+
+| piece | what it gets |
+|---|---|
+| pommel | a cap arc across the butt, a raised centre boss, two nicks |
+| both grips | cord wrap — 9 bands on the lower run, 8 on the middle |
+| both guards | a collar round the tang, a moulded seam down each arm, a boss near each arm's end |
+| upper guard | two **langets**, tongues reaching up onto the blade root and clasping it |
+
+**All of it is interior.** Every stroke is inside the existing clip region, so the outline cannot
+move — the silhouette is signed off, and this is detail drawn *on* it rather than a reshaping of
+it. That is exactly the distinction the arms got wrong, and the clip enforces it rather than
+leaving it to care.
+
+**Curves, and for a reason rather than for its own sake.** Every one of these features wraps a
+*round* object: cord spiralling a grip, a collar round a tang, a langet clasping a blade. Seen
+flat, each is an arc — drawn as a straight line each reads as a sticker laid on top. The bow is
+small, 0.002–0.004 of the weapon's length, about a pixel and a half, and it is the whole difference
+between "wrapped" and "striped".
+
+Two details worth keeping:
+
+- **The wrap bands all lean the SAME way.** Alternating the lean reads as a lattice, which is a
+  different binding entirely and not the one this weapon has.
+- **The collar is what makes a guard read as a separate forged piece** rather than as a wide spot
+  in the outline. Without it, a crossguard drawn as one continuous silhouette with the grip looks
+  moulded from the same billet.
+
+---
+
+## Two blade variants explored from a sketch, both set aside (2026-07-31)
+
+Recorded so nobody re-runs the exploration. The user sketched a barbed blade and asked for it in
+two steps, then reverted both: *"let's stick to the weapon's version before the last two
+modifications."*
+
+1. **The greatsword's blade reprofiled** to four barbs. Worth keeping from it: a notch must **hold**
+   its narrow width before stepping back out — stepping in and straight out over 0.010 of the
+   length is under 3px on the sprite, so the two diagonals meet and the notch collapses into a
+   wobble in the edge.
+2. **An entirely new weapon** from the reference alone, every inherited constraint dropped. Its one
+   real finding: `$PROFILE` stores **one half-width per station and mirrors it**, so both edges must
+   notch in the same place — and the sketch's barbs are **staggered**. Expressing that needs two
+   independent edge tables, which is what the asymmetric tip already does one side at a time. If a
+   staggered blade is ever wanted, that is the change.
+
+**Neither was measured.** The sketch was pasted into chat and never written to disk, so there was
+nothing to trace — unlike the battleaxe, which `extract_blade.ps1` pixel-traced from a real file.
+Both attempts were eye transcriptions, and that is very likely why neither landed.
+
+The shipping weapon is unchanged and **verified byte-identical** to the version in the checkpoint.
+`GenerateValorGreatsword.ps1` was reverted via git rather than hand-edited back, and
+`GenerateValorBlade.ps1` deleted.
+
+### Two encoding lessons while reverting, and the second corrects the first
+
+Removing the two entries with `Set-Content` **added a BOM and rewrote every line** of a document
+full of em-dashes — `git diff` showed 664 insertions against 664 deletions on a file that should
+have lost 65 lines. Restored from git, which was clean because those entries had never been
+committed. **Use the Write/Edit tools for any file containing non-ASCII. Never `Set-Content`.**
+
+**But the check that "proved" it was corrupt was itself wrong, and that is the more useful half.**
+Scanning with `Get-Content -Raw` reported 592 mojibake sequences — and reported them again on the
+*repaired* file. In Windows PowerShell 5.1 `Get-Content` defaults to **ANSI**, so it decodes a
+perfectly good UTF-8 em-dash as `â€"`. The mojibake was in the reading, not the file.
+
+**To check an encoding, read the BYTES, or read with the encoding named explicitly:**
+`[System.IO.File]::ReadAllText($path, [System.Text.Encoding]::UTF8)`, then count `U+FFFD` and look
+for `E2 80 94`. The notebook already warns that the obvious reverse-decode repair makes these files
+worse — this is why: **the diagnostic lies in exactly the way that invites the repair.**
+
+---
+
 ## Call of Valor: an entirely new helm, and no horns (2026-07-31)
 
 The old helm is gone — not adjusted, replaced. Nothing of Dragon Aspect's is reused: not the

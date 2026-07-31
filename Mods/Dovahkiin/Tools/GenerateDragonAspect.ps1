@@ -164,19 +164,12 @@ $C_BLUE_HOT  = @(132,186,246)
 # The roles are kept, only the hues change - a ghost lit from within rather than a burnished
 # bronze plate: shadow to near-white through pale steel-blue, with the rim light cyan-white.
 if ($env:DOVAH_PALETTE -eq "valor") {
-  $C_DEEP  = @( 34, 58, 84)     # deep cool shadow, where bronze had its darkest body
-  $C_MID   = @(120,162,200)     # pale steel-blue
-  $C_GOLD  = @(206,232,252)     # the lit face
-  $C_HOT   = @(255,255,255)     # hot edge - pure light
-  $C_EMBER = @(214,240,255)     # rim light. A ghost's rim is cold, not amber.
-  $C_ORANGE= @(168,214,250)     # crest
-  $C_OCORE = @(255,255,255)     # crest hot centre
-  $C_AZURE = @(120,196,255)     # aura's second colour
-  $C_BLEND_MID = @(232,246,255) # the midtone the crescent blend passes through
-  $C_BLUE_LIT  = @(150,196,236)
-  $C_BLUE_MID  = @( 92,140,186)
-  $C_BLUE_DEEP = @( 28, 52, 82)
-  $C_BLUE_HOT  = @(226,246,255)
+  # The fourteen values used to be written out here. They now live in ValorPalette.ps1,
+  # because the GREATSWORD had its own near-identical copy of them - (196,232,255) against
+  # (206,232,252) and so on - and two palettes that merely look alike drift apart the first
+  # time either is retuned. One source, dot-sourced by both, so the weapon follows the
+  # wearer by construction rather than by anyone remembering.
+  . "$PSScriptRoot\ValorPalette.ps1"
   Write-Output "PALETTE: valor - the ghostly champion, not Dragon Aspect's bronze"
 }
 
