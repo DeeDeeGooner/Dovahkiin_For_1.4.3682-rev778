@@ -1,5 +1,29 @@
 # CHANGELOG
 
+## Playtest outcome: the downed armour is CONFIRMED, the summon-side three are not (2026-07-31)
+
+The user's words, closing it out: *"Everything seems fine with dragon aspect, no need for more
+testing. All set."*
+
+**Confirmed in play:** the Dovahkiin's armour and helm lie down with her. That was the reported
+bug — *"the armour stayed standing over her"* — and it is fixed. Together with the helm proof
+against vanilla's call order in the entry below, `a84f284`'s pawn-overlay half is done.
+
+**NOT played, and recorded as accepted rather than verified:** the Ancient Dragonborn's axe when
+*he* is downed, his six-hour lifetime, his frost fleck, and his Unrelenting Force against armour.
+Three of those four can only be settled in play.
+
+**The user's call, and not one to re-open.** But the record has to keep the two apart, because
+**three more summons — Call of Valor, Durnehviir, Odahviing — are about to be built on the
+Ancient Dragonborn's pattern.** The reason this project writes down what was actually seen is so
+that a failure found later can be attributed. `TESTS/fixes-2026-07-31.md` stays on disk for
+exactly that: **if a new summon misbehaves, run it before debugging the new summon**, because the
+cause may be in the pattern underneath rather than in the thing just built.
+
+Nothing outstanding blocks the next job. Call of Valor's art install is next.
+
+---
+
 ## Verifying the four unplayed fixes — the helm is settled, and two gaps found (2026-07-31)
 
 No code changed. This is the pass that had to happen before anything is built on top of
