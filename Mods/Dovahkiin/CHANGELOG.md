@@ -1,5 +1,79 @@
 # CHANGELOG
 
+## `Thing_ValorPortal` — the portal's C# (2026-08-01)
+
+The cast effect Call of Valor steps out of. Build clean, 0 warnings; every def parses; every new
+tuning field verified present in the XML; every new DefOf name verified to resolve.
+
+**No Harmony patch and nothing on the pawn render path** — `DrawerType.RealtimeOnly` plus an
+override of the virtual `Thing.DrawAt`, exactly the route `Thing_DragonAspectOverlay` already
+uses. That is what keeps it clear of RocketMan, which `RISKS.md` §10 names as the thing most
+likely to break a render patch in this modlist.
+
+### Why it could not be a `Thing_ShoutWave`, settled by reading that class
+
+Its `origin` is hard-set to `caster.Position` in `Spawn()`, `BuildRings` buckets cells by
+distance from that origin, `Tick` marches `head = progress * bands` outward, and `inward` merely
+reverses that march. **There is no rotation anywhere in it and no way to put it on a cell that is
+not the caster's.** A portal is the opposite shape: it does not travel, it spins, and it sits
+where it was aimed. Bending the wave class to cover both would put a rotation branch on the code
+path every shout in the mod already runs through, to serve exactly one of them.
+
+### Three things carried over from bugs this project has already paid for
+
+- **`Tick()` does not call `base.Tick()`.** `Verse.Thing`'s tick methods are six-byte throwing
+  stubs. The overlay called `base.TickRare()` politely once and cost a playtest round, because
+  the throw also aborted its own cleanup below the call.
+- **`drawOffscreen`, for a different reason than the overlay needs it.** The overlay draws
+  somewhere other than its own cell; this draws *at* its cell but **spills well beyond it** — the
+  outer orbit sits at 1.02 of a 1.10-cell radius and the effect blows outward as it dies, so it
+  covers roughly two and a half cells. Culling is by the Thing's own cell, so without the flag
+  the whole portal would pop out of existence while its arcs were still on screen.
+- **`Open()` null-guards and logs rather than throwing.** A cosmetic effect must never be able to
+  take a summon down with it — the Ancient Dragonborn's first playtest failed worse than it
+  needed to because one catch-all wrapped the load-bearing steps and the decorative ones
+  together, so a missing weapon comp cost the entire ally.
+
+### The spin is ACCUMULATED, not recomputed — and it is saved
+
+The spin *rate* changes over the effect's life (`SpinRateAt`: 0.42 winding up to 1.0), so
+`rate x elapsed` would be wrong at every moment except the two ends. Each orbit's angle is
+integrated per tick and written to `ExposeData`, so a portal caught mid-spin by a save/reload
+resumes rather than snapping back to zero.
+
+### `ShaderDatabase.MoteGlow`, verified rather than assumed
+
+Additive is the whole point — these sprites are light, not paint. The notebook records
+`shaderType MoteGlow` for FleckDefs, but **a FleckDef's shaderType string and a C# member of that
+name are not the same thing**, so `Verse.ShaderDatabase` was reflected over: `MoteGlow` is a
+public static `Shader` field. Confirmed alongside `MeshPool.plane10` and
+`ShaderPropertyIDs.Color`, both already proven by the overlay.
+
+**Gain multiplies the COLOUR, not the alpha**, and with an additive shader those are not
+interchangeable: alpha decides how much of the sprite's shape reaches the screen, colour above
+1.0 makes what reaches it brighter. Pushing alpha instead fattens the arcs' gaussian tails until
+the three orbits merge into one solid ring — which the generator already discovered and recorded.
+
+### What is exposed for tuning, and what deliberately is not
+
+`valorPortalLifetimeTicks`, `valorPortalRadiusCells`, `valorPortalArriveAtFraction` and
+`valorPortalGlowGain` are in `DovahkiinTuningDef.xml`.
+
+**The orbit table is not, and that is a judgement rather than an oversight.** Those radii are
+welded to the arc sprite's own baked radius (`ArcBakedRadius` here, `$R_ARC` in the generator —
+the single piece of arithmetic connecting art to code), so changing one without re-running the
+generator moves that arc off its own orbit. `CLAUDE.md`'s rule targets numbers the user should be
+able to retune **without a rebuild**; a number that also requires re-running a generator is not
+one of those. Stated in both files so the exception is visible rather than looking like a miss.
+
+`ArrivalTick` is a property on the class rather than a fraction copied into the summon later: the
+core's flash and the hero's arrival must not drift apart, and two copies of one number is how
+they would.
+
+**Not yet seen in game.** Nothing casts this — it goes live with the summon.
+
+---
+
 ## Call of Valor's greatsword behaves as Medieval Overhaul's greatsword (2026-08-01)
 
 The user's instruction, verbatim: *"medieval mod should recognise it as one it's weapon (using

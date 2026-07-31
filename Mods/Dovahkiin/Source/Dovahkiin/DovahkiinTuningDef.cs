@@ -241,6 +241,47 @@ namespace Dovahkiin
         /// </summary>
         public float dragonAspectShoutCooldownFactor = 0.65f;
 
+        // --- Call of Valor's portal (the cast effect) ---
+        //
+        // The orbit table itself is NOT here, deliberately - see Thing_ValorPortal. Those radii
+        // are welded to the arc sprite's own baked radius, so changing one without re-running
+        // GenerateValorPortal.ps1 moves an arc off its own orbit. A number that also needs a
+        // generator re-run is not a number the user can retune without a rebuild, which is what
+        // this file is for. The four genuinely tunable ones are below.
+
+        /// <summary>
+        /// How long the portal lives, in ticks. 90 = 1.5 seconds at 60 ticks/second.
+        ///
+        /// Short on purpose: this is a cast effect, not a standing feature, and it is the only
+        /// thing in the mod with tickerType Normal that is not a travelling wave.
+        /// </summary>
+        public int valorPortalLifetimeTicks = 90;
+
+        /// <summary>
+        /// The portal's radius in CELLS at full open. A pawn draws 1.5 cells wide, so 1.10 is a
+        /// gateway rather than a puddle - wide enough to read as something a man steps out of.
+        /// </summary>
+        public float valorPortalRadiusCells = 1.10f;
+
+        /// <summary>
+        /// The fraction of the portal's life at which the hero steps through.
+        ///
+        /// Two things read this and they must not drift apart: the core's flash spikes here, and
+        /// the summon should arrive here. Ask Thing_ValorPortal.ArrivalTick rather than
+        /// recomputing it at the call site.
+        /// </summary>
+        public float valorPortalArriveAtFraction = 0.60f;
+
+        /// <summary>
+        /// How much light the effect adds, over and above the sprites' own alpha.
+        ///
+        /// Below about 1.4 the faint parts of the arcs never clear the ground's own brown. Note
+        /// this multiplies the COLOUR, not the alpha - with an additive shader those are not
+        /// interchangeable, and pushing alpha instead fattens the arcs until the three orbits
+        /// merge into one solid ring.
+        /// </summary>
+        public float valorPortalGlowGain = 1.42f;
+
         private static DovahkiinTuningDef cached;
 
         /// <summary>

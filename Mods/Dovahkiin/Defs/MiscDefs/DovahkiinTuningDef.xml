@@ -129,6 +129,32 @@
          across the map and abandon the man he exists to protect. -->
     <ancientDragonbornFollowRadius>8</ancientDragonbornFollowRadius>
     <ancientDragonbornAssistRadius>24</ancientDragonbornAssistRadius>
+
+    <!-- ============================================================================
+         CALL OF VALOR'S PORTAL - the cast effect he steps out of.
+
+         2500 ticks is one in-game hour, but this one is measured in SECONDS: 60 ticks
+         is a second, so 90 is a second and a half.
+
+         The three orbits' radii, arc counts, spin rates and phases are deliberately NOT
+         here. They are welded to the arc sprite's own baked radius, so changing one
+         without re-running Tools/GenerateValorPortal.ps1 moves that arc off its orbit -
+         which makes them art geometry rather than tuning. The four below are the ones
+         that can be changed with a restart and no rebuild.
+         ============================================================================ -->
+    <valorPortalLifetimeTicks>90</valorPortalLifetimeTicks>
+    <!-- In CELLS, at full open. A pawn draws 1.5 cells wide, so 1.10 is a gateway
+         rather than a puddle. -->
+    <valorPortalRadiusCells>1.10</valorPortalRadiusCells>
+    <!-- Fraction of the portal's life at which the hero steps through. The core's flash
+         spikes here AND the summon should arrive here - ask
+         Thing_ValorPortal.ArrivalTick rather than writing the fraction out twice. -->
+    <valorPortalArriveAtFraction>0.60</valorPortalArriveAtFraction>
+    <!-- How much light the effect adds. Below about 1.4 the faint parts of the arcs
+         never clear the ground's own brown. This multiplies the COLOUR, not the alpha -
+         raising alpha instead fattens the arcs until the three orbits merge into one
+         solid ring, which is the opposite of "waves circling". -->
+    <valorPortalGlowGain>1.42</valorPortalGlowGain>
   </Dovahkiin.DovahkiinTuningDef>
 
 </Defs>

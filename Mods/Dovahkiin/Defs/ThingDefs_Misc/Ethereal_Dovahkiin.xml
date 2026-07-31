@@ -101,4 +101,40 @@
     <altitudeLayer>PawnState</altitudeLayer>
   </ThingDef>
 
+  <!--
+    CALL OF VALOR'S PORTAL - the cast effect he steps out of.
+
+    Not a Dovahkiin_ShoutWave, and that was settled by reading that class rather than by
+    preference: its origin is hard-set to the CASTER's cell, its rings are bucketed by distance
+    from that origin, and there is no rotation anywhere in it. A portal sits on the TARGET and
+    spins. See the header of Thing_ValorPortal.cs.
+
+    tickerType Normal, unlike the overlay above. The overlay only has to notice that a hediff
+    has ended, which is not a per-tick question; this one advances an animation and accumulates
+    a spin angle whose RATE changes over its life, so it genuinely needs every tick. It lives
+    90 ticks - a second and a half - so that is a bounded cost, not a standing one.
+
+    drawOffscreen MATTERS here for a different reason than it does for the overlay. That one
+    draws somewhere other than its own cell; this one draws AT its cell but spills well beyond
+    it - the outer orbit reaches 1.02 of a 1.10-cell radius and the effect blows outward as it
+    dies, so it covers roughly two and a half cells. RimWorld culls dynamic drawing by the
+    THING'S OWN CELL, so without this the whole portal would pop out of existence the moment
+    that single cell left the view rect, while its arcs were still on screen. Vanilla's other
+    RealtimeOnly effects, Tornado and PawnFlyerBase, both set it.
+
+    MoteOverhead, so the additive glow lands OVER the hero rather than under him. Additive light
+    over a pawn brightens him rather than hiding him, which is what stepping out of a bright
+    opening looks like - and it is what the preview the user approved does.
+  -->
+  <ThingDef ParentName="EtherealThingBase">
+    <defName>Dovahkiin_ValorPortal</defName>
+    <label>portal</label>
+    <thingClass>Dovahkiin.Thing_ValorPortal</thingClass>
+    <tickerType>Normal</tickerType>
+    <useHitPoints>false</useHitPoints>
+    <drawerType>RealtimeOnly</drawerType>
+    <drawOffscreen>true</drawOffscreen>
+    <altitudeLayer>MoteOverhead</altitudeLayer>
+  </ThingDef>
+
 </Defs>

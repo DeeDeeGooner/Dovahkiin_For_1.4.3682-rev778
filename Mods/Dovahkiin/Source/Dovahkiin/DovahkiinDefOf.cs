@@ -73,6 +73,26 @@ namespace Dovahkiin
         /// </summary>
         public static ThingDef Dovahkiin_DragonAspectOverlay;
 
+        /// <summary>
+        /// Call of Valor's portal - the cast effect he steps out of. Cosmetic only, like the
+        /// overlay above: it carries no game state, so its absence costs the picture and nothing
+        /// else, and Thing_ValorPortal.Open null-guards rather than throwing.
+        ///
+        /// On the menu from the start, deliberately. The last thing added to this class was
+        /// added because it had been LEFT OFF - the Ancient Dragonborn's frost shout fired the
+        /// force fleck for weeks because FrostWave had no field here and the branch used what
+        /// was reachable. A DefOf class is a menu, and code orders from the menu.
+        /// </summary>
+        public static ThingDef Dovahkiin_ValorPortal;
+
+        /// <summary>
+        /// Call of Valor's greatsword. Our art, Medieval Overhaul's greatsword behaviour - see
+        /// Defs/ThingDefs_Misc/CallOfValor_Dovahkiin.xml. Here so the summon can equip it and so
+        /// the overlay can read its graphic and drawSize from the def that is actually equipped,
+        /// rather than hardcoding a size the way the axe's first version did.
+        /// </summary>
+        public static ThingDef Dovahkiin_ValorGreatsword;
+
         /// <summary>Tintable cone particles. Vanilla's are renderInstanced and ignore colour.</summary>
         public static FleckDef Dovahkiin_Fleck_ForceWave;
         public static FleckDef Dovahkiin_Fleck_FireWave;
