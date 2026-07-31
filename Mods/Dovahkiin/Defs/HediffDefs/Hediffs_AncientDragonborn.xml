@@ -92,4 +92,69 @@
     </stages>
   </HediffDef>
 
+  <!--
+    CALL OF VALOR'S HERO OF SOVNGARDE.
+
+    THE SAME DOOMED CONSTRUCTION as the Ancient Dragonborn above, and for the same reason:
+    RISKS.md section 9 names temporary pawns as the top save-corruption risk in this mod, and
+    the only thing that made one safe was making it always doomed. Incurable, untendable,
+    non-removable, and it ends the pawn when it expires. Do NOT add HediffComp_Disappears -
+    expiry must VANISH THE PAWN, not merely remove a hediff, or a permanent summoned colonist
+    is left standing.
+
+    hediffClass is Hediff_CallOfValor, a SUBCLASS of Hediff_AncientDragonborn that overrides one
+    thing: he knows Unrelenting Force and Frost Breath, and no fire. Everything else - the
+    doomed timer, the ally-safety cone check, joining the Dovahkiin's fights, dropping the
+    player faction before destruction so Ideology does not throw - is inherited and playtested.
+
+    HE IS DELIBERATELY WEAKER THAN THE ANCIENT DRAGONBORN, per the user, and the numbers are
+    not invented. Vanilla plate armour carries StuffEffectMultiplierArmor 0.73 and steel has
+    StuffPower_Armor_Sharp 0.9 / Blunt 0.45, giving 0.657 and 0.329 - rounded to 0.66 and 0.33.
+    That also means he is much softer against BLUNT, which is what plate really is:
+
+      Ancient Dragonborn   0.75 sharp / 0.75 blunt
+      Call of Valor        0.66 sharp / 0.33 blunt   <- this, a real steel plate suit
+
+    He does get TWICE the lifetime - 30000 ticks against 15000 - which is where his value is.
+  -->
+  <HediffDef>
+    <defName>Dovahkiin_CallOfValor</defName>
+    <label>hero of sovngarde</label>
+    <description>A champion of Sovngarde, called back across the void by the Thu'um. He answers, he fights, and when the echo fades he returns to the hall of heroes.</description>
+    <hediffClass>Dovahkiin.Hediff_CallOfValor</hediffClass>
+    <isBad>false</isBad>
+    <tendable>false</tendable>
+    <makesSickThought>false</makesSickThought>
+    <scenarioCanAdd>false</scenarioCanAdd>
+    <maxSeverity>1.0</maxSeverity>
+    <defaultLabelColor>(0.72, 0.86, 1.0)</defaultLabelColor>
+    <comps>
+      <!-- Vanilla's own invisibility, as above. A plain HediffCompProperties carrying
+           compClass, exactly as Royalty's PsychicInvisibility declares it: there is NO
+           HediffCompProperties_Invisibility type in 1.4, and inventing one is an XML error
+           that gets silently dropped, leaving a visible pawn under comments claiming
+           otherwise. The class lives in Verse, so this is baseline-safe.
+
+           Same flagged side effect: vanilla invisibility also makes a pawn hard to TARGET,
+           so he is harder to kill than 0.66/0.33 suggests. Delete this one comp and he
+           becomes an ordinary visible ally. -->
+      <li Class="HediffCompProperties">
+        <compClass>HediffComp_Invisibility</compClass>
+      </li>
+    </comps>
+    <stages>
+      <li>
+        <statOffsets>
+          <ArmorRating_Sharp>0.66</ArmorRating_Sharp>
+          <ArmorRating_Blunt>0.33</ArmorRating_Blunt>
+        </statOffsets>
+        <statFactors>
+          <!-- Deliberately NOT the Ancient Dragonborn's 0.75. He is the weaker of the two by
+               design; his advantage is that he stays twice as long. -->
+          <IncomingDamageFactor>0.85</IncomingDamageFactor>
+        </statFactors>
+      </li>
+    </stages>
+  </HediffDef>
+
 </Defs>

@@ -356,6 +356,57 @@ namespace Dovahkiin
                 MessageTypeDefOf.TaskCompletion, false);
         }
 
+        /// <summary>
+        /// Summon Call of Valor's hero on a cell you pick.
+        ///
+        /// A DEBUG ACTION RATHER THAN A SHOUT, deliberately and temporarily. Call of Valor is one
+        /// of the three QUEST-LOCKED shouts, and neither the quest nor the ability plumbing
+        /// exists yet - so without this there would be no way to see the summon at all, and the
+        /// riskiest part of the feature (a temporary pawn, RISKS.md section 9) would go untested
+        /// while the cheap part around it got built on top of it. That is the exact ordering
+        /// mistake this project has already paid for once.
+        ///
+        /// It targets a CELL because he arrives through a portal on the spot you aim at, unlike
+        /// the Ancient Dragonborn who lands at the caster's shoulder.
+        /// </summary>
+        [DebugAction(Category, "Summon Call of Valor (pick a cell)",
+            allowedGameStates = AllowedGameStates.PlayingOnMap)]
+        private static void SummonCallOfValor()
+        {
+            GameComponent_DragonbornRegistry reg = GameComponent_DragonbornRegistry.Get;
+            Pawn caster = reg == null ? null : reg.CurrentDovahkiin;
+            if (caster == null || !caster.Spawned)
+            {
+                Messages.Message("No spawned Dovahkiin to call him for.",
+                    MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+            Messages.Message("Click a cell - the portal opens there.",
+                MessageTypeDefOf.NeutralEvent, false);
+
+            // THERE IS NO TargetingParameters.ForCell(). The first version of this called one
+            // and the build caught it - the class has ForSelf, ForArrest, ForAttackHostile,
+            // ForRescue and twenty more, and not one of them is a plain cell. A cell target is
+            // built by hand, by turning on canTargetLocations. Read off RimWorld.TargetingParameters
+            // rather than guessed a second time - and note the namespace is RimWorld, not Verse,
+            // which the first guess also got wrong.
+            TargetingParameters cellOnly = new TargetingParameters();
+            cellOnly.canTargetLocations = true;
+            cellOnly.canTargetPawns = false;
+            cellOnly.canTargetBuildings = false;
+            cellOnly.canTargetItems = false;
+
+            // Typed explicitly rather than passed inline. Targeter.BeginTargeting has FOUR
+            // overloads, two of them with five parameters differing only in whether the second
+            // is an Action<LocalTargetInfo> or an ITargetingSource - so a bare lambda plus three
+            // nulls is ambiguous. Naming the delegate's type picks the overload unambiguously.
+            System.Action<LocalTargetInfo> onCellPicked = delegate(LocalTargetInfo target)
+            {
+                CallOfValorUtility.TrySummon(caster, target.Cell);
+            };
+            Find.Targeter.BeginTargeting(cellOnly, onCellPicked, caster, null, null);
+        }
+
         // --- Stubs. The creatures do not exist until Phases 3 and 4 (ROADMAP.md Phase 1). ---
 
         [DebugAction(Category, "Spawn dragon (Phase 3)", allowedGameStates = AllowedGameStates.PlayingOnMap)]

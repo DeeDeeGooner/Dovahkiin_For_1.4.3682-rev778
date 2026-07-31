@@ -2,6 +2,48 @@
 <Defs>
 
   <!--
+    THE HERO OF SOVNGARDE HIMSELF.
+
+    Mirrors Dovahkiin_AncientDragonbornKind, because he is built to that summon's pattern - the
+    one part of this feature that is now playtested. He is generated INVISIBLE (his hediff
+    carries vanilla's HediffComp_Invisibility), so the only thing on screen is his spectral
+    armour and his greatsword, which is why nothing is generated onto him: apparel would never
+    be seen, and every generated item is another object to clean up when he vanishes.
+
+    combatPower 160 against the Ancient Dragonborn's 140. He is armoured more lightly - 0.66
+    sharp / 0.33 blunt against 0.75/0.75 - but stays twice as long, and this number is what
+    storytellers read when weighing the map, so it should reflect the whole package rather than
+    just his plate.
+  -->
+  <PawnKindDef>
+    <defName>Dovahkiin_CallOfValorKind</defName>
+    <label>hero of sovngarde</label>
+    <race>Human</race>
+    <combatPower>160</combatPower>
+    <isFighter>true</isFighter>
+    <canBeSapper>false</canBeSapper>
+    <acceptArrestChanceFactor>0</acceptArrestChanceFactor>
+    <!-- Any category would do; he is invisible and his backstory is never read. Tribal is
+         chosen only because it exists in Core and carries no tech assumptions. -->
+    <backstoryFilters>
+      <li>
+        <categories>
+          <li>Tribal</li>
+        </categories>
+      </li>
+    </backstoryFilters>
+    <!-- Nothing generated onto him. The greatsword is equipped in code so it is always the
+         right weapon, and apparel would be invisible anyway. -->
+    <apparelMoney>0~0</apparelMoney>
+    <weaponMoney>0~0</weaponMoney>
+    <techHediffsChance>0</techHediffsChance>
+    <chemicalAddictionChance>0</chemicalAddictionChance>
+    <apparelAllowHeadgearChance>0</apparelAllowHeadgearChance>
+    <initialWillRange>0~0</initialWillRange>
+    <initialResistanceRange>0~0</initialResistanceRange>
+  </PawnKindDef>
+
+  <!--
     CALL OF VALOR'S GREATSWORD.
 
     THE USER'S INSTRUCTION, VERBATIM: "medieval mod should recognise it as one it's weapon

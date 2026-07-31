@@ -9,6 +9,10 @@
        which is why he carries one name and no surname. -->
   <Dovahkiin_AncientDragonborn_Name>Ancient Dragonborn</Dovahkiin_AncientDragonborn_Name>
 
+  <!-- Call of Valor's hero. A TITLE rather than a name, for the same reason as above: he is
+       scenery, and a pawn carrying a personal name is something the colony can grieve for. -->
+  <Dovahkiin_CallOfValor_Name>Hero of Sovngarde</Dovahkiin_CallOfValor_Name>
+
   <Dovahkiin_Setting_VerboseLogging>Verbose logging</Dovahkiin_Setting_VerboseLogging>
   <Dovahkiin_Setting_VerboseLogging_Desc>Write extra Dovahkiin diagnostics to the log. Leave this off unless you are chasing a bug - it is noisy and costs performance.</Dovahkiin_Setting_VerboseLogging_Desc>
 

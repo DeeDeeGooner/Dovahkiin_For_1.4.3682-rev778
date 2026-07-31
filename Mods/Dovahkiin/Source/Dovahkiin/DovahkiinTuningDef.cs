@@ -241,6 +241,19 @@ namespace Dovahkiin
         /// </summary>
         public float dragonAspectShoutCooldownFactor = 0.65f;
 
+        /// <summary>
+        /// How long Call of Valor's hero stays, in ticks. 30000 = 12 in-game hours.
+        ///
+        /// The user's rule is "TWICE the Ancient Dragonborn", and the code honours the rule
+        /// rather than this number: at 0 or below it falls back to
+        /// <see cref="ancientDragonbornLifetimeTicks"/> x 2, so the relationship survives the
+        /// next time his lifetime moves. It moved once already - 3750 to 15000 - at which point
+        /// a literal "7500" written down elsewhere silently stopped meaning "double his".
+        ///
+        /// Set a positive value here to break the link deliberately.
+        /// </summary>
+        public int callOfValorLifetimeTicks = 30000;
+
         // --- Call of Valor's portal (the cast effect) ---
         //
         // The orbit table itself is NOT here, deliberately - see Thing_ValorPortal. Those radii

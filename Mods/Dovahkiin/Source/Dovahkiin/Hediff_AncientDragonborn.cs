@@ -42,9 +42,28 @@ namespace Dovahkiin
         // The user removed that rule: he is the Dragonborn's own shard and should have Fire
         // Breath, Frost Breath and Unrelenting Force alike. The notebook recorded the 50/50 roll
         // as settled - it has been superseded deliberately, not forgotten.
-        private const int SHOUT_FIRE  = 0;
-        private const int SHOUT_FROST = 1;
-        private const int SHOUT_FORCE = 2;
+        protected const int SHOUT_FIRE  = 0;
+        protected const int SHOUT_FROST = 1;
+        protected const int SHOUT_FORCE = 2;
+
+        private static readonly int[] AllThreeShouts = { SHOUT_FIRE, SHOUT_FROST, SHOUT_FORCE };
+
+        /// <summary>
+        /// Which shouts this summon knows, and the order he cycles them in.
+        ///
+        /// Virtual so Call of Valor can inherit this entire AI - the ally-safety cone check, the
+        /// breath timing, the assist behaviour, the doomed lifetime - and change only the one
+        /// thing that differs about him: he knows **Unrelenting Force and Frost Breath**, and no
+        /// fire. Subclassing beats copying 589 lines that are playtested and signed off, and it
+        /// means a fix to the shared AI reaches both summons rather than one.
+        ///
+        /// The array is static and shared rather than built per call: this is read on the shout
+        /// path, and `CLAUDE.md` forbids per-tick allocation where a cached lookup will do.
+        /// </summary>
+        protected virtual int[] ShoutSequence
+        {
+            get { return AllThreeShouts; }
+        }
 
         /// <summary>
         /// Which shout comes next, cycling 0-1-2. Seeded at summon so two summons do not open
@@ -362,8 +381,15 @@ namespace Dovahkiin
             // one shout - which is the very thing being fixed. Cycling guarantees all three
             // appear. The starting point is rolled at summon so two summons do not open
             // identically.
-            int which = ((shoutCycle % 3) + 3) % 3;
-            shoutCycle = which + 1;
+            // ShoutSequence rather than a hardcoded 3, so Call of Valor can inherit this whole
+            // AI and know only TWO shouts. For the Ancient Dragonborn the sequence is
+            // {FIRE, FROST, FORCE} = {0, 1, 2}, so slot == which and `shoutCycle = slot + 1` is
+            // exactly what the line here did before - BEHAVIOUR-IDENTICAL for him, which matters
+            // because his cycle is playtested and signed off.
+            int[] sequence = ShoutSequence;
+            int slot = ((shoutCycle % sequence.Length) + sequence.Length) % sequence.Length;
+            int which = sequence[slot];
+            shoutCycle = slot + 1;
 
             Color head;
             FleckDef fleck;

@@ -1,5 +1,84 @@
 # CHANGELOG
 
+## Call of Valor's SUMMON — the hero of Sovngarde exists (2026-08-01)
+
+The last piece. Build clean, 0 warnings; all defs and the language file parse; every new DefOf
+name resolves; the new tuning field is present in both C# and XML. **Never yet run in game** —
+`TESTS/phase2k.md` is the script, and its Test 5 is the save-safety check that `RISKS.md` §9
+exists for.
+
+The portal art was signed off by the user first: *"The portal in your preview is exactly what I
+wanted and signed."* The peak-brightness reservation raised against it was **overruled by them**
+and is not a defect.
+
+### Subclassed, not copied
+
+`Hediff_CallOfValor : Hediff_AncientDragonborn`, and it overrides **one member**. Everything that
+makes a summon safe — the doomed timer, the kill on expiry, the ally-safety cone check, joining
+whatever the Dovahkiin is fighting, dropping the player faction before destruction so Ideology
+does not throw — is inherited and already playtested.
+
+Copying 589 lines to change one of them would have doubled the surface area of the riskiest thing
+in the mod and guaranteed the two drift apart, with a later fix reaching one summon and not the
+other. The one override is `ShoutSequence`: **Unrelenting Force and Frost Breath, no fire.**
+
+To make that possible the parent's hardcoded `% 3` became a virtual sequence — and the refactor
+is **behaviour-identical for the Ancient Dragonborn by construction**, because his sequence is
+`{FIRE, FROST, FORCE} = {0, 1, 2}`, so `slot == which` and `shoutCycle = slot + 1` is exactly the
+line that was there. His cycle is playtested and signed off; a refactor that merely *looked*
+equivalent would not have been good enough.
+
+### The overlay now dresses two characters, and the edit was shaped to avoid a whole class of bug
+
+Valor's 36 textures **share Dragon Aspect's filenames** — same generator, swapped palette — so
+only the folder tells the two characters apart. The overlay's graphics were `static`, one shared
+set, so they could not simply be re-pointed per instance.
+
+The obvious fix was to convert every draw site in that 800-line file to read through an object.
+**That file is signed off and playtested, and one missed draw site would have put one character's
+armour on the other with no error anywhere.** So instead the statics became *"the currently bound
+set"*, rebound from a cache at the top of each draw, and `EnsureGraphics()` changed from `static`
+to an **instance** method — which left its call site character-for-character identical and meant
+**not one draw site had to be touched**.
+
+One real bug was caught doing it: the aura graphics were still being loaded from the hardcoded
+`TexRoot` *after* the correct set had been bound, which would have silently re-pointed three of
+the six graphics back to Dragon Aspect's folder **on every frame**. Deleted, with a note where it
+was.
+
+### Numbers, and one of them refuses to be written down twice
+
+| | Ancient Dragonborn | Call of Valor |
+|---|---|---|
+| armour | 0.75 sharp / 0.75 blunt | **0.66 / 0.33** — real steel plate |
+| lifetime | 15000 (6h) | **30000 (12h)** |
+| shouts | Fire, Frost, Force | **Force, Frost** |
+| weapon | spectral halberd | **spectral greatsword** |
+| aura | yes | **no** |
+| face | a fallen Dovahkiin's, if any | **his own** — he is not a shard of her soul |
+
+`callOfValorLifetimeTicks` at **0 or below derives from `ancientDragonbornLifetimeTicks x 2`**
+rather than failing. The user's rule is *"double his"*, and that rule has already been broken once
+by writing the answer down: his lifetime moved 3750 → 15000 and a literal `7500` recorded
+elsewhere silently stopped meaning "double". **A derived number should be able to stay derived.**
+
+### Summoned from a DEBUG ACTION, deliberately
+
+Call of Valor is a quest-locked shout and neither the quest nor the ability plumbing exists.
+Without a trigger the summon — the risky half — would go untested while the cheap half got built
+on top of it, which is the exact ordering mistake this project has already paid for.
+
+Writing it caught a guess: **`TargetingParameters.ForCell()` does not exist**, and the namespace
+guess was wrong too (`RimWorld`, not `Verse`). The class has `ForSelf`, `ForArrest`, `ForRescue`
+and twenty-odd more, and no plain-cell helper; a cell target is built by hand with
+`canTargetLocations = true`. `Targeter.BeginTargeting` also has **four** overloads, two of them
+five-parameter and differing only in whether argument two is an `Action<LocalTargetInfo>` or an
+`ITargetingSource` — so the delegate is declared with an explicit type rather than passed inline,
+or the call is ambiguous. **The compiler caught the first guess; nothing would have caught the
+second.**
+
+---
+
 ## `Thing_ValorPortal` — the portal's C# (2026-08-01)
 
 The cast effect Call of Valor steps out of. Build clean, 0 warnings; every def parses; every new

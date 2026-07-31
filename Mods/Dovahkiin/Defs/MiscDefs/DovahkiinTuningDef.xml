@@ -130,6 +130,15 @@
     <ancientDragonbornFollowRadius>8</ancientDragonbornFollowRadius>
     <ancientDragonbornAssistRadius>24</ancientDragonbornAssistRadius>
 
+    <!-- CALL OF VALOR'S HERO. 30000 ticks = 12 in-game hours, TWICE the Ancient
+         Dragonborn's 15000 - which is the user's rule, "double his".
+
+         Set this to 0 to make that rule live rather than copied: the code then derives
+         it from ancientDragonbornLifetimeTicks x 2, so it follows automatically the next
+         time his number moves. It moved once already, 3750 -> 15000, and a literal 7500
+         written down elsewhere silently stopped meaning "double his". -->
+    <callOfValorLifetimeTicks>30000</callOfValorLifetimeTicks>
+
     <!-- ============================================================================
          CALL OF VALOR'S PORTAL - the cast effect he steps out of.
 

@@ -148,6 +148,67 @@ namespace Dovahkiin
 
         private const string TexRoot = "Things/Pawn/DragonAspect/";
 
+        // ---------------------------------------------------------------------------------
+        // A SECOND WEARER: Call of Valor.
+        //
+        // His 36 textures are the SAME FILENAMES as Dragon Aspect's - they come out of the same
+        // generator with the palette swapped - and live in Textures/Things/Pawn/CallOfValor/.
+        // Only the folder distinguishes the two characters, which is why this is a root rather
+        // than a set of new names.
+        //
+        // The graphics above are STATIC, one shared set, so they cannot simply be re-pointed
+        // per instance. Rather than convert every draw site in this file to read through an
+        // object - a large edit to a signed-off, playtested file, with one missed site enough to
+        // mix the two characters' armour - the statics are treated as "the currently bound set"
+        // and REBOUND from a cache at the top of each draw. Drawing is synchronous and
+        // single-threaded, so a bind that lasts one DrawAt is safe, and the cache means
+        // GraphicDatabase is hit once per root rather than once per frame.
+        private sealed class OverlaySet
+        {
+            public Dictionary<string, Graphic> BodyL1;
+            public Dictionary<string, Graphic> BodyL2;
+            public Graphic Helm;
+            public Graphic Ring;
+            public Graphic FlareBlend;
+            public Graphic FlareEmber;
+        }
+        private static readonly Dictionary<string, OverlaySet> setsByRoot =
+            new Dictionary<string, OverlaySet>();
+        private static string boundRoot;
+
+        /// <summary>
+        /// Which texture folder this wearer's armour comes from. Null means Dragon Aspect's own,
+        /// so every overlay written before Call of Valor existed keeps working unchanged and an
+        /// old save loads with the right art.
+        /// </summary>
+        private string texRootOverride;
+
+        /// <summary>
+        /// Which weapon to draw, when <see cref="drawAxe"/> is set. Null means the Ancient
+        /// Dragonborn's axe, which is what this field replaced.
+        ///
+        /// It must be a def rather than a hardcoded lookup because the two summons carry
+        /// different weapons, and because the draw SIZE has to come from the def that is
+        /// actually equipped - a hardcoded size gave two very different apparent sizes for two
+        /// textures that fill their frames differently, which cost a round once already.
+        /// </summary>
+        private ThingDef weaponDefOverride;
+
+        /// <summary>
+        /// Draw the aura - the underglow rings and the crescent particles.
+        ///
+        /// FALSE FOR CALL OF VALOR, and that is the user's explicit rule rather than a
+        /// preference: the aura is the Dovahkiin's signature, and giving it to a hero of
+        /// Sovngarde is the same mistake as giving him her geometry. Defaults true so nothing
+        /// that existed before him changes.
+        /// </summary>
+        private bool drawAura = true;
+
+        private string ActiveTexRoot
+        {
+            get { return string.IsNullOrEmpty(texRootOverride) ? TexRoot : texRootOverride; }
+        }
+
         public override void SpawnSetup(Map map, bool respawningAfterLoad)
         {
             base.SpawnSetup(map, respawningAfterLoad);
@@ -170,6 +231,23 @@ namespace Dovahkiin
             level = Mathf.Clamp(shoutLevel, 1, 3);
             watchedHediff = watch != null ? watch : DovahkiinDefOf.Dovahkiin_DragonAspect;
             drawAxe = withAxe;
+        }
+
+        /// <summary>
+        /// Attach a DIFFERENT wearer's armour - Call of Valor's spectral set rather than the
+        /// Dovahkiin's own, his greatsword rather than the axe, and no aura.
+        ///
+        /// Deliberately a second method rather than four more optional parameters on the one
+        /// above: that one is called from two places that must keep behaving exactly as they
+        /// did, and optional parameters make a silent behaviour change one typo away.
+        /// </summary>
+        public void AttachAs(Pawn pawn, int shoutLevel, HediffDef watch, string texRoot,
+            ThingDef weapon, bool withAura)
+        {
+            Attach(pawn, shoutLevel, watch, weapon != null);
+            texRootOverride = texRoot;
+            weaponDefOverride = weapon;
+            drawAura = withAura;
         }
 
         /// <summary>
@@ -363,7 +441,15 @@ namespace Dovahkiin
                     helm.MatAt(rot, this), 0);
             }
 
-            DrawAura(basePos, scale);
+            // NO AURA FOR CALL OF VALOR. The user's explicit rule, not a preference: the aura is
+            // the Dovahkiin's signature, and giving it to a hero of Sovngarde is the same
+            // mistake as giving him her geometry - which is what the whole design brief exists
+            // to correct. Gated here, at the single call site, rather than inside DrawAura,
+            // so "does this wearer have an aura" is decided in exactly one place.
+            if (drawAura)
+            {
+                DrawAura(basePos, scale);
+            }
         }
 
         /// <summary>
@@ -737,39 +823,103 @@ namespace Dovahkiin
             return set.TryGetValue(key, out g) ? g : null;
         }
 
-        private static void EnsureGraphics()
+        /// <summary>
+        /// Bind the static graphic fields to THIS wearer's texture set, loading it once per root
+        /// and caching it.
+        ///
+        /// An INSTANCE method, which is the whole trick: the call site in DrawAt is unchanged
+        /// (`EnsureGraphics();`), so not one of this file's many draw sites had to be touched to
+        /// support a second wearer. This file is signed off and playtested, and one missed draw
+        /// site would have put one character's armour on the other with no error anywhere.
+        /// </summary>
+        private void EnsureGraphics()
         {
-            if (bodyL1 != null)
+            string root = ActiveTexRoot;
+            EnsureSetBound(root);
+            EnsureWeaponGraphic();
+        }
+
+        private static void EnsureSetBound(string root)
+        {
+            if (boundRoot == root && bodyL1 != null)
             {
                 return;
             }
+            OverlaySet set;
+            if (!setsByRoot.TryGetValue(root, out set))
+            {
+                set = LoadSet(root);
+                setsByRoot[root] = set;
+            }
+            bodyL1 = set.BodyL1;
+            bodyL2 = set.BodyL2;
+            helm = set.Helm;
+            ringGraphic = set.Ring;
+            flareBlend = set.FlareBlend;
+            flareEmber = set.FlareEmber;
+            flareAzure = set.FlareEmber;   // same sprite, tinted per draw
+            boundRoot = root;
+        }
+
+        private static OverlaySet LoadSet(string root)
+        {
+            OverlaySet set = new OverlaySet();
             // Graphic_Multi wants _north/_east/_south. A missing _west is mirrored from _east
             // automatically - confirmed empirically, since the body sprites this art was sized
             // against ship exactly three files and render correctly in game.
             //
             // The drawSize passed here is irrelevant to the armour: DrawAt uses the PAWN's
             // mesh, not the graphic's. These graphics are only ever asked for their Material.
+            //
+            // FILENAMES ARE "DragonAspect_*" FOR BOTH WEARERS. Call of Valor's come out of the
+            // same generator with the palette swapped, so only the ROOT differs. That is exactly
+            // why his live in their own folder, and why nothing here may hardcode TexRoot.
             Vector2 body = new Vector2(RefBodyWidth, RefBodyWidth);
-            bodyL1 = new Dictionary<string, Graphic>();
-            bodyL2 = new Dictionary<string, Graphic>();
+            set.BodyL1 = new Dictionary<string, Graphic>();
+            set.BodyL2 = new Dictionary<string, Graphic>();
             for (int i = 0; i < BodyTypeKeys.Length; i++)
             {
                 string key = BodyTypeKeys[i];
-                bodyL1[key] = GraphicDatabase.Get<Graphic_Multi>(
-                    TexRoot + "DragonAspect_L1_" + key, ShaderDatabase.Transparent, body, Color.white);
-                bodyL2[key] = GraphicDatabase.Get<Graphic_Multi>(
-                    TexRoot + "DragonAspect_L2_" + key, ShaderDatabase.Transparent, body, Color.white);
+                set.BodyL1[key] = GraphicDatabase.Get<Graphic_Multi>(
+                    root + "DragonAspect_L1_" + key, ShaderDatabase.Transparent, body, Color.white);
+                set.BodyL2[key] = GraphicDatabase.Get<Graphic_Multi>(
+                    root + "DragonAspect_L2_" + key, ShaderDatabase.Transparent, body, Color.white);
             }
             // The helm is deliberately NOT per body type: head art does not vary by body type,
             // and BaseHeadOffsetAt already moves it per type via BodyTypeDef.headOffset.
-            helm = GraphicDatabase.Get<Graphic_Multi>(TexRoot + "DragonAspectHelm",
+            set.Helm = GraphicDatabase.Get<Graphic_Multi>(root + "DragonAspectHelm",
                 ShaderDatabase.Transparent, body, Color.white);
 
-            // The Ancient Dragonborn's axe. Cutout, not Transparent: it is a solid object.
+            // MoteGlow for the aura: it is light, not a surface, and should add rather than
+            // occlude. The armour above uses Transparent because it IS a surface.
             //
-            // Resolved from the SAME ThingDef the summon actually equips, so the drawn axe and
-            // the carried one can never diverge.
-            ThingDef equippedAxe = DovahkiinDefOf.Dovahkiin_AncientDragonbornAxe;
+            // Loaded even for a wearer who does not draw one (Call of Valor). His folder holds
+            // the aura files because the generator emits them, and loading three graphics that
+            // are never drawn costs nothing - while making the load conditional would put a
+            // second place where "does he have an aura" is decided.
+            Vector2 one = Vector2.one;
+            set.Ring = GraphicDatabase.Get<Graphic_Single>(root + "DragonAspectAuraRing",
+                ShaderDatabase.MoteGlow, one, Color.white);
+            set.FlareBlend = GraphicDatabase.Get<Graphic_Single>(root + "DragonAspectFlare",
+                ShaderDatabase.MoteGlow, one, Color.white);
+            set.FlareEmber = GraphicDatabase.Get<Graphic_Single>(root + "DragonAspectFlarePlain",
+                ShaderDatabase.MoteGlow, one, Color.white);
+            return set;
+        }
+
+        /// <summary>
+        /// The drawn weapon, resolved from whichever def this wearer actually carries.
+        ///
+        /// Per instance rather than once statically, because the two summons carry different
+        /// weapons - and the SIZE has to come from the equipped def too. A hardcoded draw size
+        /// gave two very different apparent sizes for two textures that fill their frames
+        /// differently, which cost a playtest round on the axe.
+        /// </summary>
+        private void EnsureWeaponGraphic()
+        {
+            ThingDef equippedAxe = weaponDefOverride != null
+                ? weaponDefOverride
+                : DovahkiinDefOf.Dovahkiin_AncientDragonbornAxe;
             if (equippedAxe != null && equippedAxe.graphicData != null)
             {
                 axeGraphic = equippedAxe.graphicData.Graphic;
@@ -781,17 +931,10 @@ namespace Dovahkiin
                 float declared = equippedAxe.graphicData.drawSize.x;
                 axeDrawSize = declared > 0.05f ? declared : 1f;
             }
-
-            // MoteGlow for the aura: it is light, not a surface, and should add rather than
-            // occlude. The armour above uses Transparent because it IS a surface.
-            Vector2 one = Vector2.one;
-            ringGraphic = GraphicDatabase.Get<Graphic_Single>(TexRoot + "DragonAspectAuraRing",
-                ShaderDatabase.MoteGlow, one, Color.white);
-            flareBlend = GraphicDatabase.Get<Graphic_Single>(TexRoot + "DragonAspectFlare",
-                ShaderDatabase.MoteGlow, one, Color.white);
-            flareEmber = GraphicDatabase.Get<Graphic_Single>(TexRoot + "DragonAspectFlarePlain",
-                ShaderDatabase.MoteGlow, one, Color.white);
-            flareAzure = flareEmber;   // same sprite, tinted per draw
+            // The aura graphics used to be loaded here, from the hardcoded TexRoot. They are now
+            // part of the per-root set in LoadSet - leaving them here would have re-pointed the
+            // aura at Dragon Aspect's folder on EVERY draw, immediately after the correct set
+            // had been bound, and silently undone the binding for three of its six graphics.
         }
 
         public override void ExposeData()
@@ -802,6 +945,11 @@ namespace Dovahkiin
             Scribe_Values.Look(ref phaseOffset, "phaseOffset", 0f);
             Scribe_Defs.Look(ref watchedHediff, "watchedHediff");
             Scribe_Values.Look(ref drawAxe, "drawAxe", false);
+            // Call of Valor's three. Defaults chosen so a save written before he existed loads
+            // as the Dovahkiin's own armour, her aura, and the axe - i.e. unchanged.
+            Scribe_Values.Look(ref texRootOverride, "texRootOverride", null);
+            Scribe_Defs.Look(ref weaponDefOverride, "weaponDefOverride");
+            Scribe_Values.Look(ref drawAura, "drawAura", true);
         }
     }
 }

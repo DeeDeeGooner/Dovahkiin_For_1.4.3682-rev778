@@ -93,6 +93,12 @@ namespace Dovahkiin
         /// </summary>
         public static ThingDef Dovahkiin_ValorGreatsword;
 
+        /// <summary>The doomed hediff every Call of Valor summon carries.</summary>
+        public static HediffDef Dovahkiin_CallOfValor;
+
+        /// <summary>What he is generated from.</summary>
+        public static PawnKindDef Dovahkiin_CallOfValorKind;
+
         /// <summary>Tintable cone particles. Vanilla's are renderInstanced and ignore colour.</summary>
         public static FleckDef Dovahkiin_Fleck_ForceWave;
         public static FleckDef Dovahkiin_Fleck_FireWave;
