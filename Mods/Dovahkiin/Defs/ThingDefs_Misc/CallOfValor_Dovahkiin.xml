@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    CALL OF VALOR'S GREATSWORD.
+
+    THE USER'S INSTRUCTION, VERBATIM: "medieval mod should recognise it as one it's weapon
+    (using their same position, orientation when held by a pawn, and same animation too since
+    melee animation is in the modlist, also the weapon it should behave like is the greatsword
+    in the blades section)."
+
+    So this is the Ancient Dragonborn halberd treatment applied to a blade: OUR art, THEIR
+    behaviour. Everything below that looks like a magic number was read out of
+    DankPyon_MeleeWeapon_Greatsword and its parent DankPyon_Base_SharpSword_Oversize on disk
+    2026-08-01, not remembered and not copied from a document.
+
+    THE PARENT IS A DIFFERENT SHAPE FROM THE HALBERD'S, AND THAT MATTERS.
+    The halberd inherits DankPyon_Base_Sharp_Oversize, which carries a LIVE
+    <equippedAngleOffset>45</equippedAngleOffset> - so our axe def sets 45 and is done.
+    DankPyon_Base_SharpSword_Oversize does NOT: its equippedAngleOffset is commented out, and
+    the hold pose comes from a VFECore ThingDefExtension instead, with a separate AUTHORED
+    angle and offset PER FACING. Copying the axe's approach here would have produced a
+    weapon held at one fixed angle, which is not how their greatsword is held.
+
+    NO weaponTags, DELIBERATELY. Their greatsword carries <li>DankPyon_Greatsword</li> and
+    <li>MedievalMeleeAdvanced</li>, and those are how PawnKindDefs pick weapons to spawn with.
+    Inheriting them would let medieval raiders and traders turn up carrying a spectral summon's
+    sword. "Recognise it as one of its weapons" means the hold, the swing and the numbers - the
+    user listed exactly those in their own brackets - not entry into the loot tables.
+  -->
+  <ThingDef>
+    <defName>Dovahkiin_ValorGreatsword</defName>
+    <label>spectral greatsword</label>
+    <description>A greatsword of solid Thu'um, carried by a hero of Sovngarde answering the Dragonborn's call. It is not steel and it is not here for long.</description>
+    <thingClass>ThingWithComps</thingClass>
+    <category>Item</category>
+    <equipmentType>Primary</equipmentType>
+    <altitudeLayer>Item</altitudeLayer>
+    <drawerType>MapMeshOnly</drawerType>
+    <tickerType>Never</tickerType>
+    <useHitPoints>false</useHitPoints>
+    <selectable>true</selectable>
+    <techLevel>Medieval</techLevel>
+    <smeltable>false</smeltable>
+    <burnableByRecipe>false</burnableByRecipe>
+    <destroyOnDrop>true</destroyOnDrop>
+
+    <!-- REQUIRED, and its absence is what killed the Ancient Dragonborn's first summon outright.
+         Without it RimWorld logs "is equipment but has no CompEquippable" as a CONFIG ERROR at
+         load - which a clean build and an XML parse check both pass - and then
+         Pawn_EquipmentTracker.Notify_EquipmentAdded throws the moment anything holds it.
+         There is NO CompProperties_Equippable type: vanilla's BaseWeapon declares it as a plain
+         comp carrying compClass. Writing a weapon standalone to escape stuff and quality drops
+         this comp, because it lives on that base. -->
+    <comps>
+      <li>
+        <compClass>CompEquippable</compClass>
+      </li>
+    </comps>
+
+    <!-- destroyOnDrop with the default tradeability of All is a config error in its own right,
+         and None is correct anyway: a spectral weapon that exists for a few hours has no
+         business in a trade window. -->
+    <tradeability>None</tradeability>
+
+    <!-- Standard_Pickup. There is no Interact_Bladelike* def in Core and an unrecognised sound
+         defName is an XML error at load. Checked on disk, not assumed. -->
+    <soundInteract>Standard_Pickup</soundInteract>
+
+    <graphicData>
+      <texPath>Things/Item/Equipment/ValorGreatsword</texPath>
+      <graphicClass>Graphic_Single</graphicClass>
+      <!-- (1.25,1.25) - DankPyon_MeleeWeapon_Greatsword's own drawSize. NOT the halberd's 1.5.
+           WeaponTweakData passes ScaleX/ScaleY 1.25 to match; those two must agree or Melee
+           Animation draws the weapon at a different size from the one the map shows. -->
+      <drawSize>(1.25,1.25)</drawSize>
+    </graphicData>
+    <uiIconScale>1.2</uiIconScale>
+
+    <!-- NO <equippedAngleOffset>. Read that as a decision, not an omission.
+         Their greatsword has none either - DankPyon_Base_SharpSword_Oversize has it commented
+         out - because the VFECore extension below supplies a different angle for every facing.
+         Adding one here would fight those per-facing angles rather than complement them. -->
+
+    <modExtensions>
+      <!-- THE HOLD POSE, copied verbatim from DankPyon_Base_SharpSword_Oversize.
+           These are AUTHORED PER-FACING POSES, not one angle plus a rotation - north is 115
+           while south and east are -45 - which is exactly why the preview sheet stuck the sword
+           sideways out of his back until north got its own number.
+
+           MayRequire, because CLAUDE.md invariant 5 says the mod must load clean on the
+           baseline environment (Core + Royalty + Ideology + Harmony + HugsLib) and VFECore is
+           not in it. An unguarded li naming a class that cannot resolve logs an XML error and
+           is dropped - the def still loads, so this would be a silent red line in the log
+           rather than a crash, which is worse. VEF is active in this modlist
+           (oskarpotocki.vanillafactionsexpanded.core, verified in ModsConfig.xml).
+
+           On the baseline the sword simply draws at the default angle. Medieval Overhaul is not
+           present there either, so nothing it would have matched is present to disagree with. -->
+      <li Class="VFECore.ThingDefExtension" MayRequire="oskarpotocki.vanillafactionsexpanded.core">
+        <weaponDraftedDrawOffsets>
+          <north>
+            <drawOffset>(-0.20,0.0,0.20)</drawOffset>
+            <angleOffset>115</angleOffset>
+          </north>
+          <east>
+            <drawOffset>(0.30,0.00,0.20)</drawOffset>
+            <angleOffset>-45</angleOffset>
+          </east>
+          <south>
+            <drawOffset>(0.30,0.00,0.20)</drawOffset>
+            <angleOffset>-45</angleOffset>
+          </south>
+          <west>
+            <drawOffset>(-0.30,0.0,0.20)</drawOffset>
+            <angleOffset>45</angleOffset>
+          </west>
+        </weaponDraftedDrawOffsets>
+      </li>
+    </modExtensions>
+
+    <statBases>
+      <!-- Mass 3, theirs. The halberd is 2.75; these are different weapons. -->
+      <Mass>3</Mass>
+      <MarketValue>0</MarketValue>
+    </statBases>
+
+    <weaponClasses>
+      <li>Melee</li>
+    </weaponClasses>
+
+    <!--
+      DankPyon_MeleeWeapon_Greatsword's tools, verbatim. A player with Medieval Overhaul gets a
+      weapon that hits exactly like the greatsword they know; a player without it still gets a
+      properly weighted two-hander rather than numbers invented on the spot. No MayRequire and
+      no fallback is needed, because we borrow the BEHAVIOUR and ship our own art - which is
+      also the licensing line: their art is a ruler, never a source.
+    -->
+    <tools>
+      <li>
+        <label>handle</label>
+        <capacities>
+          <li>Poke</li>
+        </capacities>
+        <power>9</power>
+        <cooldownTime>2</cooldownTime>
+      </li>
+      <li>
+        <label>edge</label>
+        <labelUsedInLogging>false</labelUsedInLogging>
+        <capacities>
+          <li>Cut</li>
+        </capacities>
+        <power>31.25</power>
+        <cooldownTime>3.15</cooldownTime>
+        <armorPenetration>0.25</armorPenetration>
+      </li>
+    </tools>
+  </ThingDef>
+
+</Defs>

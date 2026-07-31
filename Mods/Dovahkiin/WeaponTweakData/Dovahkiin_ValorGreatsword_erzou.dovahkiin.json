@@ -1,0 +1,14 @@
+{
+  "TextureModID": "erzou.dovahkiin",
+  "ItemDefName": "Dovahkiin_ValorGreatsword",
+  "ItemType": "ThingDef",
+  "ItemTypeNamespace": "Verse",
+  "OffX": 0.363739,
+  "OffY": -0.0112994611,
+  "Rotation": 45.0,
+  "ScaleX": 1.25,
+  "ScaleY": 1.25,
+  "BladeStart": 0.268436,
+  "BladeEnd": 1.157929,
+  "MeleeWeaponType": 6
+}

@@ -1,5 +1,95 @@
 # CHANGELOG
 
+## Call of Valor's greatsword behaves as Medieval Overhaul's greatsword (2026-08-01)
+
+The user's instruction, verbatim: *"medieval mod should recognise it as one it's weapon (using
+their same position, orientation when held by a pawn, and same animation too since melee
+animation is in the modlist, also the weapon it should behave like is the greatsword in the
+blades section)."* The Ancient Dragonborn halberd treatment, applied to a blade: **our art,
+their behaviour.**
+
+New: `Defs/ThingDefs_Misc/CallOfValor_Dovahkiin.xml` and
+`WeaponTweakData/Dovahkiin_ValorGreatsword_erzou.dovahkiin.json`. Every number read off
+`DankPyon_MeleeWeapon_Greatsword` and its parent **on disk**, not from the notebook — which
+happened to be right this time, and is exactly the document class that has been wrong before.
+
+### The parent is a DIFFERENT SHAPE from the halberd's, and copying the axe def would have missed it
+
+| | halberd (the axe's model) | greatsword |
+|---|---|---|
+| parent | `DankPyon_Base_Sharp_Oversize` | `DankPyon_Base_SharpSword_Oversize` |
+| `equippedAngleOffset` | **live, 45** | **commented out** |
+| hold pose | that one angle | **VFECore per-facing extension** |
+
+Their greatsword's pose is an **authored pose per facing** — north **115**, south and east
+**-45**, west **45**, each with its own `drawOffset` — carried in a `VFECore.ThingDefExtension`.
+So this def sets **no** `equippedAngleOffset` at all, deliberately, and copies the extension.
+Following the axe's pattern here would have produced a weapon held at one fixed angle, which is
+not how theirs is held. **Two weapons from the same mod do not necessarily inherit the same
+machinery — read the actual parent, not the sibling.**
+
+`MayRequire="oskarpotocki.vanillafactionsexpanded.core"` on that entry, because `CLAUDE.md`
+invariant 5 requires a clean load on the baseline environment and VEF is not in it. An unguarded
+`li` naming an unresolvable class logs an XML error and is silently dropped — the def still
+loads, so it would be a permanent red line rather than a crash. The `Class` + `MayRequire` pair
+on one `li` was confirmed against a real precedent on disk (Dragons Descent does it with
+`MorrowRim.ExtendedRaceProperties`), not assumed to be legal.
+
+### NO weaponTags, and that is a decision
+
+Theirs carries `DankPyon_Greatsword` and `MedievalMeleeAdvanced`. Those are how `PawnKindDef`s
+pick weapons to spawn with, so inheriting them would let **medieval raiders and traders turn up
+carrying a spectral summon's sword**. The user's own brackets listed what "recognise it" meant —
+position, orientation, animation, behaviour — and entry into the loot tables is not on that list.
+
+### The animation data could NOT be copied, and copying it is the trap
+
+`MeleeWeaponType 6` (two-handed sword — the field that selects the animation set), `Rotation 45`,
+`Scale 1.25` and `OffY` transfer verbatim. **`OffX`, `BladeStart` and `BladeEnd` do not.** They
+are distances in world units *from the pawn's hand*, so they encode where **their** grip and
+**their** blade sit in **their** sprite — and our sword has **two crossguards**, so its hilt eats
+far more of the weapon's length.
+
+Derived with:
+
+```
+weaponLength = (px along the weapon axis) x drawSize / 256
+OffX         = (0.5 - handFraction)           x weaponLength
+BladeStart   = (bladeFraction - handFraction) x weaponLength
+BladeEnd     = (1.0 - handFraction)           x weaponLength
+```
+
+**Validated by reproducing THEIR published numbers from THEIR sprite before being used on ours:**
+their greatsword measures 340.8 px along its axis with the hand at fraction 0.1718, giving
+`OffX 0.5461` against their published **0.5461391** and `BladeStart 0.3050` against their
+**0.30508475** — exact to five decimals. *A formula that reproduces the reference file is worth
+trusting on ours; one that merely looks plausible is not.*
+
+### Measuring it needed the SOLID alpha threshold, not the usual one
+
+Profiled along the weapon axis in 24 buckets. At the customary **alpha > 8** our sword inks
+20,672 px against their 10,443 — nearly double — because **our blade carries a spectral bloom and
+the halo counts as weapon**. At **alpha > 128** the geometry is comparable and the hilt structure
+is legible: lower grip 0.02–0.10, lower crossguard 0.15–0.23, middle grip ~0.27, main crossguard
+0.31–0.40, blade 0.44 → 1.00. Theirs: grip 0.10–0.19, guard 0.23–0.27, blade 0.36 → 1.00.
+
+**The hand sits at 0.271 — the middle grip, directly below the main crossguard**, which is the
+same *role* their hand occupies at 0.1718. Matching their number instead would have put our hand
+**on our lower crossguard**. That is the difference between the same position and the same
+number, and the instruction asked for the first.
+
+**This is the one value only the game can settle**, and it is a single knob: recompute all three
+fields from `handFraction`. The numeric match, if it ever looks better, is `OffX 0.5210`,
+`BladeStart 0.4098`, `BladeEnd 1.3152` — recorded so it does not have to be re-derived.
+
+No mirroring was needed, unlike the axe: both sprites already run bottom-left → top-right with
+the blade at the same end (measured, alpha > 8, threshold stated so the table can be re-checked).
+
+Every def file parses, no double-dash comments, the JSON parses, and the texture resolves at the
+def's `texPath`. **Not yet loaded in game** — nothing equips this sword until the summon exists.
+
+---
+
 ## The preview sheet showed Call of Valor holding the ANCIENT DRAGONBORN'S AXE (2026-08-01)
 
 *"Why is his greatsword in your preview the ancient dragonborn's fricking Axe??? Where is his
