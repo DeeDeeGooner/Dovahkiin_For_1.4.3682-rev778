@@ -12,7 +12,11 @@ Frozen here so that later changes cannot lose it.
 > |---|---|
 > | pauldrons + chest | `008e674` |
 > | + the abdominal half | `53472b3` |
-> | **+ belt, fur, curved belt, no thigh plates** | **current** |
+> | + curved belt, fur, no thigh plates | `f7c9b1c` |
+> | + the side-view fit corrected | `814510a` |
+> | + fur as zigzag strands | `a54b526` |
+> | + fur down the whole lower body | `f26e573` |
+> | **+ no scale field anywhere** | **current** |
 
 This folder is a **snapshot, not a source**. Nothing in the mod loads it — `Tools/` is not
 scanned for textures. It exists so that any future version of the champion can be compared
@@ -41,9 +45,14 @@ against the one that was actually approved, byte for byte, instead of from memor
   per side. North gets one erector-spinae mass per side rather than rows.
 - A **belt that curves round the body** — its width taken from the cuirass's own edge, its centre
   dropping below its ends like the near arc of an ellipse. **One buckle, on the front only.**
-- A **fur skirt** below it: tufted hem, matte, and deliberately no specular rim.
+- A **fur skirt** running the whole lower body to the extremities: three overlapping tiers of
+  zigzag strands, tufted hem, matte, and deliberately no specular rim.
+- **Smooth arm bands** — `BuildArmsPath`'s own sleeve, unchanged in shape, with no scales inside.
+- **NO DRAGON-SCALE FIELD ANYWHERE.** Removed outright, not clipped back.
 - **No thigh plates.** Built, then switched off at the user's request — `$DRAW_TASSETS = $false`.
   `DrawTasset` is intact and must not be deleted; the word was "for now".
+- **`DrawArmPlates` exists but is NOT called** — four articulated arm lames, rejected by the user
+  for changing an approved silhouette. Do not wire it back in.
 - **No crest shards.** Suppressed deliberately: they run down the same chest the cuirass occupies
   and win outright, so the pectorals stopped existing. There is no alpha at which both read.
 

@@ -1795,6 +1795,83 @@ function DrawShoulderBlade($g, $prof, [double]$side, [int]$alpha, $pDeep, $pMid,
   $g.DrawPath($penEdge, $blade); $penEdge.Dispose(); $blade.Dispose()
 }
 
+# =====================================================================================
+#  THE ARM PIECES - rerebrace, couter, vambrace. Plate, not scales.
+# =====================================================================================
+#  The user's instruction: take the scales off the arms too. What replaces them matters,
+#  and not only for looks - **THE ARM BAND IS THE ONLY THING DRAWN AT LEVEL 1.** Removing
+#  the scales and putting nothing back would leave word 1 of Dragon Aspect with no visible
+#  effect whatsoever on this build. So the arms get armour rather than nothing.
+#
+#  Four lames down each arm, following the silhouette's own outer edge per row:
+#    rerebrace (upper arm) - couter (the elbow, wider) - vambrace (forearm) - cuff
+#
+#  Each is built like `BuildArmsPath`'s sleeve - outer edge on the silhouette, inner edge
+#  set in by $ARM_W - but capped at BOTH ends by easing the band's width to nothing, so a
+#  lame reads as a plate with a top and a bottom rather than as a cut strip. The gaps
+#  between them are the articulation.
+#
+#  They ride very slightly PROUD of the silhouette (4% of the half-width at the middle of
+#  each lame, tapering to nothing at its ends). Worn plate stands off the arm it covers,
+#  and at ~15px of arm width there is no room to suggest that any other way.
+#
+#  ***NOT CALLED. REJECTED BY THE USER 2026-07-31 and kept only for the geometry.***
+#  Asked to "remove the scales" from the arms, this replaced the band with four articulated
+#  lames - which changed a silhouette that had already been approved. Their correction:
+#  "just the scales, don't change its shape. keep its outer lines as it was but remove the
+#  details inside of it." The shipping arms are `BuildArmsPath`'s own sleeve, filled smooth.
+#  **Do not wire this back in without being asked.**
+function DrawArmPlates($g, $prof, [double]$side, [int]$alpha, $pDeep, $pMid, $pLit, $pHot) {
+  # top, bottom, and how much of $ARM_W the lame uses. The couter is the fat one.
+  $lames = @(
+    @{ T = 0.255; B = 0.400; W = 1.02 },   # rerebrace, upper arm
+    @{ T = 0.396; B = 0.505; W = 1.30 },   # couter, over the elbow
+    @{ T = 0.500; B = 0.690; W = 1.08 },   # vambrace, forearm
+    @{ T = 0.686; B = 0.792; W = 0.92 }    # cuff
+  )
+  foreach ($lame in $lames) {
+    $yTop = PlateY ([double]$lame.T)
+    $yBot = PlateY ([double]$lame.B)
+    $bandH = $yBot - $yTop
+    if ($bandH -le 1.0) { continue }
+    $outer = New-Object System.Collections.ArrayList
+    $inner = New-Object System.Collections.ArrayList
+    for ($rowY = $yTop; $rowY -le $yBot; $rowY += 1.0) {
+      $hw = HalfSideAt $prof $rowY $side
+      # ease to nothing at BOTH ends - this is what caps the lame
+      $endT = [Math]::Min((($rowY - $yTop) / ($bandH * 0.26)), (($yBot - $rowY) / ($bandH * 0.26)))
+      if ($endT -gt 1.0) { $endT = 1.0 }
+      if ($endT -lt 0.0) { $endT = 0.0 }
+      $cap = SmoothStep $endT
+      $outEdge = $hw * (1.0 + (0.040 * $cap))
+      $inEdge  = $hw - ($ARM_W * [double]$lame.W * $cap)
+      [void]$outer.Add((New-Object System.Drawing.PointF ([single](($CX + ($side * $outEdge)) * $SS)), ([single]($rowY * $SS))))
+      [void]$inner.Insert(0, (New-Object System.Drawing.PointF ([single](($CX + ($side * $inEdge)) * $SS)), ([single]($rowY * $SS))))
+    }
+    $all = New-Object System.Collections.ArrayList
+    [void]$all.AddRange($outer); [void]$all.AddRange($inner)
+    $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $path.AddPolygon([System.Drawing.PointF[]]$all.ToArray([System.Drawing.PointF]))
+    $path.CloseFigure()
+
+    $rect = $path.GetBounds()
+    if ($rect.Width -lt 1) { $rect.Width = 1 }
+    if ($rect.Height -lt 1) { $rect.Height = 1 }
+    # Lit down the OUTER edge and falling away inward - a horizontal gradient, unlike the
+    # cuirass's vertical one. An arm lame is a cylinder seen along its length, so its
+    # shading runs across the limb, not down it. Using the torso's 90 degrees here made
+    # the arms read as flat ribbons in the first pass.
+    $fillOut = Lerp3 $pMid $pLit 0.62
+    $angle = if ($side -lt 0.0) { [single]0.0 } else { [single]180.0 }
+    $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rect, (RGB $fillOut[0] $fillOut[1] $fillOut[2] ([int]($alpha * 0.98))), (RGB $pDeep[0] $pDeep[1] $pDeep[2] ([int]($alpha * 0.86))), $angle
+    $g.FillPath($brush, $path); $brush.Dispose()
+
+    $penEdge = New-Object System.Drawing.Pen (RGB $pHot[0] $pHot[1] $pHot[2] ([int]([Math]::Min(230, $alpha * 1.25)))), ([single]($ARM_W * 0.085 * $SS))
+    $penEdge.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+    $g.DrawPath($penEdge, $path); $penEdge.Dispose(); $path.Dispose()
+  }
+}
+
 # Which shoulder piece this build wears. A single dispatch rather than an `if` repeated
 # at all four call sites: the two styles then take exactly the same arguments in exactly
 # the same order, and no rotation can end up half-converted.
@@ -2090,19 +2167,30 @@ function BuildBody([string]$rot, [int]$level) {
     #     26 at the centre line rising to 88 at the edges. The first version used 96-170
     #     and hid the pawn completely.
     #
-    # THE FUR IS CUT OUT OF THE SCALE FIELD for the champion. The scales are clipped to the
-    # whole torso, which includes the fur band, and a dragon-scale grid showing through a
-    # fur skirt cancels the fur outright - no amount of strand drawing survives a regular
-    # pattern behind it. The user spotted this before the strands were even built.
-    if ($SHOULDER_STYLE -eq "pauldron") {
-      $furCut = BuildFurPath $prof
-      $scaleRegion = New-Object System.Drawing.Region $torso
-      $scaleRegion.Exclude($furCut)
-      $g.Clip = $scaleRegion
-      FillScales $g $prof 26.0 88.0
-      $g.ResetClip()
-      $scaleRegion.Dispose(); $furCut.Dispose()
-    } else {
+    # =============================================================================
+    # THE CHAMPION HAS NO SCALE FIELD AT ALL. Not cut back - gone.
+    # =============================================================================
+    # This was removed in three goes and only the third was right, which is worth
+    # recording because the first two were aimed at the wrong layer:
+    #
+    #   1. cut the fur's outline out of it  - the scales still covered everything else
+    #   2. drop the ARM BAND's own scales   - and they were STILL on the arms
+    #
+    # The reason (2) failed: **`BuildTorsoPath` spans the ENTIRE silhouette, arms
+    # included.** It is not a torso-minus-arms shape. So the scale field was painting the
+    # arms regardless of what the arm band itself drew, and the smooth arm fill at ~112
+    # alpha was simply layered on top of a scale pattern that was still there. Emptying
+    # the arm band could never have worked while this field existed.
+    #
+    # The general trap: **a clip named for one part of the body may not be limited to it.**
+    # Check what a path actually covers before concluding a feature drawn inside it is the
+    # thing you can see.
+    #
+    # Nothing is left bare by removing it. Every region now carries its own treatment -
+    # cuirass over the trunk, belt, fur, and the arm bands - and the plate's edge (0.755 of
+    # the half-width at the chest) overlaps the arm band's inner edge (~0.70), so there is
+    # no seam between them to expose.
+    if ($SHOULDER_STYLE -ne "pauldron") {
       $g.SetClip($torso)
       FillScales $g $prof 26.0 88.0
       $g.ResetClip()
@@ -2124,9 +2212,49 @@ function BuildBody([string]$rot, [int]$level) {
 
   # --- arm bands: present at EVERY level, and the only thing present at level 1.
   #     Denser than the torso, because at level 1 they carry the whole effect alone.
-  $g.SetClip($arms)
-  if ($level -ge 2) { FillScales $g $prof 70.0 118.0 } else { FillScales $g $prof 95.0 150.0 }
-  $g.ResetClip()
+  #
+  # The champion wears PLATE on the arms rather than scales. Note the level-1 case: the arm
+  # band is the ONLY thing drawn there, so removing the scales without putting armour back
+  # would have left word 1 with no visible effect at all on this build. The plates are
+  # drawn a little stronger at level 1 for the same reason the scales were.
+  if ($SHOULDER_STYLE -eq "pauldron") {
+    # THE SHAPE IS UNCHANGED. This is `BuildArmsPath`'s own sleeve - the same outline the
+    # scaled band always had - filled smooth instead of scaled. The user's correction, and
+    # it was a correction of me: told "remove the scales", I replaced the band with four
+    # articulated lames, which changed the silhouette they had already approved. The
+    # instruction was about what is drawn INSIDE the outline, not about the outline.
+    #
+    # Built one side at a time so each arm's gradient can run outward-lit on its own side.
+    # One brush over both arms' combined bounds would light the left arm and shade the
+    # right, since a linear gradient only knows the bounding box.
+    $armAlpha = if ($level -ge 2) { 112 } else { 142 }
+    $armCool = CoolAt 0.52
+    $aDeep = Lerp3 $C_DEEP $C_BLUE_DEEP $armCool
+    $aLit  = Lerp3 $C_GOLD $C_BLUE_LIT  $armCool
+    $aHot  = Lerp3 $C_HOT  $C_BLUE_HOT  $armCool
+    $aMid  = Lerp3 $C_MID  $C_BLUE_MID  $armCool
+    $aFill = Lerp3 $aMid $aLit 0.62
+    foreach ($armSide in $armSides) {
+      $oneArm = BuildArmsPath $prof @($armSide)
+      $armRect = $oneArm.GetBounds()
+      if ($armRect.Width -lt 1) { $armRect.Width = 1 }
+      if ($armRect.Height -lt 1) { $armRect.Height = 1 }
+      # lit on the OUTER edge, falling away inward - across the limb, not down it
+      $armAngle = if ($armSide -lt 0.0) { [single]0.0 } else { [single]180.0 }
+      $armBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $armRect, (RGB $aFill[0] $aFill[1] $aFill[2] $armAlpha), (RGB $aDeep[0] $aDeep[1] $aDeep[2] ([int]($armAlpha * 0.80))), $armAngle
+      $g.FillPath($armBrush, $oneArm); $armBrush.Dispose()
+      # A thin edge, only so the outline stays as crisp as the scales' own boundary used to
+      # make it. Deliberately fainter than the cuirass's rim - this is not a new detail,
+      # it is the band's existing edge.
+      $penArm = New-Object System.Drawing.Pen (RGB $aHot[0] $aHot[1] $aHot[2] ([int]($armAlpha * 0.70))), ([single]($ARM_W * 0.070 * $SS))
+      $penArm.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+      $g.DrawPath($penArm, $oneArm); $penArm.Dispose(); $oneArm.Dispose()
+    }
+  } else {
+    $g.SetClip($arms)
+    if ($level -ge 2) { FillScales $g $prof 70.0 118.0 } else { FillScales $g $prof 95.0 150.0 }
+    $g.ResetClip()
+  }
 
   # --- two spikes on each arm, at the elbow ---
   # Same fin shape as the shoulders, small, and swung almost horizontal (fan ~72) so they

@@ -1,5 +1,69 @@
 # CHANGELOG
 
+## Call of Valor: the scale field is gone entirely — no scales on any view (2026-07-31)
+
+The arm band keeps **exactly** the shape it always had — `BuildArmsPath`'s own sleeve, same outer
+line — and is filled smooth instead of scaled. Nothing else about it moved. And the **dragon-scale
+field is removed outright**, which is what actually cleared the scales.
+
+### It took three goes, and the first two were aimed at the wrong layer
+
+1. **Cut the fur's outline out of the scale field.** Correct for the fur, and the scales still
+   covered everything else.
+2. **Empty the ARM BAND of its own scales.** The user's report: *"you took the scales away on one
+   pic, then they are still on the others."* They were right, and it was not a per-rotation bug —
+   the arms were scaled on **every** view including the one I had checked, and I had looked at a
+   single south crop and called it done.
+3. **Remove the field.** That worked.
+
+*Why (2) could never have worked:* **`BuildTorsoPath` spans the ENTIRE silhouette, arms included.**
+It is not a torso-minus-arms shape. So the scale field was painting the arms no matter what the arm
+band drew, and the smooth arm fill at ~112 alpha was simply layered on top of a scale pattern that
+was still underneath it.
+
+**The general trap: a clip named for one part of the body may not be limited to it.** Check what a
+path actually covers before concluding that the feature drawn inside it is the thing you can see.
+And the method lesson under that: **verify a "remove X everywhere" change on every view before
+reporting it**, not on the one crop that is convenient — a three-rotation zoom took one script and
+showed the truth immediately.
+
+Nothing is left bare. Every region now carries its own treatment — cuirass over the trunk, belt,
+fur, arm bands — and the plate's edge (0.755 of the half-width at the chest) overlaps the arm
+band's inner edge (~0.70), so there is no seam to expose.
+
+### The correction, recorded because the mistake is an instructive one
+
+Told *"remove the scales from the arms"*, the first attempt replaced the band with four articulated
+lames — rerebrace, couter, vambrace, cuff. The user's answer: *"just the scales, don't change its
+shape. keep its outer lines as it was but remove the details/drawings inside of it."*
+
+They were right, and the failure was not one of craft — the lames were fine. **It was scope.** The
+instruction was about what is drawn *inside* an outline; I changed the outline, and the outline was
+part of a silhouette they had already approved and checkpointed. *When an instruction names a
+surface treatment, it is not licence to redraw the form underneath it* — especially not one that is
+already signed off. `DrawArmPlates` is kept, uncalled and clearly marked, purely so the geometry is
+not lost.
+
+### What the smooth fill needed anyway
+
+- **One side at a time.** A single `LinearGradientBrush` over both arms' combined bounds would
+  light the left arm and shade the right, because a linear gradient only knows its bounding box.
+- **Shaded ACROSS the limb, not down it.** An arm is a cylinder seen along its length, so the
+  gradient runs outer-edge to inner. The cuirass's vertical 90° made the arms read as flat ribbons.
+- **A thin edge, fainter than the cuirass's rim.** Not a new detail — the scales' own boundary was
+  what made that outline crisp, and removing them removed the edge with them.
+
+**And the level-1 trap, which nearly went unnoticed:** the arm band is the **only thing drawn at
+level 1**. Emptying it without a fill would have left word 1 of Dragon Aspect with no visible
+effect whatsoever on this build. The fill is a little stronger there, exactly as the scales were.
+
+Dragon Aspect untouched: 36 of 36 byte-identical.
+
+**Still Dragon Aspect's on the arms: the ELBOW SPIKES** — now the only dragon element left on the
+limb. Untouched, because the instruction was the scales.
+
+---
+
 ## Call of Valor: the fur runs the whole lower body (2026-07-31)
 
 The user's correction: the fur should cover the whole lower part, down to the extremities.
