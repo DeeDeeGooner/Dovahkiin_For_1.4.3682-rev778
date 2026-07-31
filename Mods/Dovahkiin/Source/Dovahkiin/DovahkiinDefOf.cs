@@ -76,6 +76,18 @@ namespace Dovahkiin
         /// <summary>Tintable cone particles. Vanilla's are renderInstanced and ignore colour.</summary>
         public static FleckDef Dovahkiin_Fleck_ForceWave;
         public static FleckDef Dovahkiin_Fleck_FireWave;
+        /// <summary>
+        /// ADDED 2026-07-31, and its absence was itself the bug. The Ancient Dragonborn's frost
+        /// shout was firing `Dovahkiin_Fleck_ForceWave`, because Force and Fire were the only
+        /// two wave flecks in this class and whoever wrote that branch used what was reachable.
+        /// The def existed all along - the Dovahkiin's own Frost Breath uses it at all three
+        /// levels - it just had no field here.
+        ///
+        /// **A DefOf class is a menu, and code orders from the menu.** Anything left off it gets
+        /// silently substituted rather than missed, and a substitution reads as a design choice
+        /// when someone reviews it later.
+        /// </summary>
+        public static FleckDef Dovahkiin_Fleck_FrostWave;
 
         public static ThoughtDef Dovahkiin_Thought_WitnessedSoulAbsorption;
         public static ThoughtDef Dovahkiin_Thought_WitnessedShout;

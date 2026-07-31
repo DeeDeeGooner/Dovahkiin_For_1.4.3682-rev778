@@ -371,7 +371,17 @@ namespace Dovahkiin
             if (which == SHOUT_FROST)
             {
                 head = new Color(0.62f, 0.85f, 1f);
-                fleck = DovahkiinDefOf.Dovahkiin_Fleck_ForceWave;
+                // FrostWave, NOT ForceWave. This fired the force fleck until 2026-07-31 for a
+                // mundane reason: FrostWave had no field in DovahkiinDefOf, so the only two
+                // reachable wave flecks were Force and Fire.
+                //
+                // The cost was NOT colour - Thing_ShoutWave sets instanceColor per particle and
+                // these flecks omit renderInstanced, so the pale blue above was always applied.
+                // It was TIMING. Frost holds 0.20s and fades over 0.55; Force holds 0.16 and
+                // fades over 0.45. His frost cleared the air about a fifth faster than the
+                // Dovahkiin's own Frost Breath, reading as a pressure wave that happened to be
+                // blue rather than as ice hanging in the air.
+                fleck = DovahkiinDefOf.Dovahkiin_Fleck_FrostWave;
                 snd = DovahkiinVanillaDefOf.PsychicSoothePulserCast;
             }
             else if (which == SHOUT_FORCE)

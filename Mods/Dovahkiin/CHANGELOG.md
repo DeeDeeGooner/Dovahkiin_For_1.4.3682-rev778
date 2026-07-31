@@ -1,5 +1,61 @@
 # CHANGELOG
 
+## Audit of the summons' shouts (2026-07-31)
+
+Asked for as a precaution. Five things checked on the Ancient Dragonborn, one defect fixed, one
+balance question raised rather than answered.
+
+### What is correct
+
+- **The three-shout cycle works.** `which = ((shoutCycle % 3) + 3) % 3` then `shoutCycle = which + 1`
+  gives 0,1,2,0,1,2 — all three appear, which was the point of cycling rather than rolling.
+- **Ally safety is evaluated ONCE, before the shout is chosen** (line 352 against 365), so a single
+  `ConeIsClearOfAllies` covers all three. That was the design and it holds: Unrelenting Force reuses
+  the breath's range and cone deliberately, so the check can never drift from the thing it guards.
+- **Fire ignites pawns but NOT the ground** (`igniteGround false`), keeping Storm Call's invariant.
+- **Force is Blunt + spread**, mirroring the Dovahkiin's own fus ro — cutting damage spread over
+  many parts kills by cumulative blood loss, which is not what a shove should do.
+- **Frost is Frostbite + spread + a 90-tick stun + snow**, with no ignition.
+
+### The defect: his frost was firing the FORCE fleck
+
+`Dovahkiin_Fleck_FrostWave` exists and the Dovahkiin's own Frost Breath uses it at all three
+levels. The summon used `Dovahkiin_Fleck_ForceWave`.
+
+*Root cause, and it is worth more than the bug:* **`FrostWave` had no field in `DovahkiinDefOf`.**
+Force and Fire did. Whoever wrote that branch used what was reachable. **A DefOf class is a menu,
+and code orders from the menu** — anything left off it gets silently substituted rather than
+missed, and the substitution then reads as a design choice to whoever reviews it later.
+
+*And the cost was NOT what it looks like.* Not colour: `Thing_ShoutWave` sets `instanceColor` per
+particle and these flecks omit `renderInstanced`, so the pale blue was always applied. It was
+**timing** — frost holds 0.20s and fades over 0.55, force holds 0.16 and fades over 0.45. His frost
+cleared the air about a fifth faster than the Dovahkiin's, reading as a pressure wave that happened
+to be blue rather than as ice hanging in the air.
+
+### Raised, not changed: his Unrelenting Force has ZERO armour penetration
+
+| | armour penetration |
+|---|---|
+| Dovahkiin's own Unrelenting Force | **0.75** (`CompAbilityEffect_Shout` default) |
+| summon's fire and frost | 0.35 |
+| **summon's Unrelenting Force** | **0** |
+
+Blunt damage with no AP is **fully reduced by blunt armour**. This changelog already records that
+exact failure once: Soul Tear shipped at 0 and read as "completely broken" against an armoured
+modded raider. Against anything plated his Force will do nothing while his fire and frost still
+land.
+
+It looks like an oversight rather than a decision, but it is a balance number and those are the
+user's call. **Not changed.** 0.35 would match his own other two shouts.
+
+### Call of Valor's shouts do not exist
+
+Checked rather than assumed: **0 C# lines** mention Valor and the only two def references are
+comments. There is no Fus Ro Dah and no Frost Breath to audit — they arrive with the summon.
+
+---
+
 ## Dragon Aspect: the armour stayed STANDING over a downed Dovahkiin (2026-07-31)
 
 Reported precisely: the Dovahkiin went down and her armour stayed upright over her, followed by
