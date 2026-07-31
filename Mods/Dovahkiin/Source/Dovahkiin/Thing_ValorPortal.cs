@@ -66,6 +66,25 @@ namespace Dovahkiin
         private float spinMiddle;
         private float spinOuter;
 
+        /// <summary>
+        /// Is a hero still due to step out of this portal?
+        ///
+        /// THE PAWN IS CREATED AT THE FLASH, NOT AT THE CAST. The first build spawned him
+        /// immediately and opened the portal around him, and the user's playtest verdict was
+        /// exactly right: *"he appears as soon as I click (rather than waiting for the brightest
+        /// shine of the portal)"*. A portal you step out of has to have something happen before
+        /// you are there.
+        ///
+        /// **What is stored across those 54 ticks is a FLAG AND A FACTION, never a live
+        /// unspawned pawn.** That distinction is the whole reason this is safe: an unspawned
+        /// pawn held in a field is precisely the orphaned-state hazard RISKS.md section 9 is
+        /// about, and it would be written into the save. A bool cannot be orphaned - if this
+        /// portal is destroyed early, or the map is lost, the worst case is that no hero
+        /// arrives, which is a cosmetic failure and not a stranded colonist.
+        /// </summary>
+        private bool summonPending;
+        private Pawn summonCaster;
+
         // --- the orbit table -----------------------------------------------------------
         //
         // NOT in DovahkiinTuningDef, and that is a judgement rather than an oversight.
@@ -175,6 +194,29 @@ namespace Dovahkiin
                 ticksLeft = lifetimeTicks;
             }
             ticksLeft--;
+
+            // THE HERO STEPS OUT AT THE FLASH. Checked before the expiry test below, so a
+            // portal whose last tick is also its arrival tick still delivers him.
+            if (summonPending && HasArrived)
+            {
+                summonPending = false;
+                Map here = Map;
+                IntVec3 cell = Position;
+                Pawn caster = summonCaster;
+                summonCaster = null;
+                // Wrapped: a failure here must cost the hero and NOT leave a half-open portal
+                // ticking forever, and it must never propagate into Thing.Tick.
+                try
+                {
+                    CallOfValorUtility.SpawnHeroAt(caster, here, cell);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("[Dovahkiin] Call of Valor: the hero failed to step through his "
+                        + "portal. The portal will still close normally. " + ex);
+                }
+            }
+
             if (ticksLeft <= 0)
             {
                 Destroy(DestroyMode.Vanish);
@@ -442,6 +484,10 @@ namespace Dovahkiin
             Scribe_Values.Look(ref spinInner, "spinInner", 0f);
             Scribe_Values.Look(ref spinMiddle, "spinMiddle", 0f);
             Scribe_Values.Look(ref spinOuter, "spinOuter", 0f);
+            // A flag and a reference to an ALREADY-SPAWNED pawn (the caster). Never an
+            // unspawned summon - see summonPending.
+            Scribe_Values.Look(ref summonPending, "summonPending", false);
+            Scribe_References.Look(ref summonCaster, "summonCaster");
         }
 
         /// <summary>
@@ -451,6 +497,20 @@ namespace Dovahkiin
         /// worse than it needed to because one catch-all wrapped the load-bearing steps and the
         /// decorative ones together, so a missing weapon comp cost the entire ally.
         /// </summary>
+        /// <summary>
+        /// Open a portal that a hero will step out of at its flash.
+        /// </summary>
+        public static Thing_ValorPortal OpenAndSummon(Map map, IntVec3 cell, Pawn caster)
+        {
+            Thing_ValorPortal portal = Open(map, cell);
+            if (portal != null)
+            {
+                portal.summonPending = true;
+                portal.summonCaster = caster;
+            }
+            return portal;
+        }
+
         public static Thing_ValorPortal Open(Map map, IntVec3 cell)
         {
             if (map == null || !cell.IsValid)

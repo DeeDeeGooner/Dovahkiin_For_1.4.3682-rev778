@@ -139,6 +139,26 @@
          written down elsewhere silently stopped meaning "double his". -->
     <callOfValorLifetimeTicks>30000</callOfValorLifetimeTicks>
 
+    <!-- HOW HE HOLDS HIS GREATSWORD, per facing, in degrees.
+
+         These are the NEGATIVE of the Ancient Dragonborn's axe angles (-70/-62/-10),
+         because the user's first playtest reported the sword tilting "in the wrong
+         direction (the opposite being the right one)" on east, south and north.
+         Negating mirrors the lean about vertical, which is exactly "the opposite".
+
+         RETUNE THESE FREELY - edit, restart the game, no rebuild. A hold angle is the
+         one number in this mod that has needed the most rounds to settle; the axe's
+         took three. If the sword still leans wrong, nudge rather than negate again:
+         try 60 or 80 for south/east and see which way it improves. -->
+    <callOfValorSwordAngleSouthEast>70</callOfValorSwordAngleSouthEast>
+    <callOfValorSwordAngleNorth>62</callOfValorSwordAngleNorth>
+    <callOfValorSwordAngleWest>10</callOfValorSwordAngleWest>
+
+    <!-- Facing north you see his back. TRUE draws the sword over him; false tucks it
+         behind, which is what the AXE does deliberately because it is broad enough to
+         hide his whole back. A tall narrow blade reads as missing back there. -->
+    <callOfValorSwordInFrontFacingNorth>true</callOfValorSwordInFrontFacingNorth>
+
     <!-- ============================================================================
          CALL OF VALOR'S PORTAL - the cast effect he steps out of.
 

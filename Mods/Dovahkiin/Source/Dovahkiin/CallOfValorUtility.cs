@@ -32,16 +32,21 @@ namespace Dovahkiin
         public const string ValorTexRoot = "Things/Pawn/CallOfValor/";
 
         /// <summary>
-        /// Open a portal on <paramref name="cell"/> and bring the hero through it.
+        /// Open a portal on <paramref name="targetCell"/>. The hero steps out of it at its
+        /// FLASH, not now.
         ///
-        /// The portal is opened FIRST and the pawn spawned immediately, rather than the pawn
-        /// being scheduled for the portal's arrival tick. That is a deliberate simplification
-        /// with a real reason behind it: a deferred spawn needs somewhere to live across those
-        /// 54 ticks, and every candidate - a queued action, a second Thing, a hediff on the
-        /// caster - is one more thing that can be interrupted, saved mid-flight, or orphaned by
-        /// a map change. RISKS.md section 9 is about exactly that class of state. The portal
-        /// still flashes at ArrivalTick, so the effect reads correctly; he is simply already
-        /// standing there when it does.
+        /// The first build spawned him immediately and opened the portal around him. The user's
+        /// playtest verdict: *"he appears as soon as I click (rather than waiting for the
+        /// brightest shine of the portal)"* - which is right, and it made the portal decorative
+        /// rather than something he came through.
+        ///
+        /// The reason it was built that way was real, and the fix respects it rather than
+        /// ignoring it: a deferred spawn needs somewhere to live for those 54 ticks, and an
+        /// unspawned pawn held in a field would be exactly the orphaned state RISKS.md section 9
+        /// is about - written into the save, owned by nothing. **So nothing is deferred except a
+        /// BOOLEAN.** The portal carries "someone is still due" plus a reference to the
+        /// already-spawned caster, and builds the hero from defs when it flashes. A bool cannot
+        /// be orphaned; the worst case is that no hero arrives.
         /// </summary>
         public static void TrySummon(Pawn caster, IntVec3 targetCell)
         {
@@ -49,9 +54,8 @@ namespace Dovahkiin
             {
                 return;
             }
-            PawnKindDef kind = DovahkiinDefOf.Dovahkiin_CallOfValorKind;
-            HediffDef summonDef = DovahkiinDefOf.Dovahkiin_CallOfValor;
-            if (kind == null || summonDef == null)
+            if (DovahkiinDefOf.Dovahkiin_CallOfValorKind == null
+                || DovahkiinDefOf.Dovahkiin_CallOfValor == null)
             {
                 DovahkiinMod.VerboseLog("Call of Valor: defs missing, summon skipped.");
                 return;
@@ -64,6 +68,45 @@ namespace Dovahkiin
                 return;
             }
 
+            // If the portal cannot be made, fall back to bringing him straight through rather
+            // than dropping the summon: the portal is the decoration, he is the feature.
+            if (Thing_ValorPortal.OpenAndSummon(caster.Map, cell, caster) == null)
+            {
+                Log.Warning("[Dovahkiin] Call of Valor: no portal, so the hero arrives without "
+                    + "one rather than not at all.");
+                SpawnHeroAt(caster, caster.Map, cell);
+            }
+        }
+
+        /// <summary>
+        /// Build the hero and put him on the map. Called BY THE PORTAL at its flash, and
+        /// directly only as the fallback above.
+        /// </summary>
+        public static void SpawnHeroAt(Pawn caster, Map map, IntVec3 cell)
+        {
+            if (map == null || !cell.IsValid)
+            {
+                return;
+            }
+            PawnKindDef kind = DovahkiinDefOf.Dovahkiin_CallOfValorKind;
+            HediffDef summonDef = DovahkiinDefOf.Dovahkiin_CallOfValor;
+            if (kind == null || summonDef == null)
+            {
+                return;
+            }
+            // The cell may have been taken during the portal's wind-up - a pawn can walk onto it
+            // in 54 ticks. Re-check rather than spawning into whoever is standing there.
+            if (!cell.Standable(map))
+            {
+                IntVec3 shifted;
+                if (CellFinder.TryFindRandomCellNear(cell, map, 3,
+                        candidate => candidate.InBounds(map) && candidate.Standable(map),
+                        out shifted))
+                {
+                    cell = shifted;
+                }
+            }
+
             Pawn summon = null;
             try
             {
@@ -73,7 +116,7 @@ namespace Dovahkiin
                     return;
                 }
 
-                GenSpawn.Spawn(summon, cell, caster.Map, WipeMode.Vanish);
+                GenSpawn.Spawn(summon, cell, map, WipeMode.Vanish);
 
                 Hediff_CallOfValor doom = HediffMaker.MakeHediff(summonDef, summon)
                     as Hediff_CallOfValor;
@@ -115,7 +158,8 @@ namespace Dovahkiin
                 }
 
                 // --- from here down, failures are cosmetic and must not cost the ally ---
-                TryCosmetic(summon, "open portal", () => Thing_ValorPortal.Open(summon.Map, cell));
+                // The portal is NOT opened here any more - it opened 54 ticks ago and is what
+                // called this. Opening one here would have stacked a second portal on him.
                 TryCosmetic(summon, "equip greatsword", () => EquipGreatsword(summon));
                 TryCosmetic(summon, "spawn armour overlay", () => SpawnArmourOverlay(summon));
             }
@@ -270,8 +314,20 @@ namespace Dovahkiin
                 return;
             }
             GenSpawn.Spawn(overlay, summon.Position, summon.Map);
+
+            // HIS OWN HOLD ANGLES, not the axe's. The first playtest came back with the sword
+            // tilting the wrong way on east, south and north, and behind him rather than in
+            // front when facing north - because this overlay drew "the weapon" at the only
+            // angles it had, which were the axe's. All four are tunable without a rebuild.
+            DovahkiinTuningDef tuning = DovahkiinTuningDef.Current;
+            float angleNorth = tuning != null ? tuning.callOfValorSwordAngleNorth : 62f;
+            float angleWest = tuning != null ? tuning.callOfValorSwordAngleWest : 10f;
+            float angleSouthEast = tuning != null ? tuning.callOfValorSwordAngleSouthEast : 70f;
+            bool inFrontNorth = tuning == null || tuning.callOfValorSwordInFrontFacingNorth;
+
             overlay.AttachAs(summon, 3, DovahkiinDefOf.Dovahkiin_CallOfValor, ValorTexRoot,
-                DovahkiinDefOf.Dovahkiin_ValorGreatsword, false);
+                DovahkiinDefOf.Dovahkiin_ValorGreatsword, false,
+                angleNorth, angleWest, angleSouthEast, inFrontNorth);
         }
     }
 }

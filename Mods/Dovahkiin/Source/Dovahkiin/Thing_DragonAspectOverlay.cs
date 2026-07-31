@@ -204,6 +204,37 @@ namespace Dovahkiin
         /// </summary>
         private bool drawAura = true;
 
+        /// <summary>
+        /// HOW THIS WEARER HOLDS HIS WEAPON. Defaults are the Ancient Dragonborn's axe, which is
+        /// what these were before they were fields.
+        ///
+        /// They had to become per-wearer because the first playtest of Call of Valor came back
+        /// with *"his sword tilts in the wrong direction, the opposite being the right one"* on
+        /// east, south AND north. The cause was not the numbers being mistuned - it was that
+        /// there was only ONE set of them. His greatsword was being drawn at the axe's angles,
+        /// because this code drew "the weapon" and the weapon used to be the axe.
+        ///
+        /// The general shape of that mistake is worth more than the fix: **when a second thing
+        /// starts using code written for one thing, every CONSTANT in it is a candidate for
+        /// being wrong, not just the ones that look like settings.** The texture root, the draw
+        /// size and now the hold angles have each been that constant in turn.
+        /// </summary>
+        private float holdAngleNorth = -62f;
+        private float holdAngleWest = -10f;
+        private float holdAngleSouthEast = -70f;
+
+        /// <summary>
+        /// Draw the weapon IN FRONT of the pawn when he faces north, rather than behind him.
+        ///
+        /// The axe is drawn behind on purpose - it is wide and it covered his whole back. The
+        /// user's report on the greatsword was the opposite: *"when he faces north the sword is
+        /// supposed to be in front of him not in his back"*. A tall narrow blade held up reads
+        /// as hidden when it is behind a body, where a broad axe head reads as clutter when it
+        /// is in front. Different weapons genuinely want different answers, so this is a flag
+        /// rather than a change.
+        /// </summary>
+        private bool weaponInFrontFacingNorth;
+
         private string ActiveTexRoot
         {
             get { return string.IsNullOrEmpty(texRootOverride) ? TexRoot : texRootOverride; }
@@ -242,12 +273,17 @@ namespace Dovahkiin
         /// did, and optional parameters make a silent behaviour change one typo away.
         /// </summary>
         public void AttachAs(Pawn pawn, int shoutLevel, HediffDef watch, string texRoot,
-            ThingDef weapon, bool withAura)
+            ThingDef weapon, bool withAura, float angleNorth, float angleWest,
+            float angleSouthEast, bool weaponInFrontNorth)
         {
             Attach(pawn, shoutLevel, watch, weapon != null);
             texRootOverride = texRoot;
             weaponDefOverride = weapon;
             drawAura = withAura;
+            holdAngleNorth = angleNorth;
+            holdAngleWest = angleWest;
+            holdAngleSouthEast = angleSouthEast;
+            weaponInFrontFacingNorth = weaponInFrontNorth;
         }
 
         /// <summary>
@@ -392,21 +428,24 @@ namespace Dovahkiin
                 float axeAltitude;
                 if (rot == Rot4.North)
                 {
-                    axeAltitude = AltitudeLayer.PawnState.AltitudeFor() - 0.006f;
+                    // Behind for a broad axe head, in front for a tall narrow blade. The sign of
+                    // this offset is the whole difference and it is per weapon, not per pawn.
+                    axeAltitude = AltitudeLayer.PawnState.AltitudeFor()
+                        + (weaponInFrontFacingNorth ? 0.006f : -0.006f);
                     axeLocal.x = -0.34f * scale / RefBodyWidth;
-                    axeAngle = -62f;
+                    axeAngle = holdAngleNorth;
                 }
                 else if (rot == Rot4.West)
                 {
                     axeAltitude = AltitudeLayer.PawnState.AltitudeFor() + 0.006f;
                     axeLocal.x = -0.30f * scale / RefBodyWidth;
-                    axeAngle = -10f;
+                    axeAngle = holdAngleWest;
                 }
                 else
                 {
                     axeAltitude = AltitudeLayer.PawnState.AltitudeFor() + 0.006f;
                     axeLocal.x = 0.34f * scale / RefBodyWidth;
-                    axeAngle = -70f;
+                    axeAngle = holdAngleSouthEast;
                 }
                 axeLocal.z = -0.06f * scale / RefBodyWidth;
                 // bodyQuat turns about Y, so it never touches the altitude - set that after.
@@ -950,6 +989,12 @@ namespace Dovahkiin
             Scribe_Values.Look(ref texRootOverride, "texRootOverride", null);
             Scribe_Defs.Look(ref weaponDefOverride, "weaponDefOverride");
             Scribe_Values.Look(ref drawAura, "drawAura", true);
+            // The axe's own values as defaults, so a save written before these were fields
+            // loads holding the axe exactly as it did.
+            Scribe_Values.Look(ref holdAngleNorth, "holdAngleNorth", -62f);
+            Scribe_Values.Look(ref holdAngleWest, "holdAngleWest", -10f);
+            Scribe_Values.Look(ref holdAngleSouthEast, "holdAngleSouthEast", -70f);
+            Scribe_Values.Look(ref weaponInFrontFacingNorth, "weaponInFrontFacingNorth", false);
         }
     }
 }

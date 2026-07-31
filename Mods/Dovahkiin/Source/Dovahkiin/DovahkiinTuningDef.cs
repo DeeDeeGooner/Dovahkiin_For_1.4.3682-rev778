@@ -254,6 +254,32 @@ namespace Dovahkiin
         /// </summary>
         public int callOfValorLifetimeTicks = 30000;
 
+        /// <summary>
+        /// How Call of Valor holds his greatsword, per facing, in degrees.
+        ///
+        /// **These are the NEGATIVE of the Ancient Dragonborn's axe angles**, and that is the
+        /// user's own report rather than a derivation: after the first playtest they said the
+        /// sword *"tilts in the wrong direction (the opposite being the right one)"* on east,
+        /// south and north. Negating a hold angle mirrors the lean about vertical, which is
+        /// exactly "the opposite".
+        ///
+        /// Exposed rather than hardcoded because a hold angle is the single thing in this mod
+        /// that has needed the most retuning - the axe's took three playtest rounds - and only
+        /// the game can settle it. Edit, restart, no rebuild.
+        /// </summary>
+        public float callOfValorSwordAngleSouthEast = 70f;
+        public float callOfValorSwordAngleNorth = 62f;
+        public float callOfValorSwordAngleWest = 10f;
+
+        /// <summary>
+        /// Draw his sword IN FRONT of him when he faces north, rather than behind.
+        ///
+        /// The user: *"when he faces north the sword is supposed to be in front of him not in
+        /// his back"*. The axe is drawn behind on purpose - it is broad and covered his back -
+        /// so this is per weapon, not a correction to the axe.
+        /// </summary>
+        public bool callOfValorSwordInFrontFacingNorth = true;
+
         // --- Call of Valor's portal (the cast effect) ---
         //
         // The orbit table itself is NOT here, deliberately - see Thing_ValorPortal. Those radii

@@ -1,5 +1,59 @@
 # CHANGELOG
 
+## Playtest 1 of Call of Valor: two defects, both mine, both structural (2026-08-01)
+
+*"His sword tilts in the wrong direction (the opposite being the right one): facing east, facing
+south, and when he faces north the sword is supposed to be in front of him not in his back"* and
+*"he appears as soon as I click (rather than waiting for the brightest shine of the portal)"*.
+
+Both correct, both first-playtest, and neither was a mistuned number.
+
+### 1. He was holding his sword at the AXE's angles
+
+`Thing_DragonAspectOverlay` drew "the weapon" at three hardcoded angles — `-70` south/east,
+`-62` north, `-10` west — because when that code was written **there was only one weapon**. Call
+of Valor's greatsword inherited them silently.
+
+Now per-wearer fields, seeded from tuning: **70 / 62 / 10**, the negation of the axe's. Negating
+a hold angle mirrors the lean about vertical, which is precisely "the opposite" the user
+described. North also gets its own flag — the axe is drawn *behind* the pawn on purpose, because
+it is broad enough to hide his whole back, while a tall narrow blade reads as missing back there.
+
+**The general fault is worth more than the fix: when a second thing starts using code written for
+one thing, every CONSTANT in it is a candidate for being wrong — not just the ones that look like
+settings.** On this one file the texture root, the draw size and now the hold angles have each
+been that constant in turn. The first two were caught while writing; this one reached a playtest
+because a hold angle does not look like configuration, it looks like geometry.
+
+All four are in `DovahkiinTuningDef.xml` — retunable with a restart and no rebuild, which matters
+because a hold angle is the number in this mod that has needed the most rounds to settle. The
+axe's took three.
+
+### 2. He arrived at the click, not at the flash
+
+This one was a **documented decision, and it was the wrong call.** The first build spawned him
+immediately and opened the portal around him, with a comment explaining why: a deferred spawn
+needs somewhere to live for those 54 ticks, and an unspawned pawn held in a field is exactly the
+orphaned state `RISKS.md` §9 exists to prevent.
+
+The reasoning was sound and the conclusion was not. **Nothing needed to be deferred except a
+boolean.** The portal now carries `summonPending` plus a reference to the already-spawned caster,
+and *builds* the hero from defs when it flashes. A bool cannot be orphaned; the worst case is
+that no hero arrives, which is cosmetic.
+
+Two things fell out of doing it properly:
+
+- **The cell is re-checked at arrival.** A pawn can walk onto it during the wind-up, so it shifts
+  rather than spawning into whoever is standing there.
+- **If the portal cannot be created, he arrives without one** rather than not at all. The portal
+  is the decoration; he is the feature.
+
+*The lesson: "I wrote down why I simplified it" is not the same as "the simplification was
+right".* The comment made the shortcut auditable, which is why it took one playtest line to
+overturn — but it also made it look settled.
+
+---
+
 ## Call of Valor's SUMMON — the hero of Sovngarde exists (2026-08-01)
 
 The last piece. Build clean, 0 warnings; all defs and the language file parse; every new DefOf
