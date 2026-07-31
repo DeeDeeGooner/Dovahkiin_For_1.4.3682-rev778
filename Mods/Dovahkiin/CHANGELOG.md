@@ -1,5 +1,80 @@
 # CHANGELOG
 
+## Dragon Aspect: the armour stayed STANDING over a downed Dovahkiin (2026-07-31)
+
+Reported precisely: the Dovahkiin went down and her armour stayed upright over her, followed by
+*"I dont understand what messed everything up like this."*
+
+**Nothing messed it up. This has been here since the overlay was written.**
+`Thing_DragonAspectOverlay.cs` was last touched at `fe33e61`, before any of this session's art
+work, and **no C# in the mod has changed since 2026-07-30** — checked with `git log`, not assumed.
+The gap simply needed the Dovahkiin to be downed *with Dragon Aspect up* for anyone to see it.
+
+*Root cause:* every draw in the overlay used `Quaternion.identity`. That is upright and only
+upright, so the moment RimWorld laid the body over, the overlay carried on as though nothing had
+happened.
+
+*Fix:* borrow **`Verse.PawnRenderer.BodyAngle()`** — public, returns a float, **verified by
+reflection over 1.4's own `Assembly-CSharp`** rather than assumed. It is the same value
+`PawnRenderer` uses to lay the body down, so armour and body can no longer disagree about which way
+is up. The same reasoning as taking the body's mesh from `GetHumanlikeBodySetForPawn` instead of
+inventing a size: **when the engine already computes the number, use ITS number.**
+
+### The part that is easy to get half-right
+
+**Rotating a sprite is not enough — its OFFSET has to be rotated too.**
+
+- `BaseHeadOffsetAt` returns the head's position in the pawn's *own* space, "up from the chest".
+  On a downed pawn that vector still points up the screen while the body it belongs to lies
+  sideways. Rotating the helm without rotating its offset leaves a correctly-tilted helm floating
+  above her chest instead of on her head.
+- The weapon's hold offsets say "out to his right, slightly back" — true only while standing. They
+  are now built as a local vector, rotated by the body, and its hold angle has the body angle added.
+
+`bodyQuat` turns about Y, so it never touches altitude; those are set afterwards.
+
+Build clean, 0 warnings. **Needs a playtest**: down the Dovahkiin with Dragon Aspect at level 3 and
+check the armour, the helm and — on the Ancient Dragonborn — his weapon all lie with the body.
+
+---
+
+## Ancient Dragonborn: lifetime 1.5h -> 6h, and it was never a regression (2026-07-31)
+
+**Test 5's core passed.** The user reported the timer still running after a save and reload —
+which is the thing `RISKS.md` section 9 exists to protect, and it has been outstanding since his
+very first playtest round.
+
+Two faults reported alongside it. The first turned out not to be a fault at all.
+
+### "His timer is back to 1 hour, what happened in the files?"
+
+**Nothing happened. It has always been 3750 ticks.** The save settles it beyond argument — his
+hediff read `ageTicks 463` and `ticksRemaining 3287`, summing to exactly **3750**, the C# default
+the summon was built with. There was no XML override to lose and no edit to regress. What the user
+saw as "about an hour" was 3287 ticks remaining, 1.31 hours, of a 1.5-hour life.
+
+*The record disagreed with the user, and the user wins:* the notebook carried "1.5 in-game hours"
+as **settled, do not re-litigate**. Their new figure is **6 in-game hours**, so
+`ancientDragonbornLifetimeTicks` is now **15000**. Call of Valor's hero is meant to be double
+that — **30000, 12 hours** — and gets his own field when that summon is built. The notebook entry
+has been corrected rather than left to contradict the code.
+
+### And a real gap found while fixing it: NONE of his tuning was reachable
+
+`ancientDragonbornLifetimeTicks` existed **only as a C# default**. So did every other
+`ancientDragonborn*` number — breath damage, cooldowns, cone, assist radius, all of it. None
+appeared in `DovahkiinTuningDef.xml`, which means **none of them could be retuned without a
+rebuild**, and `CLAUDE.md` requires the opposite in as many words: *"All tuning numbers go in
+`Defs/DovahkiinTuningDef.xml` or mod settings so I can retune without a rebuild."*
+
+The lifetime is now exposed there. Edit the line, restart the game, no build. The rest of his
+numbers should follow the same way — logged rather than done in passing, since it is a sweep and
+not a one-liner.
+
+Build clean, 0 warnings. All def files parse.
+
+---
+
 ## Call of Valor: the hero's blue through the hilt (2026-07-31)
 
 A gradient of his blue from the pommel up to the **second crossguard**, fading to nothing there.

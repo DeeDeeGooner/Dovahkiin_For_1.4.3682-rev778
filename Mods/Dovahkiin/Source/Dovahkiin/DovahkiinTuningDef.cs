@@ -143,8 +143,18 @@ namespace Dovahkiin
         /// </summary>
         public float ancientDragonbornSummonHealthThreshold = 0.65f;
 
-        /// <summary>How long he lasts. 2500 ticks is one in-game hour, so 3750 is 1.5 hours.</summary>
-        public int ancientDragonbornLifetimeTicks = 3750;
+        /// <summary>
+        /// How long he lasts. 2500 ticks is one in-game hour, so 15000 is SIX hours.
+        ///
+        /// Raised from 3750 (1.5 hours) at the user's instruction 2026-07-31. The save file
+        /// settled that this was never a regression: his hediff read ageTicks 463 plus
+        /// ticksRemaining 3287 = 3750 exactly, the value it had been built with all along.
+        /// The notebook recorded 1.5 hours as settled; the user's new figure supersedes it.
+        ///
+        /// Now also exposed in DovahkiinTuningDef.xml, which it was not - NONE of his numbers
+        /// were, so none of them could be retuned without a rebuild.
+        /// </summary>
+        public int ancientDragonbornLifetimeTicks = 15000;
 
         /// <summary>Ticks after arriving before he will use his breath at all.</summary>
         public int ancientDragonbornBreathFirstDelayTicks = 120;

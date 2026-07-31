@@ -79,6 +79,18 @@
          Shout cooldown: the shared shout cooldown is our own number, not a stat. -->
     <dragonAspectMeleeDamageFactor>1.25</dragonAspectMeleeDamageFactor>
     <dragonAspectShoutCooldownFactor>0.65</dragonAspectShoutCooldownFactor>
+
+    <!-- THE ANCIENT DRAGONBORN'S LIFETIME. 2500 ticks is one in-game hour.
+         15000 = 6 hours, raised from 3750 (1.5 hours) at the user's instruction 2026-07-31.
+
+         EXPOSED HERE BECAUSE IT WAS NOT. Every one of his tuning numbers existed only as a C#
+         default, so none of them could be retuned without a rebuild - and CLAUDE.md requires
+         the opposite: "all tuning numbers go in Defs/DovahkiinTuningDef.xml or mod settings so
+         I can retune without a rebuild". Edit this line and restart the game; no build needed.
+
+         Call of Valor's hero is meant to last DOUBLE this - 30000 ticks, 12 hours - and gets
+         his own field when that summon is built. -->
+    <ancientDragonbornLifetimeTicks>15000</ancientDragonbornLifetimeTicks>
   </Dovahkiin.DovahkiinTuningDef>
 
 </Defs>

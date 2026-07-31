@@ -227,6 +227,27 @@ namespace Dovahkiin
             basePos.y = AltitudeLayer.PawnState.AltitudeFor();
             Rot4 rot = target.Rotation;
 
+            // THE PAWN'S OWN BODY ANGLE. Zero standing, ~90 degrees lying down.
+            //
+            // Reported by the user: the Dovahkiin went down and her armour stayed STANDING
+            // over her. Everything here used to draw at Quaternion.identity, which is upright
+            // and only upright - so the moment RimWorld laid the body over, the overlay
+            // carried on as if nothing had happened.
+            //
+            // This was never a regression. `Thing_DragonAspectOverlay` was last touched at
+            // fe33e61, before any of the art work, and no C# in the mod has changed since.
+            // The gap has been here since the overlay was written; it simply needed the
+            // Dovahkiin to be downed WITH Dragon Aspect up for anyone to see it.
+            //
+            // Verse.PawnRenderer.BodyAngle() is public and returns a float - verified by
+            // reflection over 1.4's own Assembly-CSharp, not assumed. It is the same value
+            // PawnRenderer uses to lay the body down, so borrowing it means the armour and
+            // the body can never disagree about which way is up. Same reasoning as taking the
+            // body's mesh from GetHumanlikeBodySetForPawn rather than inventing a size: when
+            // the engine already computes the number, use ITS number.
+            float bodyAngle = renderer.BodyAngle();
+            Quaternion bodyQuat = Quaternion.AngleAxis(bodyAngle, Vector3.up);
+
             // THE MESH THE BODY ITSELF IS DRAWN ON. Not GetBodyOverlayMeshSet().
             //
             // GetBodyOverlayMeshSet() looks like the right call and is not: it returns the
@@ -257,7 +278,7 @@ namespace Dovahkiin
             Graphic body = BodyArmourFor(target, level);
             if (body != null)
             {
-                Graphics.DrawMesh(bodyMesh, basePos, Quaternion.identity,
+                Graphics.DrawMesh(bodyMesh, basePos, bodyQuat,
                     body.MatAt(rot, this), 0);
             }
 
@@ -284,29 +305,37 @@ namespace Dovahkiin
                 // user reviewed and approved. West and north are set to comparable poses by the
                 // same arithmetic, but were NOT previewed - like the offsets beside them they
                 // are eyeballed, and the test script asks for all four facings to be checked.
-                Vector3 axePos = basePos;
+                // Built as a LOCAL offset and then rotated by the body, for the same reason the
+                // helm's head offset is: these numbers say "out to his right, slightly back",
+                // which is only true while he is standing. Added to basePos directly they would
+                // keep the weapon out to the screen's right while its owner lay sideways.
+                Vector3 axeLocal = Vector3.zero;
                 float axeAngle;
+                float axeAltitude;
                 if (rot == Rot4.North)
                 {
-                    axePos.y = AltitudeLayer.PawnState.AltitudeFor() - 0.006f;
-                    axePos.x -= 0.34f * scale / RefBodyWidth;
+                    axeAltitude = AltitudeLayer.PawnState.AltitudeFor() - 0.006f;
+                    axeLocal.x = -0.34f * scale / RefBodyWidth;
                     axeAngle = -62f;
                 }
                 else if (rot == Rot4.West)
                 {
-                    axePos.y = AltitudeLayer.PawnState.AltitudeFor() + 0.006f;
-                    axePos.x -= 0.30f * scale / RefBodyWidth;
+                    axeAltitude = AltitudeLayer.PawnState.AltitudeFor() + 0.006f;
+                    axeLocal.x = -0.30f * scale / RefBodyWidth;
                     axeAngle = -10f;
                 }
                 else
                 {
-                    axePos.y = AltitudeLayer.PawnState.AltitudeFor() + 0.006f;
-                    axePos.x += 0.34f * scale / RefBodyWidth;
+                    axeAltitude = AltitudeLayer.PawnState.AltitudeFor() + 0.006f;
+                    axeLocal.x = 0.34f * scale / RefBodyWidth;
                     axeAngle = -70f;
                 }
-                axePos.z -= 0.06f * scale / RefBodyWidth;
-                DrawQuad(axeGraphic, axePos, axeDrawSize * scale / RefBodyWidth, axeAngle, false,
-                    Color.white, 1f);
+                axeLocal.z = -0.06f * scale / RefBodyWidth;
+                // bodyQuat turns about Y, so it never touches the altitude - set that after.
+                Vector3 axePos = basePos + (bodyQuat * axeLocal);
+                axePos.y = axeAltitude;
+                DrawQuad(axeGraphic, axePos, axeDrawSize * scale / RefBodyWidth,
+                    axeAngle + bodyAngle, false, Color.white, 1f);
             }
 
             if (level < 3)
@@ -321,9 +350,16 @@ namespace Dovahkiin
             // body's mesh keeps helm and armour in proportion on any pawn.
             if (helm != null)
             {
-                Vector3 headPos = basePos + renderer.BaseHeadOffsetAt(rot);
+                // THE OFFSET HAS TO BE ROTATED TOO, not just the helm.
+                //
+                // BaseHeadOffsetAt returns the head's position in the pawn's OWN space -
+                // "up from the chest" - so on a downed pawn that vector still points up the
+                // screen while the body it belongs to is lying sideways. Rotating the helm
+                // without rotating its offset would leave a correctly-tilted helm floating
+                // above her chest instead of on her head.
+                Vector3 headPos = basePos + (bodyQuat * renderer.BaseHeadOffsetAt(rot));
                 headPos.y = AltitudeLayer.PawnState.AltitudeFor() + 0.005f;
-                Graphics.DrawMesh(bodyMesh, headPos, Quaternion.identity,
+                Graphics.DrawMesh(bodyMesh, headPos, bodyQuat,
                     helm.MatAt(rot, this), 0);
             }
 
