@@ -425,8 +425,17 @@ namespace Dovahkiin
                 int fParts = t != null ? t.ancientDragonbornForceInstances : 3;
                 float push = t != null ? t.ancientDragonbornForceKnockbackCells : 3f;
                 int fStun = t != null ? t.ancientDragonbornForceStunTicks : 150;
+                // ARMOUR PENETRATION 0.35, RAISED FROM 0. It was the only one of his three
+                // shouts with none, and Blunt with no AP is FULLY reduced by blunt armour -
+                // so against anything plated his Force did nothing while his fire and frost
+                // still landed. That is the identical failure that once made Soul Tear read as
+                // "completely broken" against an armoured modded raider; it is in this
+                // changelog already. 0.35 matches his own fire and frost. The Dovahkiin's own
+                // Unrelenting Force uses the comp default of 0.75 - he stays under her, which
+                // is the same relationship every other number of his keeps.
+                float forceAp = t != null ? t.ancientDragonbornForceArmorPenetration : 0.35f;
                 wave.SetPayload(DamageDefOf.Blunt, force, push, fStun, false, false,
-                    null, 1f, fParts, 0f, null, 1f, true, 0f, null, 0f, 0f);
+                    null, 1f, fParts, 0f, null, 1f, true, 0f, null, 0f, forceAp);
             }
             else
             {

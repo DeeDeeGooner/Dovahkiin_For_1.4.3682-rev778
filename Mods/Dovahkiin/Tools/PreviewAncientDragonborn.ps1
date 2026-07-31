@@ -428,8 +428,19 @@ $gfx.DrawString("1. an ordinary colonist, no shout", $fontT, $brGrey, [single]$x
 
 $x = ColX 1
 DrawCell $gfx $x $y2 "south" $bodyImgs $headImgs $armImgs $helmImgs $ringImg $flareImg $plainImg $axeImg 3 $false $false 0.18 42 | Out-Null
-$gfx.DrawString("2. the DOVAHKIIN, Dragon Aspect L3", $fontT, $brGrey, [single]$x, [single]($y2 + $GROUND + 4))
-$gfx.DrawString("    visible pawn, no weapon drawn", $fontT, $brGrey, [single]$x, [single]($y2 + $GROUND + 21))
+# THIS CAPTION LIED UNDER AN OVERRIDE. DOVAH_OVERLAY_DIR swaps the WHOLE texture set, so
+# with Call of Valor's overlay loaded this cell showed the champion's palette while still
+# claiming to be the Dovahkiin - and the sheet was sent to the user in that state more than
+# once. A caption that asserts something the harness can invalidate has to check.
+# "A stale number in a document that says 'this file is right' is worse than no number";
+# the same is true of a label.
+if ($env:DOVAH_OVERLAY_DIR -and (Test-Path $env:DOVAH_OVERLAY_DIR)) {
+  $gfx.DrawString("2. the OVERRIDDEN overlay on a VISIBLE pawn", $fontT, $brGrey, [single]$x, [single]($y2 + $GROUND + 4))
+  $gfx.DrawString("    NOT the Dovahkiin - DOVAH_OVERLAY_DIR is set", $fontT, $brGold, [single]$x, [single]($y2 + $GROUND + 21))
+} else {
+  $gfx.DrawString("2. the DOVAHKIIN, Dragon Aspect L3", $fontT, $brGrey, [single]$x, [single]($y2 + $GROUND + 4))
+  $gfx.DrawString("    visible pawn, no weapon drawn", $fontT, $brGrey, [single]$x, [single]($y2 + $GROUND + 21))
+}
 
 $x = ColX 2
 DrawCell $gfx $x $y2 "south" $bodyImgs $headImgs $armImgs $helmImgs $ringImg $flareImg $plainImg $axeImg 3 $true $true 0.18 43 | Out-Null

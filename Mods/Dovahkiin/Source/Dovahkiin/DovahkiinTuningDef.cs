@@ -185,6 +185,19 @@ namespace Dovahkiin
         public int ancientDragonbornForceStunTicks = 150;
 
         /// <summary>
+        /// Armour penetration for his Unrelenting Force. 0.35, matching his own fire and frost.
+        ///
+        /// It was 0 until 2026-07-31 - the only one of his three shouts with none - and Blunt
+        /// with no AP is FULLY reduced by blunt armour, so against anything plated his Force did
+        /// nothing while his other two still landed. Soul Tear shipped with exactly this fault
+        /// once and read as "completely broken"; see CHANGELOG.
+        ///
+        /// The Dovahkiin's own Unrelenting Force uses CompAbilityEffect_Shout's default of 0.75.
+        /// He stays deliberately under her, as every other number of his does.
+        /// </summary>
+        public float ancientDragonbornForceArmorPenetration = 0.35f;
+
+        /// <summary>
         /// How far he may drift from the Dovahkiin before walking back. He is a bodyguard,
         /// not a wanderer. Only nudges him when idle - never interrupts a fight.
         /// </summary>

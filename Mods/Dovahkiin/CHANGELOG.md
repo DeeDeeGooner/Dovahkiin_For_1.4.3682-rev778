@@ -33,7 +33,26 @@ particle and these flecks omit `renderInstanced`, so the pale blue was always ap
 cleared the air about a fifth faster than the Dovahkiin's, reading as a pressure wave that happened
 to be blue rather than as ice hanging in the air.
 
-### Raised, not changed: his Unrelenting Force has ZERO armour penetration
+### APPLIED after the audit: the three loose ends closed
+
+The user's instruction once the audit was read: *"make sure all those bug fixes and mistakes you
+found are applied."* So the item below is no longer merely raised — it is fixed, along with the two
+gaps the audit had only logged:
+
+1. **`ancientDragonbornForceArmorPenetration` 0 -> 0.35.** Detail below.
+2. **The whole tuning sweep.** *Every* `ancientDragonborn*` field is now in
+   `DovahkiinTuningDef.xml` — summon threshold, breath delay and cooldown, range and cone, breath
+   damage and instances, all four Force numbers plus its new AP, follow radius and assist radius.
+   Until now they existed only as C# defaults, so **none of them could be changed without a
+   rebuild**, which `CLAUDE.md` forbids outright. Verified programmatically: every `ancientDragonborn*`
+   field declared in the C# has a matching element in the XML.
+3. **The preview sheet's lying caption.** Cell 2 read *"the DOVAHKIIN, Dragon Aspect L3"* even when
+   `DOVAH_OVERLAY_DIR` had swapped the whole texture set for the champion's — and the sheet went to
+   the user in that state more than once. It now checks the variable and says so. *A caption that
+   asserts something the harness can invalidate has to check;* the same rule the notebook already
+   carries for stale numbers applies to labels.
+
+### The defect behind (1): his Unrelenting Force had ZERO armour penetration
 
 | | armour penetration |
 |---|---|
@@ -46,8 +65,11 @@ exact failure once: Soul Tear shipped at 0 and read as "completely broken" again
 modded raider. Against anything plated his Force will do nothing while his fire and frost still
 land.
 
-It looks like an oversight rather than a decision, but it is a balance number and those are the
-user's call. **Not changed.** 0.35 would match his own other two shouts.
+It was an oversight, not a decision. **Now 0.35**, matching his own fire and frost, and tunable
+from the XML. He stays deliberately under the Dovahkiin's 0.75, as every other number of his does.
+
+*(For the record: the user's "force breath" means the **Unrelenting Force** shout — the
+`SHOUT_FORCE` branch — which is the one audited and the one fixed here.)*
 
 ### Call of Valor's shouts do not exist
 

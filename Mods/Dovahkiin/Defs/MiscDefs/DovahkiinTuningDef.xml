@@ -91,6 +91,44 @@
          Call of Valor's hero is meant to last DOUBLE this - 30000 ticks, 12 hours - and gets
          his own field when that summon is built. -->
     <ancientDragonbornLifetimeTicks>15000</ancientDragonbornLifetimeTicks>
+
+    <!-- THE REST OF HIM. Every one of these existed only as a C# default until 2026-07-31,
+         so none could be changed without a rebuild - and CLAUDE.md says the opposite in as
+         many words. Edit any line here and restart the game; no build needed. -->
+
+    <!-- When a level-3 cast summons him: at or below this fraction of health, or downed. -->
+    <ancientDragonbornSummonHealthThreshold>0.65</ancientDragonbornSummonHealthThreshold>
+
+    <!-- Breath: a delay after arriving, then this gap between shouts. Long on purpose -
+         he is support, not a turret. -->
+    <ancientDragonbornBreathFirstDelayTicks>120</ancientDragonbornBreathFirstDelayTicks>
+    <ancientDragonbornBreathCooldownTicks>420</ancientDragonbornBreathCooldownTicks>
+
+    <!-- Reach and width, shared by ALL THREE shouts on purpose: one ally-safety check then
+         covers every one of them, and a check that can drift from what it guards is how the
+         "never breathe through an ally" rule would quietly stop holding. -->
+    <ancientDragonbornBreathRange>9</ancientDragonbornBreathRange>
+    <ancientDragonbornBreathCone>46</ancientDragonbornBreathCone>
+
+    <!-- Fire and frost: total damage split across this many body parts. -->
+    <ancientDragonbornBreathDamage>18</ancientDragonbornBreathDamage>
+    <ancientDragonbornBreathInstances>5</ancientDragonbornBreathInstances>
+
+    <!-- Unrelenting Force, scaled just under the Dovahkiin's own level-2 fus ro.
+         The armour penetration was 0 until 2026-07-31 and that was a bug, not a choice:
+         Blunt with no AP is fully reduced by blunt armour, so it did nothing to anything
+         plated. 0.35 matches his fire and frost; hers is 0.75. -->
+    <ancientDragonbornForceDamage>7</ancientDragonbornForceDamage>
+    <ancientDragonbornForceInstances>3</ancientDragonbornForceInstances>
+    <ancientDragonbornForceKnockbackCells>3</ancientDragonbornForceKnockbackCells>
+    <ancientDragonbornForceStunTicks>150</ancientDragonbornForceStunTicks>
+    <ancientDragonbornForceArmorPenetration>0.35</ancientDragonbornForceArmorPenetration>
+
+    <!-- How close he stays when idle, and how far he will go to join the Dovahkiin's fight.
+         0 on the assist radius disables joining entirely. Unbounded he would chase a hunt
+         across the map and abandon the man he exists to protect. -->
+    <ancientDragonbornFollowRadius>8</ancientDragonbornFollowRadius>
+    <ancientDragonbornAssistRadius>24</ancientDragonbornAssistRadius>
   </Dovahkiin.DovahkiinTuningDef>
 
 </Defs>
