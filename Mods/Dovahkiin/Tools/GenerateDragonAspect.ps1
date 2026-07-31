@@ -908,14 +908,20 @@ $PLATE_PROFILE = @(
   @(0.180, 0.710),
   @(0.285, 0.755),   # widest, across the nipple line
   @(0.410, 0.725),   # the under-pec crease
-  @(0.470, 0.665),
-  @(0.520, 0.580)    # lower edge, over the upper abdomen
+  @(0.470, 0.648),   # the waist draws in
+  @(0.545, 0.612),   # narrowest, the natural waist
+  @(0.640, 0.646),   # flaring again over the hips
+  @(0.712, 0.598)    # lower edge, at the bottom of the abdomen
 )
 $F_PLATE_TOP = 0.085
-$F_PLATE_BOT = 0.520
+$F_PLATE_BOT = 0.712
 $F_PEC_TOP   = 0.155
 $F_PEC_WIDE  = 0.285
 $F_PEC_BOT   = 0.410
+# The abdominal half. It starts just under the pec crease and stops short of the plate's own
+# lower rim, so the rim reads as the edge of the armour rather than as a fourth ab row.
+$F_ABS_TOP   = 0.432
+$F_ABS_BOT   = 0.688
 
 # Smoothstepped lookup into $PLATE_PROFILE. Same interpolation ProfCol uses on the body
 # profile, so the plate's edge and the body's edge curve in the same way.
@@ -996,16 +1002,21 @@ function DrawChestPlate($g, $prof, [string]$rot, [int]$alpha, [double]$cool) {
   $sides = if ($rot -eq "east") { @(-1.0) } else { @(-1.0, 1.0) }
   if ($rot -ne "north") {
     foreach ($side in $sides) { DrawPectoral $g $prof $side $alpha $pDeep $pMid $pLit $pHot }
+    foreach ($side in $sides) { DrawAbdomen  $g $prof $side $alpha $pDeep $pMid $pLit $pHot }
   } else {
     foreach ($side in $sides) { DrawShoulderBlade $g $prof $side $alpha $pDeep $pMid $pLit }
+    foreach ($side in $sides) { DrawLowerBack     $g $prof $side $alpha $pDeep $pMid $pLit }
   }
 
   # ---- the centre line. Sternum on the front, spine on the back. Drawn as a GROOVE - a
   #      dark channel with a lit lip on each side - because a single dark line reads as a
   #      crack in the plate rather than as a valley between two masses.
   if ($rot -ne "east") {
+    # ONE continuous groove from the throat to the belly - sternum above, linea alba below.
+    # The abdomen deliberately does not start a second centre line of its own: two grooves
+    # that stop just short of each other read as a mistake in the art, not as anatomy.
     $grooveTop = PlateY ($F_PLATE_TOP + 0.045)
-    $grooveBot = if ($rot -eq "north") { PlateY ($F_PLATE_BOT - 0.02) } else { PlateY ($F_PEC_BOT + 0.028) }
+    $grooveBot = if ($rot -eq "north") { PlateY ($F_PLATE_BOT - 0.02) } else { PlateY ($F_ABS_BOT - 0.015) }
     $grooveW = (HalfWidthAt $prof (PlateY $F_PEC_WIDE)) * 0.052
     $groove = New-Object System.Drawing.Drawing2D.GraphicsPath
     $groovePts = @(
@@ -1037,6 +1048,169 @@ function DrawChestPlate($g, $prof, [string]$rot, [int]$alpha, [double]$cool) {
   $penRim.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
   $g.DrawPath($penRim, $plate); $penRim.Dispose()
   $plate.Dispose()
+}
+
+# =====================================================================================
+#  THE ABDOMINAL HALF - the second half of the cuirass.
+# =====================================================================================
+#  Same principle as the pectorals and the same reason it is drawable: these are broad
+#  forms, not detail. Each abdominal segment comes out about 16 x 10px, which is smaller
+#  than a pec but still a mass with a lit top and a shadowed underside rather than a
+#  pattern of lines.
+#
+#  THE EMPHASIS IS DELIBERATELY INVERTED FROM THE CHEST. Six segments in the space of one
+#  pectoral will turn to mush at the 48px the game is played at - that is arithmetic, not
+#  pessimism. So the individual segments are drawn SOFT, and the three things that survive
+#  a downscale carry the read instead:
+#    - the LINEA ALBA, one continuous groove from the throat to the belly. The sternum
+#      groove is simply extended rather than a second line being started, because two
+#      grooves that nearly meet read as a mistake.
+#    - the ILIAC LINE, the long diagonal sweeping from the flank down to the groin. It is
+#      the single most characteristic curve on a muscled cuirass and the biggest form here.
+#    - the plate's own lower rim, which the outline already carries.
+#  Zoom in and there are abs; zoom out and there is a waist, a centre line and a V.
+#
+#  Each row is NARROWER than the one above it, and each row's outer end sweeps UP. Both are
+#  real: the rectus tapers as it descends, and the segments follow the ribs outward. Drawn
+#  as a stack of equal rectangles it reads as a radiator.
+function DrawAbdomen($g, $prof, [double]$side, [int]$alpha, $pDeep, $pMid, $pLit, $pHot) {
+  $yAbsTop = PlateY $F_ABS_TOP
+  $yAbsBot = PlateY $F_ABS_BOT
+  $absH = $yAbsBot - $yAbsTop
+  $rowGap = $absH * 0.045
+  $rowH = ($absH - (2.0 * $rowGap)) / 3.0
+
+  # how far out each row reaches, as a fraction of the PLATE's half-width at that row
+  $rowOuter = @(0.720, 0.665, 0.560)
+  $innerFrac = 0.145                     # the gap either side of the linea alba
+
+  for ($rowIdx = 0; $rowIdx -lt 3; $rowIdx++) {
+    $yT = $yAbsTop + ($rowIdx * ($rowH + $rowGap))
+    $yB = $yT + $rowH
+    $yMid = ($yT + $yB) * 0.5
+    $plateHalf = [Math]::Abs((PlateEdge $prof $yMid $side) - $CX)
+    $outer = [double]$rowOuter[$rowIdx]
+    $midFrac = ($innerFrac + $outer) * 0.5
+
+    # Six control points. Every element parenthesised - in PowerShell the comma operator
+    # binds tighter than arithmetic and an unparenthesised numeric array literal comes back
+    # EMPTY, with the symptom surfacing in a drawing call three functions away.
+    $raw = @(
+      @(($CX + ($side * $plateHalf * $innerFrac)), ($yT + ($rowH * 0.22))),
+      @(($CX + ($side * $plateHalf * $midFrac)),   ($yT + ($rowH * 0.02))),
+      @(($CX + ($side * $plateHalf * $outer)),     ($yT - ($rowH * 0.14))),   # sweeps UP outboard
+      @(($CX + ($side * $plateHalf * $outer * 0.94)), ($yT + ($rowH * 0.72))),
+      @(($CX + ($side * $plateHalf * $midFrac)),   ($yB)),
+      @(($CX + ($side * $plateHalf * $innerFrac)), ($yB - ($rowH * 0.20)))
+    )
+    $segPts = @()
+    foreach ($rawPt in $raw) {
+      $segPts += (New-Object System.Drawing.PointF ([single]($rawPt[0] * $SS)), ([single]($rawPt[1] * $SS)))
+    }
+    $seg = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $seg.AddClosedCurve([System.Drawing.PointF[]]$segPts, [single]0.42)
+
+    # the dome, centred UPPER-MIDDLE like the pectorals - and lit to $pLit rather than
+    # $pHot, so six of them do not out-shout the two above them
+    $dome = New-Object System.Drawing.Drawing2D.PathGradientBrush $seg
+    $dome.CenterPoint = New-Object System.Drawing.PointF ([single](($CX + ($side * $plateHalf * $midFrac * 1.04)) * $SS)), ([single](($yT + ($rowH * 0.34)) * $SS))
+    $dome.CenterColor = (RGB $pLit[0] $pLit[1] $pLit[2] ([int]($alpha * 0.92)))
+    $dome.SurroundColors = [System.Drawing.Color[]]@((RGB $pMid[0] $pMid[1] $pMid[2] ([int]($alpha * 0.52))))
+    $g.FillPath($dome, $seg); $dome.Dispose()
+
+    # Lit along the top, shadowed along the bottom - the same crease-and-lip pairing the
+    # pectorals use, applied per segment. This is what makes a segment a rounded block
+    # instead of a flat tile, and doing it per segment means the divisions between rows
+    # fall out of the shapes rather than needing grooves drawn between them.
+    $lowerPts = @()
+    foreach ($idxLower in @(3, 4, 5)) {
+      $lowerPts += (New-Object System.Drawing.PointF ([single]($raw[$idxLower][0] * $SS)), ([single]($raw[$idxLower][1] * $SS)))
+    }
+    $lower = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $lower.AddCurve([System.Drawing.PointF[]]$lowerPts, [single]0.42)
+    $penLow = New-Object System.Drawing.Pen (RGB $pDeep[0] $pDeep[1] $pDeep[2] ([int]($alpha * 0.82))), ([single]($rowH * 0.17 * $SS))
+    $penLow.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $penLow.EndCap   = [System.Drawing.Drawing2D.LineCap]::Round
+    $g.DrawPath($penLow, $lower); $penLow.Dispose(); $lower.Dispose()
+
+    $upperPts = @()
+    foreach ($idxUpper in @(0, 1, 2)) {
+      $upperPts += (New-Object System.Drawing.PointF ([single]($raw[$idxUpper][0] * $SS)), ([single]($raw[$idxUpper][1] * $SS)))
+    }
+    $upper = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $upper.AddCurve([System.Drawing.PointF[]]$upperPts, [single]0.42)
+    $penUp = New-Object System.Drawing.Pen (RGB $pHot[0] $pHot[1] $pHot[2] ([int]($alpha * 0.56))), ([single]($rowH * 0.10 * $SS))
+    $penUp.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $penUp.EndCap   = [System.Drawing.Drawing2D.LineCap]::Round
+    $g.DrawPath($penUp, $upper); $penUp.Dispose(); $upper.Dispose()
+    $seg.Dispose()
+  }
+
+  # ---- THE ILIAC LINE. The long diagonal from the flank to the groin - the biggest and
+  #      most recognisable curve on the lower half, and the one that still reads when the
+  #      six segments have blurred into texture. Dark, with a lit lip on its INBOARD side
+  #      where the crest of the plate would catch light.
+  $pwTop = [Math]::Abs((PlateEdge $prof ($yAbsTop + ($absH * 0.05)) $side) - $CX)
+  $pwMid = [Math]::Abs((PlateEdge $prof ($yAbsTop + ($absH * 0.45)) $side) - $CX)
+  $pwBot = [Math]::Abs((PlateEdge $prof $yAbsBot $side) - $CX)
+  $iliacRaw = @(
+    @(($CX + ($side * $pwTop * 0.880)), ($yAbsTop - ($absH * 0.030))),
+    @(($CX + ($side * $pwMid * 0.720)), ($yAbsTop + ($absH * 0.420))),
+    @(($CX + ($side * $pwBot * 0.330)), ($yAbsBot + ($absH * 0.045)))
+  )
+  $iliacPts = @()
+  foreach ($rawPt in $iliacRaw) {
+    $iliacPts += (New-Object System.Drawing.PointF ([single]($rawPt[0] * $SS)), ([single]($rawPt[1] * $SS)))
+  }
+  $iliac = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $iliac.AddCurve([System.Drawing.PointF[]]$iliacPts, [single]0.45)
+  $iliacW = $absH * 0.058
+  $penIliac = New-Object System.Drawing.Pen (RGB $pDeep[0] $pDeep[1] $pDeep[2] ([int]($alpha * 0.82))), ([single]($iliacW * $SS))
+  $penIliac.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+  $penIliac.EndCap   = [System.Drawing.Drawing2D.LineCap]::Round
+  $g.DrawPath($penIliac, $iliac); $penIliac.Dispose()
+
+  $lipPts = @()
+  foreach ($srcPt in $iliacPts) {
+    $lipPts += (New-Object System.Drawing.PointF ([single]($srcPt.X - ($side * $iliacW * 0.85 * $SS))), ([single]$srcPt.Y))
+  }
+  $iliacLip = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $iliacLip.AddCurve([System.Drawing.PointF[]]$lipPts, [single]0.45)
+  $penIliacLip = New-Object System.Drawing.Pen (RGB $pHot[0] $pHot[1] $pHot[2] ([int]($alpha * 0.42))), ([single]($iliacW * 0.42 * $SS))
+  $g.DrawPath($penIliacLip, $iliacLip); $penIliacLip.Dispose(); $iliacLip.Dispose()
+  $iliac.Dispose()
+}
+
+# The back's lower half: one long erector-spinae mass either side of the spine. NOT three
+# rows - a back has no rectus and no transverse divisions, and stamping the front's
+# segments onto it is the same class of error as reusing south's widths on east.
+function DrawLowerBack($g, $prof, [double]$side, [int]$alpha, $pDeep, $pMid, $pLit) {
+  $yTop = PlateY $F_ABS_TOP
+  $yBot = PlateY $F_ABS_BOT
+  $backH = $yBot - $yTop
+  $pwTop = [Math]::Abs((PlateEdge $prof $yTop $side) - $CX)
+  $pwMid = [Math]::Abs((PlateEdge $prof (($yTop + $yBot) * 0.5) $side) - $CX)
+  $pwBot = [Math]::Abs((PlateEdge $prof $yBot $side) - $CX)
+  $raw = @(
+    @(($CX + ($side * $pwTop * 0.165)), ($yTop + ($backH * 0.06))),
+    @(($CX + ($side * $pwTop * 0.640)), ($yTop - ($backH * 0.02))),
+    @(($CX + ($side * $pwMid * 0.700)), ($yTop + ($backH * 0.46))),
+    @(($CX + ($side * $pwBot * 0.470)), ($yBot)),
+    @(($CX + ($side * $pwBot * 0.170)), ($yBot - ($backH * 0.18)))
+  )
+  $backPts = @()
+  foreach ($rawPt in $raw) {
+    $backPts += (New-Object System.Drawing.PointF ([single]($rawPt[0] * $SS)), ([single]($rawPt[1] * $SS)))
+  }
+  $back = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $back.AddClosedCurve([System.Drawing.PointF[]]$backPts, [single]0.45)
+  $dome = New-Object System.Drawing.Drawing2D.PathGradientBrush $back
+  $dome.CenterPoint = New-Object System.Drawing.PointF ([single](($CX + ($side * $pwMid * 0.44)) * $SS)), ([single](($yTop + ($backH * 0.40)) * $SS))
+  $dome.CenterColor = (RGB $pLit[0] $pLit[1] $pLit[2] ([int]($alpha * 0.88)))
+  $dome.SurroundColors = [System.Drawing.Color[]]@((RGB $pMid[0] $pMid[1] $pMid[2] ([int]($alpha * 0.42))))
+  $g.FillPath($dome, $back); $dome.Dispose()
+  $penEdge = New-Object System.Drawing.Pen (RGB $pDeep[0] $pDeep[1] $pDeep[2] ([int]($alpha * 0.50))), ([single]($backH * 0.032 * $SS))
+  $g.DrawPath($penEdge, $back); $penEdge.Dispose(); $back.Dispose()
 }
 
 # One pectoral: a closed curve filled with a RADIAL gradient, then its crease.

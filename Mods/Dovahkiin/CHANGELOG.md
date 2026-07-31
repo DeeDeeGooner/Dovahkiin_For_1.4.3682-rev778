@@ -1,5 +1,48 @@
 # CHANGELOG
 
+## Call of Valor: the ABDOMINAL half of the cuirass (2026-07-31)
+
+The second half of the chest plate. The cuirass now runs from the throat to the bottom of the
+abdomen — `$PLATE_PROFILE` extended from 0.520 to 0.712 of the body's height, with a real waist
+in it (narrowest 0.612 at 0.545, flaring back to 0.646 over the hips) rather than a straight
+taper.
+
+**The emphasis is deliberately inverted from the chest, and that is the whole design.** Six
+abdominal segments occupy roughly the space of one pectoral, so at the 48px the game is played at
+they *will* blur — that is arithmetic, not pessimism. So the segments are drawn soft, and the read
+is carried by the three forms that survive a downscale:
+
+- **the linea alba** — and the sternum groove is *extended* into it rather than a second line
+  being started, because two grooves that stop just short of each other read as a mistake in the
+  art. One continuous channel, throat to belly.
+- **the iliac line** — the long diagonal from the flank to the groin. The single most
+  recognisable curve on a muscled cuirass and the biggest form in the lower half. Dark, with a lit
+  lip on its inboard side.
+- **the plate's own lower rim**, which the outline already carried.
+
+Zoom in and there are abs; zoom out and there is a waist, a centre line and a V.
+
+Each row is **narrower than the one above** (0.720 → 0.665 → 0.560 of the plate's half-width) and
+each row's outer end **sweeps up**. Both are real anatomy — the rectus tapers as it descends and
+the segments follow the ribs outward — and without them a stack of equal rectangles reads as a
+radiator. Per segment: a `PathGradientBrush` dome, a dark lower edge and a lit upper edge. Doing
+the crease-and-lip pairing *per segment* means the divisions between rows fall out of the shapes
+themselves, so no grooves have to be drawn between them.
+
+**North gets one long erector-spinae mass per side instead of three rows.** A back has no rectus
+and no transverse divisions; stamping the front's segments onto it would be the same class of
+error as reusing south's widths on east.
+
+Contrast was raised once after the first render (dome surround 0.46 → 0.52, lower crease 0.72 →
+0.82, upper lit 0.48 → 0.56) — soft was landing as absent.
+
+**Note on the snapshot:** `Tools/ValorApproved_2026-07-31/` was taken *before* this entry, at the
+user's request, and holds the pauldrons-and-chest version they called "the best of every version
+we had until now". It is deliberately not updated here — it is the restore point this change was
+made against. If the abdominal version supersedes it, re-snapshot then.
+
+---
+
 ## Call of Valor: a MUSCLED CUIRASS, meeting the pauldrons (2026-07-31)
 
 The next detail in the user's one-at-a-time pass: a chest plate running up to the pauldrons,

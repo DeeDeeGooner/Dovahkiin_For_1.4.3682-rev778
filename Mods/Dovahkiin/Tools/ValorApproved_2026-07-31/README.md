@@ -3,6 +3,13 @@
 **The user's words: "this one right here is the best of every version we had until now."**
 Frozen here so that later changes cannot lose it.
 
+> **CHECKPOINT MOVED.** This folder was first taken at the pauldrons-and-chest stage and has
+> since been **overwritten at the user's instruction** to become the checkpoint *including the
+> abdominal half*. Overwriting is safe rather than destructive: **the earlier checkpoint is
+> still recoverable in full from git at commit `008e674`**, contents and manifest alike. That
+> is the reason a snapshot may be overwritten at all — the history is the real archive, this
+> folder is the convenient one.
+
 This folder is a **snapshot, not a source**. Nothing in the mod loads it — `Tools/` is not
 scanned for textures. It exists so that any future version of the champion can be compared
 against the one that was actually approved, byte for byte, instead of from memory.
@@ -25,6 +32,9 @@ against the one that was actually approved, byte for byte, instead of from memor
   shoulder, sweeping from outboard-below, over the joint, and down inboard across the chest.
 - A **muscled cuirass** — pectoral domes drawn with `PathGradientBrush`, under-pec creases with
   lit lips, a sternum groove. North gets shoulder blades and a spine instead.
+- The **abdominal half**: three rows of segments, each narrower than the one above and sweeping
+  up at its outer end; the sternum groove extended into one continuous linea alba; an iliac line
+  per side. North gets one erector-spinae mass per side rather than rows.
 - **No crest shards.** Suppressed deliberately: they run down the same chest the cuirass occupies
   and win outright, so the pectorals stopped existing. There is no alpha at which both read.
 
