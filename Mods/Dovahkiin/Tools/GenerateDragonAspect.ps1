@@ -600,6 +600,10 @@ function SetBodyGeometry([string]$bodyType) {
 # calls read these from script scope, so this is the single place a rotation is selected.
 function UseRotation([string]$rot) {
   $g = $script:GEOM[$rot]
+  # Which view we are drawing. The cuirass needs it: on the side view the torso is seen in
+  # DEPTH rather than in width, and only ONE arm is drawn, so the plate's edge cannot be
+  # derived from the same fractions the front uses. See PlateEdge.
+  $script:ROT_CUR     = $rot
   $script:PROFILE_CUR = $g.Prof
   $script:CX          = $g.CX
   $script:Y_TOP       = $g.YTop
@@ -971,10 +975,46 @@ function PlateFracAt([double]$hFrac) {
 # absolute y for a fraction of the body's height
 function PlateY([double]$hFrac) { return ($Y_TOP + (($Y_BOT - $Y_TOP) * $hFrac)) }
 
+# The widest value in $PLATE_PROFILE. Computed, not written down, so editing the table
+# cannot silently invalidate the side-view rescale below.
+$PLATE_FRAC_MAX = 0.0
+foreach ($plateRow in $PLATE_PROFILE) {
+  if ([double]$plateRow[1] -gt $PLATE_FRAC_MAX) { $PLATE_FRAC_MAX = [double]$plateRow[1] }
+}
+
+# ---------------------------------------------------------------------------------
+#  THE SIDE VIEW NEEDS ITS OWN TARGETS, AND THE TWO SIDES ARE NOT THE SAME.
+#
+#  Reported by the user: on east the chest, abs and belt sat INSIDE the pawn. The cause
+#  is that the front view's fractions were being reused, and they are the wrong number
+#  twice over:
+#
+#   - THE FRONT AND BACK VIEWS ARE INSET BECAUSE OF THE ARMS. Roughly the outer 30% of
+#     the silhouette is arm, so a cuirass has to stop short of it. Side-on there is only
+#     ONE arm - `BuildArmsPath` is called with @(-1.0) for east, the column down the REAR
+#     edge - so the FRONT half of the side view has no arm over it at all and no reason
+#     to be inset. That bare strip in front of the plate is what reads as the armour
+#     being inside the pawn.
+#   - AND SIDE-ON THE TORSO IS SEEN IN DEPTH, not in width. Vanilla plate measures 0.75
+#     to 1.04 of the body's own side profile through the torso, against wider-than-body
+#     everywhere on the front. Nothing about the front's numbers transfers.
+#
+#  The fix keeps the profile's SHAPE - the neck narrowing, the waist draw-in - and
+#  rescales it so its widest point lands on the target for that side. Clamping instead
+#  would flatten the whole chest onto one value and lose the taper.
+function PlateSideTarget([double]$side) {
+  if ($side -gt 0.0) { return 0.965 }   # the FRONT of the body: no arm here
+  return 0.880                          # the rear, under the arm column
+}
+
 # the plate's own edge at a given row, on one side, in 256-frame coords
 function PlateEdge($prof, [double]$yy, [double]$side) {
   $hFrac = ($yy - $Y_TOP) / ($Y_BOT - $Y_TOP)
-  return ($CX + ($side * (HalfSideAt $prof $yy $side) * (PlateFracAt $hFrac)))
+  $frac = PlateFracAt $hFrac
+  if ($ROT_CUR -eq "east") {
+    $frac = ($frac / $PLATE_FRAC_MAX) * (PlateSideTarget $side)
+  }
+  return ($CX + ($side * (HalfSideAt $prof $yy $side) * $frac))
 }
 
 function DrawChestPlate($g, $prof, [string]$rot, [int]$alpha, [double]$cool) {
@@ -1492,9 +1532,21 @@ function DrawPectoral($g, $prof, [double]$side, [int]$alpha, $pDeep, $pMid, $pLi
   $yPecWide = PlateY $F_PEC_WIDE
   $yPecBot  = PlateY $F_PEC_BOT
   $pecH = $yPecBot - $yPecTop
-  $hwTop  = HalfSideAt $prof $yPecTop  $side
-  $hwWide = HalfSideAt $prof $yPecWide $side
-  $hwBot  = HalfSideAt $prof $yPecBot  $side
+  # Derived from the PLATE's edge rather than the body's, then divided back out by the
+  # plate fraction at that landmark. That looks like a no-op and is exactly a no-op on the
+  # front and back views - PlateEdge is bodyHalf x frac, so dividing by frac returns
+  # bodyHalf and every fraction below keeps the value it already had, byte for byte.
+  #
+  # On the SIDE view it is not a no-op: PlateEdge rescales there, and the pectoral now
+  # rescales with it. The abdomen already worked this way; the pectoral read straight off
+  # the body and so stayed at the front view's width while the plate around it moved out,
+  # which would have left the muscle floating inside its own armour.
+  #
+  # The rule worth keeping: a feature drawn ON a plate should be a fraction OF THAT PLATE,
+  # never of the body underneath it. Then it follows the plate everywhere by construction.
+  $hwTop  = [Math]::Abs((PlateEdge $prof $yPecTop  $side) - $CX) / (PlateFracAt $F_PEC_TOP)
+  $hwWide = [Math]::Abs((PlateEdge $prof $yPecWide $side) - $CX) / (PlateFracAt $F_PEC_WIDE)
+  $hwBot  = [Math]::Abs((PlateEdge $prof $yPecBot  $side) - $CX) / (PlateFracAt $F_PEC_BOT)
 
   # Seven control points round one pec. Every element parenthesised - the comma operator
   # binds tighter than arithmetic in PowerShell and an unparenthesised numeric array

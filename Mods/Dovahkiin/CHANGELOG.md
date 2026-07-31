@@ -1,5 +1,44 @@
 # CHANGELOG
 
+## Call of Valor: the cuirass sat INSIDE the pawn on the side view (2026-07-31)
+
+Reported by the user: on east, the chest, abs and belt all sat inside the body. They were right,
+and the cause was that the **front view's width fractions were being reused on the side view**,
+where they are the wrong number twice over:
+
+- **The front and back views are inset because of the ARMS.** Roughly the outer 30% of that
+  silhouette is arm, so a cuirass has to stop short of it. **Side-on there is only ONE arm** —
+  `BuildArmsPath` is called with `@(-1.0)` for east, the column down the *rear* edge — so the
+  front half of the side view has no arm over it and no reason to be inset at all. That bare
+  strip of pawn in front of the plate is exactly what read as "the armour is inside him".
+- **And side-on the torso is seen in DEPTH, not in width.** Vanilla plate measures 0.75–1.04 of
+  the body's own side profile through the torso, against wider-than-body everywhere on the front.
+  Nothing about the front's numbers transfers.
+
+*Fix:* east rescales the profile so its **widest point lands on a per-side target** — 0.965 on the
+front, 0.880 on the rear where the arm column sits. Rescaling rather than clamping keeps the
+profile's *shape*: the neck narrowing and the waist draw-in survive, where a clamp would have
+flattened the whole chest onto one value.
+
+### The pectoral was measuring off the wrong thing, and that only showed here
+
+`DrawPectoral` took its widths from the **body**, while `DrawAbdomen` already took them from the
+**plate**. On the front views those are proportional and nobody could tell. On east the plate moved
+outward and the pectoral did not, which would have left the muscle floating inside its own armour.
+
+Both now derive from `PlateEdge` and divide the plate fraction back out, which is **exactly** a
+no-op on the front and back — `PlateEdge` is `bodyHalf × frac`, so dividing by `frac` returns
+`bodyHalf` and every fraction below keeps the value it already had.
+
+**Proven, not asserted:** regenerating against the checkpoint's manifest changed **5 files of 37**,
+and all five are `DragonAspect_L2_*_east.png`. Every south and north texture is byte-identical.
+
+*The rule worth keeping:* **a feature drawn ON a plate should be a fraction OF THAT PLATE, never of
+the body underneath it.** Then it follows the plate on every rotation by construction, and a
+per-rotation change to the plate cannot leave its own detail behind.
+
+---
+
 ## Call of Valor: a curving belt and a fur skirt below the abdomen (2026-07-31)
 
 The third piece, below the abdomen. Drawn **in the order the layers are worn** — fur first, hanging
