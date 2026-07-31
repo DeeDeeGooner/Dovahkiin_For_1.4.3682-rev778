@@ -938,7 +938,11 @@ $F_FUR_TOP    = 0.750   # tucked UNDER the belt
 # The fur has to hang LOWER than the thigh plates start, or it is drawn and then covered by
 # them and might as well not exist - which is exactly what the first render did. It shows in
 # two places: a band above the plates, and down the gap between them.
-$F_FUR_BOT    = 0.888
+# The fur runs the WHOLE lower body, down to the extremities - the user's correction, and
+# it roughly doubles the band's height (0.138 of the body to 0.230). Anything that was a
+# fraction of that height therefore doubled with it: see DrawFurStrands, where the strand
+# sizing had to be taken off the strand PITCH instead.
+$F_FUR_BOT    = 0.980
 $F_FUR_W      = 0.885   # fraction of the body's half-side. Bulkier than the belt above it.
 $F_TASSET_TOP = 0.830   # hanging from the belt, over the fur
 $F_TASSET_BOT = 0.946
@@ -1220,20 +1224,38 @@ function DrawFurStrands($g, $prof, [int]$alpha, $pDeep, $pMid, $pLit, $pHot) {
   $yFurTop = PlateY $F_FUR_TOP
   $yFurBot = PlateY $F_FUR_BOT
   $furH = $yFurBot - $yFurTop
-  $midY = ($yFurTop + $yFurBot) * 0.5
-  $spanL = (HalfSideAt $prof $midY -1.0) * $F_FUR_W
-  $spanR = (HalfSideAt $prof $midY  1.0) * $F_FUR_W
-
+  # THREE OVERLAPPING TIERS, not one run of full-height strands.
+  #
+  # The fur now covers the whole lower body rather than a narrow band, and a strand drawn
+  # the full height of that is 29px long and 3px wide - which is spaghetti, not fur. Real
+  # fur of any depth is layered, so this is too: each tier roots lower than the one above,
+  # each is offset by half a pitch so they interleave rather than stack, and the lower ones
+  # are drawn last so they lap over the tier above exactly as shingles do.
   $strandCount = 23
+  $tiers = 3
   $segs = 6
+  for ($tierIdx = 0; $tierIdx -lt $tiers; $tierIdx++) {
+  $tierTop = $yFurTop + ($furH * 0.28 * $tierIdx)
+  $tierLen = $furH * (0.46 + (0.04 * $tierIdx))
+  $tierMidY = $tierTop + ($tierLen * 0.5)
+  $spanL = (HalfSideAt $prof $tierMidY -1.0) * $F_FUR_W
+  $spanR = (HalfSideAt $prof $tierMidY  1.0) * $F_FUR_W
+  # THE STRAND'S SIZE COMES OFF THE PITCH, NOT OFF THE BAND'S HEIGHT. Sizing it as a
+  # fraction of $furH was right when the band was 17px tall and silently doubled every
+  # strand the moment the fur was extended down the body. Pitch is what actually decides
+  # whether strands fill the width or freckle it, and it does not move when the band grows.
+  $pitch = ($spanL + $spanR) / [double]$strandCount
+
   for ($strandIdx = 0; $strandIdx -lt $strandCount; $strandIdx++) {
-    $along = ($strandIdx + 0.5) / [double]$strandCount
+    $hIdx = ($strandIdx * 7) + ($tierIdx * 131)
+    $along = ($strandIdx + 0.5 + ($tierIdx * 0.5)) / [double]$strandCount
+    if ($along -gt 1.0) { $along = $along - 1.0 }
     $across = (2.0 * $along) - 1.0
     $spanHere = if ($across -lt 0.0) { $spanL } else { $spanR }
     # jitter the root sideways so they are not on a perfect comb pitch
-    $rootJit = ((FurHash $strandIdx 3) - 0.5) * ($furH * 0.20)
+    $rootJit = ((FurHash $hIdx 3) - 0.5) * $pitch * 0.85
     $rootX = $CX + ($across * $spanHere) + $rootJit
-    $rootY = $yFurTop + ($furH * 0.10 * (FurHash $strandIdx 9))
+    $rootY = $tierTop + ($tierLen * 0.10 * (FurHash $hIdx 9))
 
     # SCALE THESE AGAINST THE BAND'S ACTUAL PIXELS, NOT AGAINST INTUITION. The fur band is
     # only about 17px tall on a male south sprite, so the first pass - width at 0.052 of
@@ -1242,11 +1264,11 @@ function DrawFurStrands($g, $prof, [int]$alpha, $pDeep, $pMid, $pLit, $pHot) {
     # 0.05 was under a pixel of travel and could not read as a zigzag at all.
     # The band is ~72px across and carries 23 strands, so ~3px pitch - which is what the
     # width has to be near for the strands to fill it rather than freckle it.
-    $len   = $furH * (0.70 + (0.50 * (FurHash $strandIdx 1)))   # some run past the hem
-    $curve = ((FurHash $strandIdx 2) - 0.5) * $furH * 0.42
-    $amp   = $furH * (0.130 + (0.100 * (FurHash $strandIdx 4)))
-    $wide  = $furH * (0.150 + (0.090 * (FurHash $strandIdx 5)))
-    $flip  = if ((FurHash $strandIdx 6) -gt 0.5) { 1.0 } else { -1.0 }
+    $len   = $tierLen * (0.78 + (0.46 * (FurHash $hIdx 1)))   # some run past their tier
+    $curve = ((FurHash $hIdx 2) - 0.5) * $tierLen * 0.42
+    $amp   = $pitch * (0.55 + (0.42 * (FurHash $hIdx 4)))
+    $wide  = $pitch * (0.85 + (0.42 * (FurHash $hIdx 5)))
+    $flip  = if ((FurHash $hIdx 6) -gt 0.5) { 1.0 } else { -1.0 }
 
     $leftSide = @()
     $rightSide = @()
@@ -1284,17 +1306,18 @@ function DrawFurStrands($g, $prof, [int]$alpha, $pDeep, $pMid, $pLit, $pHot) {
     # Same reasoning the aura's particle sides use: for a binary choice that has to come
     # out even, alternate - do not roll. The occasional hash-driven flip keeps it from
     # reading as stripes.
-    $flipTone = (FurHash $strandIdx 10) -gt 0.78
-    $isDark = ((($strandIdx % 2) -eq 0) -xor $flipTone)
+    $flipTone = (FurHash $hIdx 10) -gt 0.78
+    $isDark = (((($strandIdx + $tierIdx) % 2) -eq 0) -xor $flipTone)
     if ($isDark) {
-      $tone = Lerp3 $pDeep $pMid (0.30 * (FurHash $strandIdx 7))
-      $strandAlpha = [int]($alpha * (0.80 + (0.18 * (FurHash $strandIdx 8))))
+      $tone = Lerp3 $pDeep $pMid (0.30 * (FurHash $hIdx 7))
+      $strandAlpha = [int]($alpha * (0.80 + (0.18 * (FurHash $hIdx 8))))
     } else {
-      $tone = Lerp3 $pLit $pHot (0.20 + (0.70 * (FurHash $strandIdx 7)))
-      $strandAlpha = [int]($alpha * (0.62 + (0.28 * (FurHash $strandIdx 8))))
+      $tone = Lerp3 $pLit $pHot (0.20 + (0.70 * (FurHash $hIdx 7)))
+      $strandAlpha = [int]($alpha * (0.62 + (0.28 * (FurHash $hIdx 8))))
     }
     $brush = New-Object System.Drawing.SolidBrush (RGB $tone[0] $tone[1] $tone[2] $strandAlpha)
     $g.FillPath($brush, $strand); $brush.Dispose(); $strand.Dispose()
+  }
   }
 }
 

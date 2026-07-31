@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## Call of Valor: the fur runs the whole lower body (2026-07-31)
+
+The user's correction: the fur should cover the whole lower part, down to the extremities.
+`$F_FUR_BOT` 0.888 → 0.980, so the skirt now reaches the bottom of the body sprite instead of
+stopping around the upper thigh. Its width still comes from the body's own half-side per row, so
+it narrows with the legs rather than hanging square.
+
+### Extending it broke the strands, and the reason is worth keeping
+
+**Everything sized as a fraction of the band's own height silently doubled**, because the band's
+height doubled — 0.138 of the body to 0.230. Strand widths went from ~3px to ~6px and the fur
+turned to rope. *A dimension expressed as a fraction of a region scales with that region, which is
+right for anything that should grow with it and wrong for everything that should not.*
+
+**Strand size now comes off the PITCH** — the band's width divided by the strand count — which is
+what actually decides whether strands fill the width or freckle it, and which does not move when
+the band grows taller.
+
+**And one run of full-height strands is spaghetti, not fur.** At 29px tall and 3px wide a strand
+is a noodle. Real fur of any depth is layered, so this is too: **three overlapping tiers**, each
+rooted lower than the one above, each offset by half a pitch so they interleave rather than stack,
+and the lower ones drawn last so they lap over the tier above exactly as shingles do. Tone still
+alternates, now on `(strand + tier)` so the interleaving does not line up matching tones.
+
+A dead pre-tier span block was removed rather than left sitting above the loop that replaced it —
+code that looks live and is not is exactly what misleads a later session.
+
+---
+
 ## Call of Valor: the fur becomes zigzag strands, and the scales are cut out of it (2026-07-31)
 
 The user's instruction, and the first half of it is the part that mattered: **take the scale field
