@@ -14,7 +14,14 @@ He arrives when, at **three words**, either:
 - your health **drops to 65% or below** while the shout is running, or
 - you are **downed** while the shout is running.
 
-At most **one per casting**, and he lasts **1.5 in-game hours** (about 3,750 ticks).
+At most **one per casting**, and he lasts **6 in-game hours** (15,000 ticks).
+
+> **Corrected 2026-07-31.** This line said 1.5 hours / 3,750 ticks, which was true when it was
+> written and is not any more. The lifetime now lives in
+> `Defs/MiscDefs/DovahkiinTuningDef.xml` as `ancientDragonbornLifetimeTicks` and can be changed
+> without a rebuild — so **read it there rather than trusting this number**. A stale figure in a
+> document that presents itself as correct is worse than no figure: it invites someone to "fix"
+> code that is already right.
 
 About twenty minutes. **Test 5 is the one that matters most** — it is the save-safety check,
 and it is the reason this feature was built carefully rather than quickly.

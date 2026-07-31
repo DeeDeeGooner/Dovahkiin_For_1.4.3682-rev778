@@ -1,5 +1,99 @@
 # CHANGELOG
 
+## Verifying the four unplayed fixes — the helm is settled, and two gaps found (2026-07-31)
+
+No code changed. This is the pass that had to happen before anything is built on top of
+`a84f284`, `6b402ff` and `a61997e`, none of which had been played. Build clean, 0 warnings, and
+the DLL restored afterwards so the tree still carries the committed binary.
+
+### The helm was the flagged risk, and it is correct BY CONSTRUCTION
+
+The notebook called it *"the one to watch — if the offset rotation is wrong it will sit beside
+her, not on her head"*. It cannot be wrong, and the proof is vanilla's own call order rather
+than an opinion.
+
+`Verse.PawnRenderer.RenderPawnInternal`, read by walking its IL and resolving every
+`call`/`callvirt` token in order:
+
+```
+[  3] Quaternion.AngleAxis          <- builds the body quaternion, from Vector3.up
+...
+[ 26] PawnRenderer.BaseHeadOffsetAt <- gets the head offset
+[ 27] Quaternion.op_Multiply        <- ROTATES IT, immediately
+[ 35] Vector3.op_Addition           <- then adds it to the root position
+[ 37] GenDraw.DrawMeshNowOrLater    <- draws the head on that quaternion
+```
+
+Our overlay now does `basePos + (bodyQuat * BaseHeadOffsetAt(rot))` and draws on `bodyQuat`.
+That is the same four steps in the same order with the same quaternion. **The helm cannot
+disagree with the head, because it is computed the way the head is computed.**
+
+*The method worth keeping:* the previous check confirmed `BodyAngle()` **exists** and returns a
+float. That settles the API and says nothing about how vanilla **composes** it — which was the
+half at risk. **When borrowing an engine behaviour, read the engine's call ORDER, not just the
+signature of the method you are borrowing.**
+
+Also learned free from `BodyAngle()`'s own IL: it reads `RestUtility.CurrentBed`,
+`IThingHolderWithDrawnPawn.HeldPawnBodyAngle`, `Downed`, `Dead` and `LayingFacing`. So the
+overlay now follows the body in beds, while carried, and in death — not just when downed.
+
+### GAP 1: a pawn in a BED is not drawn at `Drawer.DrawPos`, and our overlay rides `DrawPos`
+
+Found while working out what to tell the user to test, which is why it was worth writing the
+test script before the playtest rather than after.
+
+- `Verse.Pawn_DrawTracker.get_DrawPos` is tweened position + jitter + lean + job offset. **No bed
+  logic anywhere in it.**
+- `PawnRenderer.RenderPawnAt` calls **`GetBodyPos`** before rendering, and `GetBodyPos` opens
+  with `RestUtility.CurrentBed` and, when there is one, builds the position from the **bed's**
+  own position, rotation and head offset.
+
+So a downed Dovahkiin **rescued into a bed** wears her armour at the right angle in a position
+derived from the wrong thing. **Pre-existing, not caused by `a84f284`** — but newly *visible*,
+because an upright overlay hid a positional error that a lying one displays. Magnitude not
+measured; only established that the two are computed differently.
+
+Not fixed here: the user asked that nothing be built on the four fixes until they are verified,
+and this is not one of them. It is flagged in `TESTS/fixes-2026-07-31.md` so a bed does not get
+misread as the fix failing.
+
+### GAP 2: two disagreeing defaults for the same number
+
+`AncientDragonbornUtility.cs:82` — `int lifetime = t != null ? t.ancientDragonbornLifetimeTicks
+: 3750;`. The tuning def's own C# default is **15000**. The Force AP fallback beside it correctly
+matches its def default (0.35); the lifetime one was left at the pre-2026-07-31 value.
+
+It fires only if `DovahkiinTuningDef.Current` is null, and `Current` uses
+**`GetNamedSilentFail`** — so if the def ever failed to load, he would quietly last 1.5 hours
+and nothing would say why. Exactly the shape this file already warns about: *a silent fallback
+is indistinguishable from the bug it is masking.* Latent, reported, not changed.
+
+### Stale numbers swept, and one corrected
+
+`TESTS/phase2j.md` still told the user the summon lasts **1.5 in-game hours / 3,750 ticks**.
+Corrected, and pointed at the XML instead of carrying a number that can now be retuned without a
+rebuild. Six other copies of the old figure survive in `Defs/` and `Source/` — **all six are
+comments, none is a `<description>`**, so nothing the player reads is wrong. Checked rather than
+assumed, because a lying player-facing string is the same defect `a61997e` fixed on the preview
+caption.
+
+### New: `Tools/PreviewDownedPose.ps1`
+
+Renders standing / downed-before / downed-after / **downed-half-fixed** side by side, with the
+head end at 2x. The fourth cell draws the failure deliberately, so the user is checking against a
+picture rather than a sentence.
+
+Read-only, like `PreviewAncientDragonborn.ps1` and unlike `GenerateDragonAspect.ps1`. Committed
+rather than left in a scratch folder because `WriteAnimatedGif.ps1` was written twice and lost
+twice, and Call of Valor's hero will want this same check — he gets downed too.
+
+**It deliberately does NOT draw the axe.** The harness's hold angles were tuned by eye against
+the game (145 for south, where the C# holds -70), so its angle convention is empirical rather
+than derived and cannot settle `axeAngle + bodyAngle`. Positions it can compute exactly; that
+rotation it cannot. Saying so beats shipping a picture that might disagree with the game.
+
+---
+
 ## Audit of the summons' shouts (2026-07-31)
 
 Asked for as a precaution. Five things checked on the Ancient Dragonborn, one defect fixed, one
