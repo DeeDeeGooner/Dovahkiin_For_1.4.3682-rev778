@@ -939,6 +939,7 @@ $F_FUR_TOP    = 0.750   # tucked UNDER the belt
 # them and might as well not exist - which is exactly what the first render did. It shows in
 # two places: a band above the plates, and down the gap between them.
 $F_FUR_BOT    = 0.888
+$F_FUR_W      = 0.885   # fraction of the body's half-side. Bulkier than the belt above it.
 $F_TASSET_TOP = 0.830   # hanging from the belt, over the fur
 $F_TASSET_BOT = 0.946
 
@@ -1151,6 +1152,152 @@ function FurEdgeAt([double]$along, [double]$amp) {
   return ($amp * ((0.58 * $wave1) + (0.42 * $wave2)))
 }
 
+# Per-strand variation. DETERMINISTIC on purpose - the same reason the tuft profile is:
+# Get-Random would change the art on every regeneration, and the checkpoint's hash manifest
+# is the whole way this project proves a change touched only what it meant to.
+function FurHash([int]$idx, [int]$salt) {
+  $value = [Math]::Sin(($idx * 12.9898) + ($salt * 78.233)) * 43758.5453
+  return ($value - [Math]::Floor($value))
+}
+
+# The fur's outline, on its own so the SCALE FIELD can be excluded from it. The scales are
+# clipped to the whole torso, which includes the fur band, and a dragon-scale pattern
+# showing through a fur skirt is the single thing most likely to stop it reading as fur.
+function BuildFurPath($prof) {
+  $yFurTop = PlateY $F_FUR_TOP
+  $yFurBot = PlateY $F_FUR_BOT
+  $furH = $yFurBot - $yFurTop
+  $furPts = New-Object System.Collections.ArrayList
+  for ($rowY = $yFurTop; $rowY -le $yFurBot; $rowY += 1.5) {
+    $edge = $CX + ((HalfSideAt $prof $rowY 1.0) * $F_FUR_W)
+    [void]$furPts.Add((New-Object System.Drawing.PointF ([single]($edge * $SS)), ([single]($rowY * $SS))))
+  }
+  $hemSteps = 46
+  for ($stepIdx = 0; $stepIdx -le $hemSteps; $stepIdx++) {
+    $along = $stepIdx / [double]$hemSteps
+    $sideFrac = 1.0 - (2.0 * $along)
+    $edgeSide = if ($sideFrac -ge 0.0) { 1.0 } else { -1.0 }
+    $edge = $CX + ($sideFrac * (HalfSideAt $prof $yFurBot $edgeSide) * $F_FUR_W)
+    $hem = $yFurBot + (FurEdgeAt $along ($furH * 0.30))
+    [void]$furPts.Add((New-Object System.Drawing.PointF ([single]($edge * $SS)), ([single]($hem * $SS))))
+  }
+  for ($rowY = $yFurBot; $rowY -ge $yFurTop; $rowY -= 1.5) {
+    $edge = $CX - ((HalfSideAt $prof $rowY -1.0) * $F_FUR_W)
+    [void]$furPts.Add((New-Object System.Drawing.PointF ([single]($edge * $SS)), ([single]($rowY * $SS))))
+  }
+  $fur = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $fur.AddPolygon([System.Drawing.PointF[]]$furPts.ToArray([System.Drawing.PointF]))
+  $fur.CloseFigure()
+  return $fur
+}
+
+# =====================================================================================
+#  THE FUR STRANDS - randomly curving pointy zigzags, replacing the scale texture.
+# =====================================================================================
+#  The user's instruction, and it is the right call: the scale field was showing through
+#  the fur, and a dragon-scale grid inside a fur skirt cancels the fur completely. The
+#  scales are now excluded from the fur's own outline (see BuildBody) and these take their
+#  place.
+#
+#  WHAT CHANGED ABOUT THE "STRANDS ARE NOT DRAWABLE" LINE, BECAUSE IT LOOKS LIKE A
+#  REVERSAL AND IS NOT. A single strand is 2-4px and does not RESOLVE at play distance -
+#  that was true and still is. But a strand does not have to resolve to do its job: what
+#  is being drawn here is a TEXTURE made of many of them, and en masse they read as
+#  "broken, hairy, not metal" at any zoom. Close up you see strands; at 48px you see a
+#  band that is not smooth. Both are wanted. What genuinely cannot be done is a strand
+#  drawn to be *looked at individually* - and none of these are.
+#
+#  Three things make a zigzag read as hair rather than as a scribble:
+#    - IT MUST COME TO A POINT. The width tapers to zero at the tip, so the strand ends
+#      rather than stopping. A constant-width zigzag reads as a piece of wire.
+#    - THE ZIG AMPLITUDE MUST SHRINK TOWARDS THE TIP as well, or the point sits at the end
+#      of a wide oscillation and reads as a lightning bolt.
+#    - EACH STRAND NEEDS ITS OWN CURVATURE, applied as t-squared so it is straight at the
+#      root and bends near the end. Strands that all curve alike look combed; strands with
+#      no curve at all look like a comb.
+#  Some strands deliberately run PAST the hem, which is what keeps the silhouette broken.
+function DrawFurStrands($g, $prof, [int]$alpha, $pDeep, $pMid, $pLit, $pHot) {
+  $yFurTop = PlateY $F_FUR_TOP
+  $yFurBot = PlateY $F_FUR_BOT
+  $furH = $yFurBot - $yFurTop
+  $midY = ($yFurTop + $yFurBot) * 0.5
+  $spanL = (HalfSideAt $prof $midY -1.0) * $F_FUR_W
+  $spanR = (HalfSideAt $prof $midY  1.0) * $F_FUR_W
+
+  $strandCount = 23
+  $segs = 6
+  for ($strandIdx = 0; $strandIdx -lt $strandCount; $strandIdx++) {
+    $along = ($strandIdx + 0.5) / [double]$strandCount
+    $across = (2.0 * $along) - 1.0
+    $spanHere = if ($across -lt 0.0) { $spanL } else { $spanR }
+    # jitter the root sideways so they are not on a perfect comb pitch
+    $rootJit = ((FurHash $strandIdx 3) - 0.5) * ($furH * 0.20)
+    $rootX = $CX + ($across * $spanHere) + $rootJit
+    $rootY = $yFurTop + ($furH * 0.10 * (FurHash $strandIdx 9))
+
+    # SCALE THESE AGAINST THE BAND'S ACTUAL PIXELS, NOT AGAINST INTUITION. The fur band is
+    # only about 17px tall on a male south sprite, so the first pass - width at 0.052 of
+    # that - drew strands 0.9px wide. They existed, were correct, and were invisible: below
+    # one pixel a shape only ever becomes a faint tint. Same for the zigzag swing, which at
+    # 0.05 was under a pixel of travel and could not read as a zigzag at all.
+    # The band is ~72px across and carries 23 strands, so ~3px pitch - which is what the
+    # width has to be near for the strands to fill it rather than freckle it.
+    $len   = $furH * (0.70 + (0.50 * (FurHash $strandIdx 1)))   # some run past the hem
+    $curve = ((FurHash $strandIdx 2) - 0.5) * $furH * 0.42
+    $amp   = $furH * (0.130 + (0.100 * (FurHash $strandIdx 4)))
+    $wide  = $furH * (0.150 + (0.090 * (FurHash $strandIdx 5)))
+    $flip  = if ((FurHash $strandIdx 6) -gt 0.5) { 1.0 } else { -1.0 }
+
+    $leftSide = @()
+    $rightSide = @()
+    for ($segIdx = 0; $segIdx -le $segs; $segIdx++) {
+      $tt = $segIdx / [double]$segs
+      $spineY = $rootY + ($len * $tt)
+      # t-squared: straight at the root, bending near the tip
+      $drift = $curve * $tt * $tt
+      # alternate sides, and fade the swing out towards the point
+      $zigSign = if (($segIdx % 2) -eq 0) { 1.0 } else { -1.0 }
+      $zig = $amp * $flip * $zigSign * $tt * (1.0 - (0.72 * $tt))
+      $spineX = $rootX + $drift + $zig
+      $halfW = ($wide * 0.5) * [Math]::Pow((1.0 - $tt), 0.85)
+      $leftSide  += (New-Object System.Drawing.PointF ([single](($spineX - $halfW) * $SS)), ([single]($spineY * $SS)))
+      $rightSide += (New-Object System.Drawing.PointF ([single](($spineX + $halfW) * $SS)), ([single]($spineY * $SS)))
+    }
+    $strandPts = @()
+    $strandPts += $leftSide
+    for ($backIdx = $rightSide.Count - 1; $backIdx -ge 0; $backIdx--) { $strandPts += $rightSide[$backIdx] }
+
+    $strand = New-Object System.Drawing.Drawing2D.GraphicsPath
+    # AddPolygon, never AddClosedCurve - a curve tension rounds the zigzag's corners off and
+    # the whole thing becomes a wavy ribbon. The corners ARE the fur.
+    $strand.AddPolygon([System.Drawing.PointF[]]$strandPts)
+    # TONE IS ALTERNATED, NOT ROLLED, and that is what finally made these read.
+    #
+    # Measured rather than guessed: diffing the texture showed the strands were drawing
+    # correctly all along - 1516 pixels over exactly the right rows - and covering about
+    # 70px of a 72px band. That density was the problem, not the fix. Rolling each strand's
+    # value independently across one range put NEIGHBOURS AT SIMILAR TONES often enough
+    # that the band read as one flat mass, and with no gaps between strands there was
+    # nothing else to separate them.
+    #
+    # Alternating dark and light guarantees every strand contrasts with the two beside it.
+    # Same reasoning the aura's particle sides use: for a binary choice that has to come
+    # out even, alternate - do not roll. The occasional hash-driven flip keeps it from
+    # reading as stripes.
+    $flipTone = (FurHash $strandIdx 10) -gt 0.78
+    $isDark = ((($strandIdx % 2) -eq 0) -xor $flipTone)
+    if ($isDark) {
+      $tone = Lerp3 $pDeep $pMid (0.30 * (FurHash $strandIdx 7))
+      $strandAlpha = [int]($alpha * (0.80 + (0.18 * (FurHash $strandIdx 8))))
+    } else {
+      $tone = Lerp3 $pLit $pHot (0.20 + (0.70 * (FurHash $strandIdx 7)))
+      $strandAlpha = [int]($alpha * (0.62 + (0.28 * (FurHash $strandIdx 8))))
+    }
+    $brush = New-Object System.Drawing.SolidBrush (RGB $tone[0] $tone[1] $tone[2] $strandAlpha)
+    $g.FillPath($brush, $strand); $brush.Dispose(); $strand.Dispose()
+  }
+}
+
 function DrawBeltAndSkirt($g, $prof, [string]$rot, [int]$alpha, $pDeep, $pMid, $pLit, $pHot) {
   $yFurTop = PlateY $F_FUR_TOP
   $yFurBot = PlateY $F_FUR_BOT
@@ -1159,30 +1306,7 @@ function DrawBeltAndSkirt($g, $prof, [string]$rot, [int]$alpha, $pDeep, $pMid, $
   # ---------------- 1. THE FUR ----------------------------------------------------
   # Wider than the belt above it: fur is bulky, and its tufts are meant to break the
   # silhouette. This is the only part of the armour allowed a soft outline.
-  $furPts = New-Object System.Collections.ArrayList
-  $steps = 46
-  # down the right edge
-  for ($rowY = $yFurTop; $rowY -le $yFurBot; $rowY += 1.5) {
-    $edge = $CX + ((HalfSideAt $prof $rowY 1.0) * 0.885)
-    [void]$furPts.Add((New-Object System.Drawing.PointF ([single]($edge * $SS)), ([single]($rowY * $SS))))
-  }
-  # the tufted hem, right to left
-  for ($stepIdx = 0; $stepIdx -le $steps; $stepIdx++) {
-    $along = $stepIdx / [double]$steps
-    $sideFrac = 1.0 - (2.0 * $along)          # +1 at the right edge, -1 at the left
-    $edgeSide = if ($sideFrac -ge 0.0) { 1.0 } else { -1.0 }
-    $edge = $CX + ($sideFrac * (HalfSideAt $prof $yFurBot $edgeSide) * 0.885)
-    $hem = $yFurBot + (FurEdgeAt $along ($furH * 0.30))
-    [void]$furPts.Add((New-Object System.Drawing.PointF ([single]($edge * $SS)), ([single]($hem * $SS))))
-  }
-  # back up the left edge
-  for ($rowY = $yFurBot; $rowY -ge $yFurTop; $rowY -= 1.5) {
-    $edge = $CX - ((HalfSideAt $prof $rowY -1.0) * 0.885)
-    [void]$furPts.Add((New-Object System.Drawing.PointF ([single]($edge * $SS)), ([single]($rowY * $SS))))
-  }
-  $fur = New-Object System.Drawing.Drawing2D.GraphicsPath
-  $fur.AddPolygon([System.Drawing.PointF[]]$furPts.ToArray([System.Drawing.PointF]))
-  $fur.CloseFigure()
+  $fur = BuildFurPath $prof
   $furRect = $fur.GetBounds()
   if ($furRect.Width -lt 1) { $furRect.Width = 1 }
   if ($furRect.Height -lt 1) { $furRect.Height = 1 }
@@ -1194,19 +1318,10 @@ function DrawBeltAndSkirt($g, $prof, [string]$rot, [int]$alpha, $pDeep, $pMid, $
   $furBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $furRect, (RGB $furMid[0] $furMid[1] $furMid[2] ([int]($alpha * 0.92))), (RGB $furLow[0] $furLow[1] $furLow[2] ([int]($alpha * 0.86))), ([single]90.0)
   $g.FillPath($furBrush, $fur); $furBrush.Dispose()
 
-  # clumps, not strands: five broad soft verticals, deliberately low contrast
-  for ($clumpIdx = 0; $clumpIdx -lt 5; $clumpIdx++) {
-    $along = ($clumpIdx + 0.5) / 5.0
-    $sideFrac = 1.0 - (2.0 * $along)
-    $edgeSide = if ($sideFrac -ge 0.0) { 1.0 } else { -1.0 }
-    $clumpX = $CX + ($sideFrac * (HalfSideAt $prof (($yFurTop + $yFurBot) * 0.5) $edgeSide) * 0.885 * 0.86)
-    $clumpBot = $yFurBot + (FurEdgeAt $along ($furH * 0.30)) - ($furH * 0.10)
-    $penClump = New-Object System.Drawing.Pen (RGB $pDeep[0] $pDeep[1] $pDeep[2] ([int]($alpha * 0.30))), ([single]($furH * 0.16 * $SS))
-    $penClump.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
-    $penClump.EndCap   = [System.Drawing.Drawing2D.LineCap]::Round
-    $g.DrawLine($penClump, [single]($clumpX * $SS), [single](($yFurTop + ($furH * 0.30)) * $SS), [single]($clumpX * $SS), [single]($clumpBot * $SS))
-    $penClump.Dispose()
-  }
+  # Strands, replacing both the scale field (excluded in BuildBody) and the five broad soft
+  # verticals this used to have. Those clumps were an approximation of fur made out of
+  # blur; these are the shapes themselves.
+  DrawFurStrands $g $prof $alpha $pDeep $pMid $pLit $pHot
   # NO hot rim here. See the header - the absent highlight is the material cue.
   $fur.Dispose()
 
@@ -1951,9 +2066,24 @@ function BuildBody([string]$rot, [int]$level) {
     # --- torso plates. SPEC 4.4d wants apparel to read underneath, so these are faint:
     #     26 at the centre line rising to 88 at the edges. The first version used 96-170
     #     and hid the pawn completely.
-    $g.SetClip($torso)
-    FillScales $g $prof 26.0 88.0
-    $g.ResetClip()
+    #
+    # THE FUR IS CUT OUT OF THE SCALE FIELD for the champion. The scales are clipped to the
+    # whole torso, which includes the fur band, and a dragon-scale grid showing through a
+    # fur skirt cancels the fur outright - no amount of strand drawing survives a regular
+    # pattern behind it. The user spotted this before the strands were even built.
+    if ($SHOULDER_STYLE -eq "pauldron") {
+      $furCut = BuildFurPath $prof
+      $scaleRegion = New-Object System.Drawing.Region $torso
+      $scaleRegion.Exclude($furCut)
+      $g.Clip = $scaleRegion
+      FillScales $g $prof 26.0 88.0
+      $g.ResetClip()
+      $scaleRegion.Dispose(); $furCut.Dispose()
+    } else {
+      $g.SetClip($torso)
+      FillScales $g $prof 26.0 88.0
+      $g.ResetClip()
+    }
 
     if ($SHOULDER_STYLE -eq "pauldron") {
       # The cuirass takes the ramp at the CHEST, not at the shoulder line - it is a chest

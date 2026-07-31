@@ -1,5 +1,55 @@
 # CHANGELOG
 
+## Call of Valor: the fur becomes zigzag strands, and the scales are cut out of it (2026-07-31)
+
+The user's instruction, and the first half of it is the part that mattered: **take the scale field
+out of the fur, then replace it with randomly curving pointy zigzags.** The scales were clipped to
+the whole torso, which includes the fur band, and **a dragon-scale grid inside a fur skirt cancels
+the fur outright** — no amount of strand drawing survives a regular pattern behind it. The fur's
+outline is now a reusable `BuildFurPath`, and the scale fill runs against a `Region` with that path
+excluded.
+
+### On "fur strands are not drawable" — this is not a reversal of it
+
+A single strand is 2–4px and does not **resolve** at play distance. That was true and still is.
+But a strand does not have to resolve to do its job: what is being drawn is a **texture made of
+many**, and en masse they read as *broken, hairy, not metal* at any zoom. Close up you see strands;
+at 48px you see a band that is not smooth. Both are wanted. What genuinely cannot be done is a
+strand meant to be looked at individually — and none of these are.
+
+Three things make a zigzag read as hair rather than as a scribble:
+
+- **it must come to a POINT** — width tapers to zero, so the strand *ends* rather than stopping. A
+  constant-width zigzag is a piece of wire.
+- **the zig amplitude must shrink towards the tip too**, or the point sits at the end of a wide
+  oscillation and reads as a lightning bolt.
+- **each strand needs its own curvature, applied as t²** so it is straight at the root and bends
+  near the end. All curving alike looks combed; none curving looks like a comb.
+
+`AddPolygon`, never `AddClosedCurve` — a curve tension rounds the zigzag's corners off and it
+becomes a wavy ribbon. **The corners are the fur.**
+
+### Two passes, and the second was only informed because it was MEASURED
+
+- **Pass one: the strands were sub-pixel.** Width at 0.052 of the band's height drew them **0.9px
+  wide** — they existed, were correct, and were invisible. *Scale detail against the region's
+  actual pixels, not against intuition:* the fur band is only ~17px tall and ~72px wide on a male
+  south sprite.
+- **Pass two looked identical, so it got diffed rather than tweaked again.** The texture had
+  **1516 pixels changed across exactly the right rows** and the strands covered ~70px of a 72px
+  band. They were drawing perfectly. **The density was the problem, not the size:** rolling each
+  strand's tone independently across one range put neighbours at similar values often enough that
+  the band read as one flat mass, and with no gaps there was nothing else to separate them.
+
+*Fix:* **alternate dark and light rather than rolling**, so every strand contrasts with the two
+beside it, with an occasional hash-driven flip so it does not read as stripes. Same rule the aura's
+particle sides already use — for a binary choice that has to come out even, alternate, do not roll.
+
+All hashing is deterministic. Randomness would change the art on every regeneration and make the
+checkpoint's manifest worthless.
+
+---
+
 ## Call of Valor: the cuirass sat INSIDE the pawn on the side view (2026-07-31)
 
 Reported by the user: on east, the chest, abs and belt all sat inside the body. They were right,
