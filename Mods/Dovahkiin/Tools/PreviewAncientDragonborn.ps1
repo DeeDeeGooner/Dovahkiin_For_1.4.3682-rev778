@@ -65,6 +65,35 @@ $HEAD_KIND = "Male_Average_Pointy"   # the user's Dovahkiin "Leonid", per the no
 $OUT = $env:DOVAH_PREVIEW
 if (-not $OUT) { $OUT = $PSScriptRoot }
 
+# WHO AND WHAT THIS SHEET IS ACTUALLY SHOWING.
+#
+# Cell 2's caption was fixed once already for asserting "the DOVAHKIIN" while DOVAH_OVERLAY_DIR
+# had swapped the whole texture set for the champion's. The SAME defect was still in every other
+# caption on the sheet: the title, the row headers and the weapon panel all said "the Ancient
+# Dragonborn" and "spectral halberd" no matter which armour and which weapon were loaded - so a
+# sheet of Call of Valor holding his greatsword went out labelled as the Ancient Dragonborn
+# holding a halberd, and the user quite reasonably asked where his sword was.
+#
+# The rule this project already carries for numbers applies to labels: A CAPTION THAT ASSERTS
+# SOMETHING THE HARNESS CAN INVALIDATE HAS TO CHECK. Fixing only the caption that was caught
+# leaves every sibling free to tell the same lie later.
+$SUBJECT_NAME = "THE ANCIENT DRAGONBORN"
+$SUBJECT_SHORT = "the ANCIENT DRAGONBORN"
+if ($env:DOVAH_OVERLAY_DIR -and (Test-Path $env:DOVAH_OVERLAY_DIR)) {
+  $SUBJECT_NAME  = "OVERRIDDEN OVERLAY (DOVAH_OVERLAY_DIR)"
+  $SUBJECT_SHORT = "the OVERRIDDEN overlay"
+  if ($env:DOVAH_OVERLAY_DIR -match "CallOfValor") {
+    $SUBJECT_NAME  = "CALL OF VALOR - the hero of Sovngarde"
+    $SUBJECT_SHORT = "CALL OF VALOR"
+  }
+}
+$WEAPON_NAME = "spectral halberd"
+if ($env:DOVAH_AXE_OVERRIDE -and (Test-Path $env:DOVAH_AXE_OVERRIDE)) {
+  $WEAPON_NAME = "weapon: " + [System.IO.Path]::GetFileNameWithoutExtension($env:DOVAH_AXE_OVERRIDE)
+}
+$AURA_NAME = "aura, "
+if ($env:DOVAH_NO_AURA) { $AURA_NAME = "NO aura, " }
+
 # --- geometry, all in world units then converted once ---------------------------
 # 256, deliberately: every source sprite is a 256 frame, so at this size the main cells
 # do NO resampling at all. At 208 the armour's scale field went through a 0.81 downscale
@@ -86,6 +115,13 @@ $HEAD_DX = 0.04              # BodyTypeDef Male headOffset.x, east/west only
 $HEAD_DZ = 0.34              # headOffset.y, every rotation
 
 $AXE_SIZE = 1.5              # graphicData.drawSize.x on the axe def
+# DOVAH_AXE_SIZE goes with DOVAH_AXE_OVERRIDE, and previewing a DIFFERENT weapon without it is
+# wrong twice over. Draw size is per-def - Call of Valor's greatsword is 1.25 where this axe is
+# 1.5 - and the two sprites do not fill their frames alike either: measured at alpha > 8, the
+# axe inks 6,044 px of its 256 frame and the greatsword 18,672, three times as much. So a
+# swapped texture at the axe's size comes out very much larger than the game will draw it.
+# This changelog already records that exact defect once, from a hardcoded size on two weapons.
+if ($env:DOVAH_AXE_SIZE) { $AXE_SIZE = [double]$env:DOVAH_AXE_SIZE }
 
 $C_EMBER = @(240, 118, 28)
 $C_AZURE = @(72, 152, 238)
@@ -302,7 +338,13 @@ function DrawCell($gfx, [double]$x, [double]$y, [string]$rot,
 
   # facing north, the axe is drawn BEHIND the pawn so it does not cover their back
   if ($withAxe -and $rot -eq "north") {
-    DrawTex $gfx $axe ($cx - 0.34 * $px) ($cy + 0.06 * $px) ($AXE_SIZE * $px) ($AXE_SIZE * $px) $C_WHITE 1.0 $false 205.0
+    # DOVAH_AXE_ANGLE_N is the north counterpart of DOVAH_AXE_ANGLE. North needs its OWN number:
+    # these are AUTHORED per-facing poses, not one angle plus a rotation, so a weapon swapped in
+    # at the halberd's 205 sticks straight out sideways from the pawn's back. Medieval Overhaul's
+    # greatsword carries south/east -45, north 115, west 45 in VFECore's weaponDraftedDrawOffsets.
+    $angN = 205.0
+    if ($env:DOVAH_AXE_ANGLE_N) { $angN = [double]$env:DOVAH_AXE_ANGLE_N }
+    DrawTex $gfx $axe ($cx - 0.34 * $px) ($cy + 0.06 * $px) ($AXE_SIZE * $px) ($AXE_SIZE * $px) $C_WHITE 1.0 $false $angN
   }
 
   if ($showPawn) {
@@ -399,13 +441,13 @@ $brGrey  = New-Object System.Drawing.SolidBrush (RGB 168 172 164 255)
 $brGold  = New-Object System.Drawing.SolidBrush (RGB 226 178 92 255)
 $brWarn  = New-Object System.Drawing.SolidBrush (RGB 236 156 96 255)
 
-$gfx.DrawString("THE ANCIENT DRAGONBORN - drawn with the game's own numbers", $fontH, $brWhite, [single]$PAD, [single]13)
+$gfx.DrawString("$SUBJECT_NAME - drawn with the game's own numbers", $fontH, $brWhite, [single]$PAD, [single]13)
 
 function ColX([int]$i) { return $PAD + $i * ($COLW + $PAD) }
 
 # ROW 1 - the three real facings (west is east mirrored, so it adds nothing)
 $y1 = 56.0
-$gfx.DrawString("HOW HE LOOKS - invisible pawn, level-3 armour, helm, aura, spectral halberd", $fontS, $brGold, [single]$PAD, [single]($y1 - 21))
+$gfx.DrawString("HOW HE LOOKS - invisible pawn, level-3 armour, helm, $AURA_NAME$WEAPON_NAME", $fontS, $brGold, [single]$PAD, [single]($y1 - 21))
 $facings = @("south", "north", "east")
 $litCounts = @()
 for ($i = 0; $i -lt 3; $i++) {
@@ -444,8 +486,8 @@ if ($env:DOVAH_OVERLAY_DIR -and (Test-Path $env:DOVAH_OVERLAY_DIR)) {
 
 $x = ColX 2
 DrawCell $gfx $x $y2 "south" $bodyImgs $headImgs $armImgs $helmImgs $ringImg $flareImg $plainImg $axeImg 3 $true $true 0.18 43 | Out-Null
-$gfx.DrawString("3. the ANCIENT DRAGONBORN", $fontT, $brWarn, [single]$x, [single]($y2 + $GROUND + 4))
-$gfx.DrawString("    invisible pawn + halberd", $fontT, $brWarn, [single]$x, [single]($y2 + $GROUND + 21))
+$gfx.DrawString("3. $SUBJECT_SHORT", $fontT, $brWarn, [single]$x, [single]($y2 + $GROUND + 4))
+$gfx.DrawString("    invisible pawn + $WEAPON_NAME", $fontT, $brWarn, [single]$x, [single]($y2 + $GROUND + 21))
 
 # ROW 3 - what "fully hidden" would look like, a second aura moment, and the weapon
 $y3 = $y2 + $GROUND + 64
@@ -463,11 +505,13 @@ $gfx.DrawString("    the crescents re-roll every appearance", $fontT, $brGrey, [
 
 # the halberd, and how he will actually be seen at play distance
 $x = ColX 2
-$gfx.DrawString("6. the spectral halberd", $fontT, $brGrey, [single]$x, [single]($y3 - 2))
+$gfx.DrawString("6. the $WEAPON_NAME", $fontT, $brGrey, [single]$x, [single]($y3 - 2))
 DrawGround $gfx $x ($y3 + 14) 148 46
 DrawTex $gfx $axeImg ($x + 74) ($y3 + 88) 148 148 $C_WHITE 1.0
 DrawGround $gfx ($x + 156) ($y3 + 14) 148 47
-DrawTex $gfx $axeImg ($x + 230) ($y3 + 88) 148 148 $C_WHITE 1.0 $false 145.0
+$holdShown = 145.0
+if ($env:DOVAH_AXE_ANGLE) { $holdShown = [double]$env:DOVAH_AXE_ANGLE }
+DrawTex $gfx $axeImg ($x + 230) ($y3 + 88) 148 148 $C_WHITE 1.0 $false $holdShown
 $gfx.DrawString("as authored", $fontT, $brGrey, [single]$x, [single]($y3 + 166))
 $gfx.DrawString("as he holds it", $fontT, $brGrey, [single]($x + 156), [single]($y3 + 166))
 
@@ -486,7 +530,7 @@ foreach ($zs in $zoomSizes) {
 $fy = $y3 + $GROUND + 48
 $gfx.DrawString("EXACT - read from the shipping code, the art, and the game:", $fontS, $brGold, [single]$PAD, [single]$fy)
 $exact = @(
-  "the armour, helm, aura and halberd are the ACTUAL shipping PNGs, untouched",
+  "the armour, helm and $WEAPON_NAME are the ACTUAL installed PNGs, untouched",
   "sizes and offsets come from Thing_DragonAspectOverlay.DrawAt; the helm is on the full body mesh at BaseHeadOffsetAt (0.04, 0.34)",
   "the 21-slot crescent table and its hash are copied verbatim, so these are real frames of the loop, not posed ones",
   "the invisible pawn is (191,237,250) at 50% alpha - InvisibilityMatPool's own static constructor",
@@ -502,7 +546,7 @@ $ly = $ly + 31
 $approx = @(
   "vanilla invisibility is a SHADER with a noise texture. The colour and the 50% alpha are exact; the shimmer over it is not drawable here.",
   "the aura uses an ADDITIVE shader (MoteGlow). GDI+ can only alpha-blend, so in game the aura glows MORE than this - never less.",
-  "the halberd's angle in his hand is our reading of the draw code. Only the game settles how it sits."
+  "the weapon's angle in his hand is our reading of the draw code. Only the game settles how it sits."
 )
 foreach ($line in $approx) {
   $gfx.DrawString(("  -  " + $line), $fontT, $brGrey, [single]$PAD, [single]$ly)

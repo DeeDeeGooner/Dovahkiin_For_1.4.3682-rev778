@@ -1,5 +1,63 @@
 # CHANGELOG
 
+## The preview sheet showed Call of Valor holding the ANCIENT DRAGONBORN'S AXE (2026-08-01)
+
+*"Why is his greatsword in your preview the ancient dragonborn's fricking Axe??? Where is his
+sword???"* — and the sword was installed and fine. The **sheet** was wrong, three ways at once.
+
+### 1. It loaded the wrong weapon, and the caption covered for it
+
+`PreviewAncientDragonborn.ps1` is the Ancient Dragonborn's harness and defaults `$AXET` to his
+axe. `DOVAH_AXE_OVERRIDE` exists for exactly this case and was simply not set.
+
+**The real failure was writing a caption to excuse it instead of fixing it.** The sheet went out
+saying "the weapon shown is still the Ancient Dragonborn's halberd; that's just the preview
+harness". A note explaining why a picture is wrong does not make it the right picture — the whole
+reason this project renders instead of describing is that the user judges what they can see.
+
+### 2. EVERY caption on the sheet lied, not just the one fixed before
+
+`a61997e` fixed cell 2 for asserting *"the DOVAHKIIN"* while `DOVAH_OVERLAY_DIR` had swapped the
+texture set. **The identical defect was still in the title, the row header, cell 3, the weapon
+panel and two footer lines** — all hardcoded to "THE ANCIENT DRAGONBORN" and "spectral halberd"
+regardless of what was loaded.
+
+So the sheet announced itself as the Ancient Dragonborn holding a halberd while displaying Call
+of Valor's armour. **Fixing the caption that was caught and leaving its siblings is not a fix**;
+the rule was already written down — *a caption that asserts something the harness can invalidate
+has to check* — and it was applied to one line instead of to the class. Now derived: `$SUBJECT_NAME`,
+`$WEAPON_NAME` and `$AURA_NAME`, all read off the environment.
+
+### 3. And the weapon was drawn at the wrong SIZE and the wrong ANGLE
+
+Both are the same underlying error — **swapping a texture does not swap the numbers that belong
+to it**:
+
+- **Size.** `$AXE_SIZE` is hardcoded 1.5, the axe def's `drawSize`. The greatsword's is **1.25**,
+  and the two sprites do not fill their frames alike either: measured at alpha > 8, the axe inks
+  **6,044** px of its 256 frame against the greatsword's **18,672**, three times as much. Now
+  `DOVAH_AXE_SIZE`. This changelog already records this exact defect once, from a hardcoded draw
+  size on two weapons.
+- **Angle.** At the harness's eyeballed 145 the greatsword hung **point-DOWN** — which the code
+  comment beside it had already predicted in as many words: *"with a weapon that has a
+  distinctive pommel it reads head-DOWN"*. A prediction written next to the number and then not
+  acted on when the case arrived.
+- **North needed its own number.** These are **authored per-facing poses**, not one angle plus a
+  rotation, so north at the halberd's 205 stuck the sword out sideways from his back. Medieval
+  Overhaul's greatsword carries **south/east -45, north 115, west 45** in VFECore's
+  `weaponDraftedDrawOffsets`; those render correctly. Now `DOVAH_AXE_ANGLE_N`.
+
+Both weapons were confirmed to run the **same diagonal** first — bottom-left to top-right, head
+at top-right — by quadrant ink measurement, since the notebook records that hold angles only
+transfer between sprites that do.
+
+**The general rule: a preview harness written for one subject will happily draw a different
+subject under the first one's name, size and pose.** Every one of those is a separate number, and
+the ones not overridden stay silently wrong. When pointing a harness at a new subject, ask what
+else in it was tuned for the old one.
+
+---
+
 ## Call of Valor: the art is INSTALLED, and the checkpoint was not what the notebook said (2026-07-31)
 
 40 approved files now live in the mod. Nothing loads them yet — no C# and no def references any
