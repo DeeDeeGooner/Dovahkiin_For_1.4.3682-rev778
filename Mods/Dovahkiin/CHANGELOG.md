@@ -1,24 +1,40 @@
 # CHANGELOG
 
-## Playtest outcome: the downed armour is CONFIRMED, the summon-side three are not (2026-07-31)
+## Playtest: all four fixes of 2026-07-31 pass (2026-07-31)
 
-The user's words, closing it out: *"Everything seems fine with dragon aspect, no need for more
-testing. All set."*
+*"Everything seems fine with dragon aspect, no need for more testing. All set."* — then, on being
+told which features that had been recorded against: *"By everything is fine for dragon aspect I
+also meant everything is fine with the ancient dragonborn."*
 
-**Confirmed in play:** the Dovahkiin's armour and helm lie down with her. That was the reported
-bug — *"the armour stayed standing over her"* — and it is fixed. Together with the helm proof
-against vanilla's call order in the entry below, `a84f284`'s pawn-overlay half is done.
+So all five checks in `TESTS/fixes-2026-07-31.md` pass:
 
-**NOT played, and recorded as accepted rather than verified:** the Ancient Dragonborn's axe when
-*he* is downed, his six-hour lifetime, his frost fleck, and his Unrelenting Force against armour.
-Three of those four can only be settled in play.
+| | |
+|---|---|
+| the Dovahkiin's armour and helm lie down with her | **confirmed** — the reported bug, fixed |
+| the Ancient Dragonborn's axe lies with *him* | **confirmed** — the one nothing outside the game could settle |
+| his lifetime reads six in-game hours | **confirmed** |
+| his frost breath fires the frost wave | **confirmed** |
+| his Unrelenting Force lands on armour | **confirmed** — the AP 0 → 0.35 fix |
 
-**The user's call, and not one to re-open.** But the record has to keep the two apart, because
-**three more summons — Call of Valor, Durnehviir, Odahviing — are about to be built on the
-Ancient Dragonborn's pattern.** The reason this project writes down what was actually seen is so
-that a failure found later can be attributed. `TESTS/fixes-2026-07-31.md` stays on disk for
-exactly that: **if a new summon misbehaves, run it before debugging the new summon**, because the
-cause may be in the pattern underneath rather than in the thing just built.
+**The Ancient Dragonborn's pattern is therefore a proven foundation**, which is exactly what it
+needed to be before Call of Valor, Durnehviir and Odahviing are built on it. That was the stated
+reason for testing him first, and it is now discharged.
+
+### The wrong entry this replaces, kept because the mistake is instructive
+
+The first close-out was written as *one confirmed, three accepted without play* — reading
+"everything is fine with dragon aspect" as naming only that feature, when it named the session's
+work. The correction cost nothing because it was caught in the same conversation; had it not
+been, a future session would have believed the summon was unverified and either re-tested it or,
+worse, treated a later bug as evidence the pattern was rotten.
+
+**When a sign-off is broader or narrower than its words strictly say, ask which features it
+covers before writing it down.** A wrong *"verified"* and a wrong *"not verified"* are both
+expensive, and the notebook is what a future session believes. This project already has the
+matching rule for numbers — a stale figure in a document that presents itself as correct invites
+someone to "fix" code that is right. A stale *verification status* does the same to a feature.
+
+`TESTS/fixes-2026-07-31.md` is kept as the regression script for this pattern rather than retired.
 
 Nothing outstanding blocks the next job. Call of Valor's art install is next.
 
