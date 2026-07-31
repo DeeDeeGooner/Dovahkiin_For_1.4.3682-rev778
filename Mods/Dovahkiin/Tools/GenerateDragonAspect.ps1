@@ -923,6 +923,34 @@ $F_PEC_BOT   = 0.410
 $F_ABS_TOP   = 0.432
 $F_ABS_BOT   = 0.688
 
+# ---------------------------------------------------------------------------------
+#  THE THIRD PIECE - belt, fur, and the thigh plates below it.
+#  Each band OVERLAPS the one above by a little. Butting them edge to edge leaves a
+#  hairline of bare pawn between them at some body types and not others, which reads as
+#  a gap in the armour rather than as layers.
+$F_BELT_TOP   = 0.694   # laps over the cuirass's own lower rim, as a belt cinched on does
+$F_BELT_BOT   = 0.764
+$F_FUR_TOP    = 0.750   # tucked UNDER the belt
+# The fur has to hang LOWER than the thigh plates start, or it is drawn and then covered by
+# them and might as well not exist - which is exactly what the first render did. It shows in
+# two places: a band above the plates, and down the gap between them.
+$F_FUR_BOT    = 0.888
+$F_TASSET_TOP = 0.830   # hanging from the belt, over the fur
+$F_TASSET_BOT = 0.946
+
+# THIGH PLATES OFF, at the user's request 2026-07-31 - "delete the upper thighs part for now".
+# The word is FOR NOW, so DrawTasset is kept intact behind this switch rather than deleted:
+# its two-lame construction and its centre-gap fractions took a round to get right and would
+# have to be re-derived. Same treatment GenerateValorArmour.ps1 got.
+$DRAW_TASSETS = $false
+
+# How far the centre of the belt drops below its ends, as a multiple of the belt's own height.
+# A belt is a band wrapped round a roughly cylindrical waist, so seen from the front it is an
+# ELLIPSE, and the near part of an ellipse is its lower arc - the middle of the visible band
+# sits lower than its two ends. A flat horizontal band is the one thing that cannot read as
+# something going round the body.
+$BELT_BOW = 0.85
+
 # Smoothstepped lookup into $PLATE_PROFILE. Same interpolation ProfCol uses on the body
 # profile, so the plate's edge and the body's edge curve in the same way.
 function PlateFracAt([double]$hFrac) {
@@ -1048,6 +1076,251 @@ function DrawChestPlate($g, $prof, [string]$rot, [int]$alpha, [double]$cool) {
   $penRim.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
   $g.DrawPath($penRim, $plate); $penRim.Dispose()
   $plate.Dispose()
+
+  # ---- belt, fur and thigh plates, drawn AFTER the cuirass and its rim so the belt laps
+  #      over that rim rather than being cut by it
+  DrawBeltAndSkirt $g $prof $rot $alpha $pDeep $pMid $pLit $pHot
+}
+
+# =====================================================================================
+#  THE THIRD PIECE - the belt, the fur, and the thigh plates.
+# =====================================================================================
+#  Drawn as three layers in the order they are WORN, because each one has to lap the one
+#  above it: fur first (hanging from under the belt), then the belt over its top edge,
+#  then the tassets hanging from the belt over the fur. Drawn in any other order the
+#  seams show.
+#
+#  ABOUT THE FUR, STATED HONESTLY BECAUSE THIS PROJECT HAS BEEN HERE BEFORE.
+#  Fur STRANDS are 2-4px at this scale and cannot be drawn - that was true when the
+#  normal-plate armour failed on it and it is still true. What CAN be drawn is fur at
+#  SILHOUETTE level, and the difference is where the information lives:
+#     - a ragged, tufted lower EDGE instead of a clean one. The outline carries it.
+#     - matte shading: a soft vertical falloff, no highlight banding.
+#     - and NO HOT RIM. Every other piece of this armour gets a bright specular edge;
+#       the fur deliberately does not, and that missing highlight is what says "this is
+#       not metal" more than any amount of texture inside the shape would.
+#  Do not read this as strand-level fur. It is a fur-shaped mass, and that is the honest
+#  ceiling at ~102px per pawn.
+#
+#  The tuft profile is deterministic - two sine waves at incommensurate frequencies - not
+#  random. Randomness here would mean the art changed silently on every regeneration,
+#  which makes a hash check against the approved snapshot worthless.
+function FurEdgeAt([double]$along, [double]$amp) {
+  $wave1 = [Math]::Sin(($along * 7.0 * 2.0 * [Math]::PI) + 0.61)
+  $wave2 = [Math]::Sin(($along * 11.9 * 2.0 * [Math]::PI) + 2.27)
+  return ($amp * ((0.58 * $wave1) + (0.42 * $wave2)))
+}
+
+function DrawBeltAndSkirt($g, $prof, [string]$rot, [int]$alpha, $pDeep, $pMid, $pLit, $pHot) {
+  $yFurTop = PlateY $F_FUR_TOP
+  $yFurBot = PlateY $F_FUR_BOT
+  $furH = $yFurBot - $yFurTop
+
+  # ---------------- 1. THE FUR ----------------------------------------------------
+  # Wider than the belt above it: fur is bulky, and its tufts are meant to break the
+  # silhouette. This is the only part of the armour allowed a soft outline.
+  $furPts = New-Object System.Collections.ArrayList
+  $steps = 46
+  # down the right edge
+  for ($rowY = $yFurTop; $rowY -le $yFurBot; $rowY += 1.5) {
+    $edge = $CX + ((HalfSideAt $prof $rowY 1.0) * 0.885)
+    [void]$furPts.Add((New-Object System.Drawing.PointF ([single]($edge * $SS)), ([single]($rowY * $SS))))
+  }
+  # the tufted hem, right to left
+  for ($stepIdx = 0; $stepIdx -le $steps; $stepIdx++) {
+    $along = $stepIdx / [double]$steps
+    $sideFrac = 1.0 - (2.0 * $along)          # +1 at the right edge, -1 at the left
+    $edgeSide = if ($sideFrac -ge 0.0) { 1.0 } else { -1.0 }
+    $edge = $CX + ($sideFrac * (HalfSideAt $prof $yFurBot $edgeSide) * 0.885)
+    $hem = $yFurBot + (FurEdgeAt $along ($furH * 0.30))
+    [void]$furPts.Add((New-Object System.Drawing.PointF ([single]($edge * $SS)), ([single]($hem * $SS))))
+  }
+  # back up the left edge
+  for ($rowY = $yFurBot; $rowY -ge $yFurTop; $rowY -= 1.5) {
+    $edge = $CX - ((HalfSideAt $prof $rowY -1.0) * 0.885)
+    [void]$furPts.Add((New-Object System.Drawing.PointF ([single]($edge * $SS)), ([single]($rowY * $SS))))
+  }
+  $fur = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $fur.AddPolygon([System.Drawing.PointF[]]$furPts.ToArray([System.Drawing.PointF]))
+  $fur.CloseFigure()
+  $furRect = $fur.GetBounds()
+  if ($furRect.Width -lt 1) { $furRect.Width = 1 }
+  if ($furRect.Height -lt 1) { $furRect.Height = 1 }
+  # Deliberately DARKER than the plate either side of it. Fur is matte and takes less
+  # light than polished metal, and that difference in value - not any texture inside the
+  # shape - is most of what separates the two materials at this size.
+  $furMid = Lerp3 $pMid $pLit 0.08
+  $furLow = Lerp3 $pDeep $pMid 0.28
+  $furBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $furRect, (RGB $furMid[0] $furMid[1] $furMid[2] ([int]($alpha * 0.92))), (RGB $furLow[0] $furLow[1] $furLow[2] ([int]($alpha * 0.86))), ([single]90.0)
+  $g.FillPath($furBrush, $fur); $furBrush.Dispose()
+
+  # clumps, not strands: five broad soft verticals, deliberately low contrast
+  for ($clumpIdx = 0; $clumpIdx -lt 5; $clumpIdx++) {
+    $along = ($clumpIdx + 0.5) / 5.0
+    $sideFrac = 1.0 - (2.0 * $along)
+    $edgeSide = if ($sideFrac -ge 0.0) { 1.0 } else { -1.0 }
+    $clumpX = $CX + ($sideFrac * (HalfSideAt $prof (($yFurTop + $yFurBot) * 0.5) $edgeSide) * 0.885 * 0.86)
+    $clumpBot = $yFurBot + (FurEdgeAt $along ($furH * 0.30)) - ($furH * 0.10)
+    $penClump = New-Object System.Drawing.Pen (RGB $pDeep[0] $pDeep[1] $pDeep[2] ([int]($alpha * 0.30))), ([single]($furH * 0.16 * $SS))
+    $penClump.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $penClump.EndCap   = [System.Drawing.Drawing2D.LineCap]::Round
+    $g.DrawLine($penClump, [single]($clumpX * $SS), [single](($yFurTop + ($furH * 0.30)) * $SS), [single]($clumpX * $SS), [single]($clumpBot * $SS))
+    $penClump.Dispose()
+  }
+  # NO hot rim here. See the header - the absent highlight is the material cue.
+  $fur.Dispose()
+
+  # ---------------- 2. THE BELT ---------------------------------------------------
+  # Two things the first version got wrong, both of the user's reporting:
+  #
+  #  1. IT TOOK ITS WIDTH FROM THE BODY, at a flat 0.825 of the silhouette, so it did not
+  #     line up with the armour it is strapped over. The extents now come from the
+  #     CUIRASS's own edge - PlateEdge at the plate's lower rim - so the belt ends exactly
+  #     where the abdominal plate ends, on both sides independently.
+  #  2. IT WAS A STRAIGHT BAND WITH A SAG. A sag is not curvature. A belt goes ROUND a
+  #     roughly cylindrical waist, so from the front it is an ellipse and the near part of
+  #     an ellipse is its LOWER arc: the middle of the visible band sits below its two
+  #     ends, and both edges of the band drop together so its width stays constant. That
+  #     is what makes it read as passing behind the body rather than as a painted stripe.
+  #
+  # Built across X rather than down Y for that reason - the vertical offset is a function
+  # of horizontal position now, which the old row-by-row loop could not express.
+  $yBeltTop = PlateY $F_BELT_TOP
+  $yBeltBot = PlateY $F_BELT_BOT
+  $beltH = $yBeltBot - $yBeltTop
+  $refY = PlateY ($F_PLATE_BOT - 0.012)
+  $halfL = [Math]::Abs((PlateEdge $prof $refY -1.0) - $CX)
+  $halfR = [Math]::Abs((PlateEdge $prof $refY  1.0) - $CX)
+  # Side-on the belt is seen along the ellipse's major axis, so almost none of the
+  # curvature projects. Using the front's bow there bends it like a banana.
+  $bowScale = if ($rot -eq "east") { 0.35 } else { 1.0 }
+  $bow = $beltH * $BELT_BOW * $bowScale
+
+  $beltSteps = 44
+  $beltTopEdge = @()
+  $beltBotEdge = @()
+  for ($stepIdx = 0; $stepIdx -le $beltSteps; $stepIdx++) {
+    $across = (2.0 * ($stepIdx / [double]$beltSteps)) - 1.0     # -1 left .. +1 right
+    $halfHere = if ($across -lt 0.0) { $halfL } else { $halfR }
+    $beltX = $CX + ($across * $halfHere)
+    $drop = $bow * (1.0 - ($across * $across))
+    $beltTopEdge += (New-Object System.Drawing.PointF ([single]($beltX * $SS)), ([single](($yBeltTop + $drop) * $SS)))
+    $beltBotEdge += (New-Object System.Drawing.PointF ([single]($beltX * $SS)), ([single](($yBeltBot + $drop) * $SS)))
+  }
+  $beltPts = New-Object System.Collections.ArrayList
+  foreach ($edgePt in $beltTopEdge) { [void]$beltPts.Add($edgePt) }
+  for ($backIdx = $beltBotEdge.Count - 1; $backIdx -ge 0; $backIdx--) { [void]$beltPts.Add($beltBotEdge[$backIdx]) }
+  $belt = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $belt.AddPolygon([System.Drawing.PointF[]]$beltPts.ToArray([System.Drawing.PointF]))
+  $belt.CloseFigure()
+  $beltRect = $belt.GetBounds()
+  if ($beltRect.Width -lt 1) { $beltRect.Width = 1 }
+  if ($beltRect.Height -lt 1) { $beltRect.Height = 1 }
+  $beltBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $beltRect, (RGB $pLit[0] $pLit[1] $pLit[2] ([int]($alpha * 1.02))), (RGB $pDeep[0] $pDeep[1] $pDeep[2] ([int]($alpha * 0.90))), ([single]90.0)
+  $g.FillPath($beltBrush, $belt); $beltBrush.Dispose()
+  $penBelt = New-Object System.Drawing.Pen (RGB $pHot[0] $pHot[1] $pHot[2] ([int]([Math]::Min(235, $alpha * 1.30)))), ([single]($beltH * 0.14 * $SS))
+  $penBelt.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+  $g.DrawPath($penBelt, $belt); $penBelt.Dispose(); $belt.Dispose()
+
+  # THE CLASP. Buckle TEETH and prong detail are the 2-4px features that cannot be drawn -
+  # a single broad boss can be, at roughly 17 x 8px, and one clear shape at the centre
+  # says "belt" far better than a suggestion of hardware that resolves to mush.
+  #
+  # SOUTH ONLY. This was `-ne "east"`, which drew it on the BACK as well - so the pawn wore
+  # two buckles, one front and one behind. Caught by the user on the north preview. A belt
+  # has exactly one, and it is at the front.
+  #
+  # The general trap, worth naming because this file is full of per-rotation code: a feature
+  # that is not symmetric front-to-back needs an explicit SOUTH test, not an "everything
+  # except the side view" test. North is a different view of the same object, not a mirror
+  # of the front - which is the same reasoning that already gives north shoulder blades
+  # instead of pectorals and a spine instead of a sternum. The clasp was simply missed when
+  # those were done.
+  if ($rot -eq "south") {
+    # Sized off the BELT's own half-width, not the body's, and dropped by the full bow -
+    # the clasp sits at the centre, which is the lowest point of the curve. Left at the
+    # band's flat mid-height it floated above its own belt.
+    $claspW = (($halfL + $halfR) * 0.5) * 0.280
+    $claspH = $beltH * 0.92
+    $claspY = (($yBeltTop + $yBeltBot) * 0.5) + $bow
+    $claspPts = @(
+      (New-Object System.Drawing.PointF ([single](($CX - $claspW) * $SS)),        ([single]($claspY * $SS))),
+      (New-Object System.Drawing.PointF ([single](($CX - ($claspW * 0.55)) * $SS)), ([single](($claspY - ($claspH * 0.5)) * $SS))),
+      (New-Object System.Drawing.PointF ([single](($CX + ($claspW * 0.55)) * $SS)), ([single](($claspY - ($claspH * 0.5)) * $SS))),
+      (New-Object System.Drawing.PointF ([single](($CX + $claspW) * $SS)),        ([single]($claspY * $SS))),
+      (New-Object System.Drawing.PointF ([single](($CX + ($claspW * 0.55)) * $SS)), ([single](($claspY + ($claspH * 0.5)) * $SS))),
+      (New-Object System.Drawing.PointF ([single](($CX - ($claspW * 0.55)) * $SS)), ([single](($claspY + ($claspH * 0.5)) * $SS)))
+    )
+    $clasp = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $clasp.AddClosedCurve([System.Drawing.PointF[]]$claspPts, [single]0.35)
+    $claspDome = New-Object System.Drawing.Drawing2D.PathGradientBrush $clasp
+    $claspDome.CenterPoint = New-Object System.Drawing.PointF ([single]($CX * $SS)), ([single](($claspY - ($claspH * 0.16)) * $SS))
+    $claspDome.CenterColor = (RGB $pHot[0] $pHot[1] $pHot[2] ([int]([Math]::Min(255, $alpha * 1.20))))
+    $claspDome.SurroundColors = [System.Drawing.Color[]]@((RGB $pMid[0] $pMid[1] $pMid[2] ([int]($alpha * 0.72))))
+    $g.FillPath($claspDome, $clasp); $claspDome.Dispose()
+    $penClasp = New-Object System.Drawing.Pen (RGB $pHot[0] $pHot[1] $pHot[2] ([int]($alpha * 0.85))), ([single]($claspH * 0.13 * $SS))
+    $penClasp.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+    $g.DrawPath($penClasp, $clasp); $penClasp.Dispose(); $clasp.Dispose()
+  }
+
+  # ---------------- 3. THE THIGH PLATES -------------------------------------------
+  # Off by default - see $DRAW_TASSETS. Kept, not deleted, because "for now".
+  if ($DRAW_TASSETS) {
+    $sides = if ($rot -eq "east") { @(-1.0) } else { @(-1.0, 1.0) }
+    foreach ($side in $sides) { DrawTasset $g $prof $side $alpha $pDeep $pMid $pLit $pHot }
+  }
+}
+
+# One thigh plate, in two lames so it reads as articulated rather than as a slab. The
+# upper lame is short and mostly hidden under the belt's shadow; the main plate carries
+# the shape. A gap is left at the centre line - the two plates must not meet, or they
+# read as a single skirt and the legs stop existing.
+function DrawTasset($g, $prof, [double]$side, [int]$alpha, $pDeep, $pMid, $pLit, $pHot) {
+  $yTop = PlateY $F_TASSET_TOP
+  $yBot = PlateY $F_TASSET_BOT
+  $tasH = $yBot - $yTop
+
+  # The inner fractions are what leave the CENTRE GAP. They were 0.13-0.19 on the first
+  # render and the two plates nearly met, which reads as one skirt and stops the legs
+  # existing - and it buried the fur behind them as well.
+  $lames = @(
+    @{ T = 0.00; B = 0.34; OuterTop = 0.780; OuterMid = 0.845; InnerTop = 0.250; InnerBot = 0.300 },
+    @{ T = 0.28; B = 1.00; OuterTop = 0.855; OuterMid = 0.935; InnerTop = 0.230; InnerBot = 0.395 }
+  )
+  foreach ($lame in $lames) {
+    $lyT = $yTop + ($tasH * [double]$lame.T)
+    $lyB = $yTop + ($tasH * [double]$lame.B)
+    $lameH = $lyB - $lyT
+    $hwT = HalfSideAt $prof $lyT $side
+    $hwM = HalfSideAt $prof (($lyT + $lyB) * 0.5) $side
+    $hwB = HalfSideAt $prof $lyB $side
+
+    $raw = @(
+      @(($CX + ($side * $hwT * [double]$lame.InnerTop)), ($lyT + ($lameH * 0.06))),
+      @(($CX + ($side * $hwT * [double]$lame.OuterTop)), ($lyT - ($lameH * 0.05))),
+      @(($CX + ($side * $hwM * [double]$lame.OuterMid)), ($lyT + ($lameH * 0.45))),
+      @(($CX + ($side * $hwB * ([double]$lame.OuterMid * 0.80))), ($lyB - ($lameH * 0.12))),
+      @(($CX + ($side * $hwB * 0.480)), ($lyB)),
+      @(($CX + ($side * $hwB * [double]$lame.InnerBot)), ($lyB - ($lameH * 0.20)))
+    )
+    $lamePts = @()
+    foreach ($rawPt in $raw) {
+      $lamePts += (New-Object System.Drawing.PointF ([single]($rawPt[0] * $SS)), ([single]($rawPt[1] * $SS)))
+    }
+    $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $path.AddClosedCurve([System.Drawing.PointF[]]$lamePts, [single]0.42)
+
+    $rect = $path.GetBounds()
+    if ($rect.Width -lt 1) { $rect.Width = 1 }
+    if ($rect.Height -lt 1) { $rect.Height = 1 }
+    $fillTop = Lerp3 $pMid $pLit 0.55
+    $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rect, (RGB $fillTop[0] $fillTop[1] $fillTop[2] ([int]($alpha * 0.98))), (RGB $pDeep[0] $pDeep[1] $pDeep[2] ([int]($alpha * 0.88))), ([single]90.0)
+    $g.FillPath($brush, $path); $brush.Dispose()
+
+    $penEdge = New-Object System.Drawing.Pen (RGB $pHot[0] $pHot[1] $pHot[2] ([int]([Math]::Min(230, $alpha * 1.25)))), ([single]($lameH * 0.075 * $SS))
+    $penEdge.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+    $g.DrawPath($penEdge, $path); $penEdge.Dispose(); $path.Dispose()
+  }
 }
 
 # =====================================================================================

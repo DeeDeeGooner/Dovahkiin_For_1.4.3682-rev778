@@ -3,12 +3,16 @@
 **The user's words: "this one right here is the best of every version we had until now."**
 Frozen here so that later changes cannot lose it.
 
-> **CHECKPOINT MOVED.** This folder was first taken at the pauldrons-and-chest stage and has
-> since been **overwritten at the user's instruction** to become the checkpoint *including the
-> abdominal half*. Overwriting is safe rather than destructive: **the earlier checkpoint is
-> still recoverable in full from git at commit `008e674`**, contents and manifest alike. That
-> is the reason a snapshot may be overwritten at all — the history is the real archive, this
-> folder is the convenient one.
+> **CHECKPOINT MOVED — TWICE.** This folder is overwritten each time the user calls a new build
+> the best so far. Overwriting is safe rather than destructive: **every earlier checkpoint stays
+> recoverable in full from git**, contents and manifest alike. The history is the real archive;
+> this folder is only the convenient copy.
+>
+> | held here | commit |
+> |---|---|
+> | pauldrons + chest | `008e674` |
+> | + the abdominal half | `53472b3` |
+> | **+ belt, fur, curved belt, no thigh plates** | **current** |
 
 This folder is a **snapshot, not a source**. Nothing in the mod loads it — `Tools/` is not
 scanned for textures. It exists so that any future version of the champion can be compared
@@ -35,6 +39,11 @@ against the one that was actually approved, byte for byte, instead of from memor
 - The **abdominal half**: three rows of segments, each narrower than the one above and sweeping
   up at its outer end; the sternum groove extended into one continuous linea alba; an iliac line
   per side. North gets one erector-spinae mass per side rather than rows.
+- A **belt that curves round the body** — its width taken from the cuirass's own edge, its centre
+  dropping below its ends like the near arc of an ellipse. **One buckle, on the front only.**
+- A **fur skirt** below it: tufted hem, matte, and deliberately no specular rim.
+- **No thigh plates.** Built, then switched off at the user's request — `$DRAW_TASSETS = $false`.
+  `DrawTasset` is intact and must not be deleted; the word was "for now".
 - **No crest shards.** Suppressed deliberately: they run down the same chest the cuirass occupies
   and win outright, so the pectorals stopped existing. There is no alpha at which both read.
 

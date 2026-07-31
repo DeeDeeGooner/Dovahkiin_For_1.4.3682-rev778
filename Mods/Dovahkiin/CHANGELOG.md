@@ -1,5 +1,81 @@
 # CHANGELOG
 
+## Call of Valor: a curving belt and a fur skirt below the abdomen (2026-07-31)
+
+The third piece, below the abdomen. Drawn **in the order the layers are worn** — fur first, hanging
+from under the belt, then the belt over its top edge — because each has to lap the one above, and
+in any other order the seams show. Each band also **overlaps the one above by a few thousandths**:
+butted edge to edge they leave a hairline of bare pawn between them on some body types and not
+others, which reads as a gap in the armour rather than as layers.
+
+### The belt, and the two things the first version got wrong
+
+Both reported by the user, both worth keeping because they are general:
+
+1. **It took its width from the BODY**, at a flat 0.825 of the silhouette, so it did not line up
+   with the armour it is strapped over. The extents now come from the **cuirass's own edge** —
+   `PlateEdge` at the plate's lower rim, per side independently — so the belt ends exactly where
+   the abdominal plate ends.
+2. **It was a straight band with a sag, and a sag is not curvature.** A belt goes *round* a
+   roughly cylindrical waist, so from the front it is an **ellipse**, and the near part of an
+   ellipse is its **lower arc**: the middle of the visible band sits below its two ends, and both
+   edges drop together so the band keeps a constant width. That is what makes it read as passing
+   behind the body instead of as a painted stripe. It is now built **across X rather than down Y**
+   for exactly that reason — the vertical offset is a function of horizontal position, which the
+   old row-by-row loop could not express at all.
+
+Side-on the belt is seen along the ellipse's major axis, so almost none of that curvature projects;
+east uses 0.35 of the bow. Applying the front's value there bends it like a banana.
+
+The **clasp** is one broad boss, roughly 17×8px, sized off the belt's own half-width and dropped by
+the full bow so it sits at the lowest point of the curve — at the band's flat mid-height it floated
+above its own belt. Buckle teeth and a prong are the 2–4px features that cannot be drawn here; one
+clear shape at the centre says "belt" far better than hardware that resolves to mush.
+
+**And it was drawn on the BACK as well.** Caught by the user on the north preview: *"belts only
+have one buckle, not two."* The test was `$rot -ne "east"`, which passes for north. The pawn wore a
+buckle front and rear.
+
+*The general trap, and this file is full of per-rotation code so it is worth naming:* **a feature
+that is not symmetric front-to-back needs an explicit `south` test, not an "everything except the
+side view" test.** North is a different view of the same object, not a mirror of the front — which
+is exactly the reasoning that already gives north shoulder blades instead of pectorals, a spine
+instead of a sternum, and erector spinae instead of abs. The clasp was simply missed when those
+were done, and an `-ne` test is what let it slip through: it opts a rotation *in* by default.
+
+### The thigh plates are OFF, at the user's request
+
+*"Delete the upper thighs part for now."* The word is **for now**, so `DrawTasset` is kept intact
+behind `$DRAW_TASSETS = $false` rather than deleted — its two-lame construction and its centre-gap
+fractions took a round to get right and would otherwise have to be re-derived. Same treatment
+`GenerateValorArmour.ps1` got when the normal-plate route was dropped.
+
+### The fur, stated honestly — because this project has been here before
+
+Fur **strands** are 2–4px at this scale and cannot be drawn. That was true when the normal-plate
+armour failed on exactly this, and it is still true. What can be drawn is fur at **silhouette
+level**, and the difference is where the information lives:
+
+- a **ragged, tufted lower edge** instead of a clean one — the outline carries it. The tuft profile
+  is two sine waves at incommensurate frequencies, **deterministic, not random**: randomness would
+  change the art silently on every regeneration and make a hash check against the approved snapshot
+  worthless.
+- **matte shading**, and deliberately **darker in value** than the plate either side of it.
+- and **no hot rim**. Every other piece of this armour gets a bright specular edge; the fur does
+  not, and that *absent* highlight is what says "this is not metal" more than any texture inside
+  the shape could.
+
+Read it as a fur-shaped mass, not as strands. That is the honest ceiling at ~102px per pawn.
+
+**One layering bug, found on the first render:** the fur was drawn and then almost entirely covered
+by the thigh plates, so it might as well not have existed. The fur's hem now hangs **lower than the
+plates begin** (0.888 against 0.830), so it shows in two places — a band above the plates, and down
+the gap between them.
+
+Dragon Aspect untouched — 36 of 36 byte-identical.
+
+---
+
 ## Call of Valor: the ABDOMINAL half of the cuirass (2026-07-31)
 
 The second half of the chest plate. The cuirass now runs from the throat to the bottom of the
