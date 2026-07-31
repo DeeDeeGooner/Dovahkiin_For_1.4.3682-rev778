@@ -1,5 +1,77 @@
 # CHANGELOG
 
+## Call of Valor: the art is INSTALLED, and the checkpoint was not what the notebook said (2026-07-31)
+
+40 approved files now live in the mod. Nothing loads them yet — no C# and no def references any
+of it — so this is inert, which is the point: it unblocks `Thing_ValorPortal` and the summon
+without changing a single thing in play.
+
+| what | where |
+|---|---|
+| 36 overlay textures (body + helm) | `Textures/Things/Pawn/CallOfValor/` |
+| the greatsword | `Textures/Things/Item/Equipment/ValorGreatsword.png` |
+| the 3 portal sprites | `Textures/Things/Effects/ValorPortal/` |
+
+### Three hash checks, because this is the step that can destroy signed-off work
+
+The generator's `$DEST` **defaults to the Dovahkiin's own texture folder**, so running it at all
+without `DOVAH_DEST` overwrites her armour. Everything below ran into scratch folders, and her
+art was backed up and hashed before anything started.
+
+1. **Her 36 textures are byte-identical to how the session began.** The install touched nothing
+   of hers.
+2. **All 40 installed files match `ValorApproved_2026-07-31/SHA256.txt`.**
+3. **A fresh DEFAULT generator run reproduces her shipping art 36 of 36 byte-identical** — so the
+   valor palette is still provably inert after everything done to that file. That check is the
+   one to repeat if the palette block is ever edited.
+
+The checkpoint itself was verified first, rather than trusted as the ruler: 40 manifest entries,
+40 PNGs, all 40 hashes match.
+
+### The filename collision is guarded by a FOLDER and nothing else
+
+All 36 champion textures are named `DragonAspect_*` — they leave the same generator with the
+palette swapped, so the names came out the same. **Only the folder distinguishes the two
+characters, and copying one file between the two folders would silently swap one character's
+armour for the other's with no error anywhere.**
+
+Names were **kept** rather than made unique, deliberately: the checkpoint diff is the safety net
+this whole step depends on, and renaming would turn a straight name-for-name hash comparison into
+one needing a mapping. The cost is that the C# must take the folder as a variable instead of
+Dragon Aspect's hardcoded path. `Textures/Things/Pawn/CallOfValor/README.md` states all of this
+in the folder itself, where someone about to make the mistake will actually be.
+
+### The notebook was wrong about what the checkpoint contained, and the wrong check agreed with it
+
+It said the snapshot held the *pauldrons + chest* version and that *"the abdominal half came
+after it and is deliberately NOT in it"*. **False.** A fresh valor run against today's generator
+reproduces the checkpoint **36 of 36 byte-identical**, and `DrawBeltAndSkirt`, `DrawFurStrands`,
+`DrawAbdomen` and `DrawPectoral` are all live call sites. The snapshot is the final art.
+
+*How it nearly stuck:* the generator was checked for those features by **guessing the function
+names** — `DrawBelt`, `DrawFur` — and both came back with **zero call sites**, which read as
+confirmation that the work was absent. The real names are `DrawBeltAndSkirt` and
+`DrawFurStrands`.
+
+**A grep for a name you assumed proves nothing when it returns empty — that is precisely the
+answer a wrong name gives.** It is the same failure this project already records for defNames
+(*never guess another mod's defName, read it on disk*), one layer in: an empty result read as
+evidence. The hash comparison settled it in one command, and the general rule is that **comparing
+artefacts beats interrogating source** when the artefacts exist.
+
+### And a derived number that went stale without being edited
+
+The spec said Call of Valor lasts *"twice as long as the Ancient Dragonborn"* and the notebook
+wrote that down as **7500 ticks / 3 hours**. His lifetime was raised from 3750 to **15000** the
+same day, so the correct figure is now **30000 / 12 hours**. Nothing was edited; the number
+simply stopped meaning what it said.
+
+**A spec written as a multiple of another number has to be re-read whenever that other number
+moves.** Recorded as a literal, it silently became wrong — the same shape as the stale test
+script and the stale PNG count, and the third instance in two days.
+
+---
+
 ## Playtest: all four fixes of 2026-07-31 pass (2026-07-31)
 
 *"Everything seems fine with dragon aspect, no need for more testing. All set."* — then, on being
