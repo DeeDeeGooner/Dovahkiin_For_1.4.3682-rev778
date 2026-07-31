@@ -1,5 +1,82 @@
 # CHANGELOG
 
+## Call of Valor: an entirely new helm, and no horns (2026-07-31)
+
+The old helm is gone — not adjusted, replaced. Nothing of Dragon Aspect's is reused: not the
+serrated skull cap, not the scale field over it, not the horns. `BuildValorHelm`, dispatched from
+`BuildHelm` in one line so Dragon Aspect's own helm is untouched.
+
+It is built from **the same vocabulary as the cuirass**, which is what makes it read as part of the
+suit rather than as a hat:
+
+- a **skull drawn as a closed curve and filled with a `PathGradientBrush` dome**, exactly as the
+  pectorals are — a helm is a rounded mass and wants radial shading, not a linear ramp
+- **plate seams as a dark crease with a lit lip under it** — the same pairing that made the
+  pectorals read as muscle does the job here for a joint between two pieces of plate
+- a **hot rim** on the outline, matching every other piece
+
+Per rotation, because a helm is not symmetric: south gets a brow band dipping over the nose, two
+eye slots either side of a **nasal bar that is not drawn** — it is the helm surface left between
+the slots, which is how a real nasal works and costs nothing — and cheek seams sweeping to the
+chin. East gets one slot forward on the profile. North gets no face at all, just nape seams.
+**In place of horns there is a comb**: a raised ridge over the crown, which gives the helm a top
+without adding anything that points outward.
+
+**Sizing was inherited, not re-derived.** Those numbers were tuned against the *game* in an earlier
+playtest round, and this script's own preview sheet draws the helm at about 60% of its real size —
+it cannot be used to judge them.
+
+### Two faults in the first render
+
+- **The pawn's face read straight through it.** At the body's 152 alpha the eyes and features were
+  clearly visible under a *closed* helm, which looks like a bug rather than a design choice. Raised
+  to **205**, and the gap from the cuirass is deliberate: SPEC 4.4d wants apparel to read under the
+  body plates, but a helm has the opposite job — it is a solid object over a face.
+- **On east the cheek seam ran from crown to chin down the middle of the profile**, which reads as
+  a crack across the face rather than as a joint. It now runs from *behind* the eye slot down and
+  backwards, where two plates would actually meet. The comb was pulled up onto the crown for the
+  same reason — run further down a profile it becomes a second seam.
+
+### Then: hussar wings, and a coronet in place of the eye slots
+
+The user's next note — *"looks too round"* — and they were right. A smooth dome has no silhouette,
+and this project's own rule is that an overlay which does not break the outline does not read.
+
+**Wings**, five feathers per side, **fanned by angle** — the same lesson the shoulder fins taught,
+that three shapes at one angle in descending sizes render as *one* shape because the smaller ones
+sit inside the largest. A feather is deliberately not the fin's blade: it is widest a third of the
+way up, narrows again at the root, and carries a **quill** — one bright line down the spine, which
+is what separates a feather from a leaf. Drawn *before* the skull so it laps their roots and they
+read as mounted rather than stuck on.
+
+**And the eye slots are gone**, replaced by a **coronet**. Those dark slots read as eyes rather
+than as armour. A coronet says the same thing — *there is a face under here* — without drawing
+one. It is a circlet, so it goes all the way round: five fleurons front and back, three in profile.
+
+Three faults in the first pass at these, all of them size or placement:
+
+- **The wings were half the helm's height and rooted on the crown**, fanning from near-vertical.
+  They came out as small tufts clustered at the top corners and changed the silhouette not at all —
+  which was the entire point. Now 0.74 of the half-height, rooted at the **temple**, fanned 10° to
+  82° so they sweep *out* rather than up. **A wing has to be comparable to the thing it is mounted
+  on.**
+- **The fleurons were drawn inside the skull's clip**, so they were confined to the dome and read
+  as five triangles painted on the helm. A coronet is a separate object worn *over* a helm — it has
+  to be allowed past the outline. Heights now fall away hard from the centre (0.56 to 0.16): five
+  points of similar height read as a saw blade, one dominant point with the rest stepping down
+  reads as a crown.
+- **On east the wing was rooted at −0.20**, deep inside the skull. Since the skull is drawn over
+  the wings, only the feather tips cleared it and the profile had almost no wing while south and
+  north had a full fan. Moved back to −0.62.
+
+The **comb was removed outright**, not shortened. The coronet occupies exactly that strip of crown
+and two features sharing it read as one muddle.
+
+Change scope: **3 of 36** files — the three helm rotations, nothing else. Dragon Aspect untouched:
+36 of 36 byte-identical.
+
+---
+
 ## Call of Valor: the scale field is gone entirely — no scales on any view (2026-07-31)
 
 The arm band keeps **exactly** the shape it always had — `BuildArmsPath`'s own sleeve, same outer

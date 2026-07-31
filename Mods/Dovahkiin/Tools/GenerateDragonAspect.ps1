@@ -2428,7 +2428,347 @@ function BuildCapPath([double]$hcx, [double]$hcy, [double]$hw, [double]$hh, [str
   return $p
 }
 
+# =====================================================================================
+#  CALL OF VALOR'S HELM - a close helm in the armour's own language. NO HORNS.
+# =====================================================================================
+#  The user's instruction: remove the old helm completely and build a new one from the
+#  armour's design, with curves, and no horns. So nothing of Dragon Aspect's helm is
+#  reused - not the serrated skull cap, not the scale field over it, not the horns.
+#
+#  It is built from the SAME vocabulary as the cuirass, which is what makes it read as
+#  part of the same suit rather than as a hat:
+#    - a skull drawn as a closed CURVE and filled with a PathGradientBrush dome, exactly
+#      as the pectorals are. A helm is a rounded mass and wants radial shading.
+#    - plate seams as a DARK crease with a LIT LIP under it - the pairing that made the
+#      pectorals read as muscle rather than as bosses does the same job here for a joint
+#      between two pieces of plate.
+#    - a hot rim on the outline, matching every other piece.
+#
+#  SIZING IS INHERITED AND MUST NOT BE RE-DERIVED. The helm is drawn on the pawn's BODY
+#  mesh, so a head occupies about 0.31 x 0.39 of that quad - roughly 88 x 108px inside
+#  this 256 frame. Those numbers were tuned against the GAME during a playtest round; the
+#  preview sheet in this same script draws the helm at about 60% of its real size and
+#  cannot be used to judge them. See the notebook.
+function BuildValorHelm([string]$rot) {
+  $bmp = New-Object System.Drawing.Bitmap $N, $N, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+  $g = [System.Drawing.Graphics]::FromImage($bmp)
+  $g.Clear((RGB 0 0 0 0))
+  $g.SmoothingMode      = [System.Drawing.Drawing2D.SmoothingMode]::AntiAlias
+  $g.CompositingQuality = [System.Drawing.Drawing2D.CompositingQuality]::HighQuality
+
+  $hcx = 128.0
+  $hcy = 128.0
+  $hw  = if ($rot -eq "east") { 39.0 } else { 44.0 }
+  $hh  = 54.0
+  # 205, well above the cuirass's 152, AND THAT DIFFERENCE IS DELIBERATE. SPEC 4.4d wants
+  # the pawn's apparel to read under the body plates, which is why those are translucent.
+  # A helm has the opposite job: it is a solid object over a face. At 158 the pawn's eyes
+  # and features read straight through it and it looked like a bug rather than a choice.
+  $ALPHA = 205
+
+  $hDeep = $C_DEEP
+  $hMid  = $C_MID
+  $hLit  = $C_GOLD
+  $hHot  = $C_HOT
+  $hFill = Lerp3 $hMid $hLit 0.55
+
+  # ---- helpers -------------------------------------------------------------------
+  function HP([double]$fx, [double]$fy) {
+    # a point in helm-space: fractions of the half-width / half-height, frame coords out
+    return (New-Object System.Drawing.PointF ([single](($hcx + ($fx * $hw)) * $SS)), ([single](($hcy + ($fy * $hh)) * $SS)))
+  }
+  function HCurve($pointList, [double]$tension) {
+    $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $path.AddCurve([System.Drawing.PointF[]]$pointList, [single]$tension)
+    return $path
+  }
+  # a seam: dark groove with a lit lip just below it. The cuirass's under-pec pairing,
+  # reused - one stroke alone reads as a scratch, the pair reads as two plates meeting.
+  function HSeam($gfx, $pointList, [double]$widthPx, [double]$lipDrop, [int]$baseAlpha) {
+    $groove = HCurve $pointList 0.42
+    $penDark = New-Object System.Drawing.Pen (RGB $hDeep[0] $hDeep[1] $hDeep[2] ([int]($baseAlpha * 0.88))), ([single]($widthPx * $SS))
+    $penDark.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $penDark.EndCap   = [System.Drawing.Drawing2D.LineCap]::Round
+    $gfx.DrawPath($penDark, $groove); $penDark.Dispose(); $groove.Dispose()
+    $lipPts = @()
+    foreach ($srcPt in $pointList) {
+      $lipPts += (New-Object System.Drawing.PointF ([single]$srcPt.X), ([single]($srcPt.Y + ($lipDrop * $SS))))
+    }
+    $lip = HCurve $lipPts 0.42
+    $penLip = New-Object System.Drawing.Pen (RGB $hLit[0] $hLit[1] $hLit[2] ([int]($baseAlpha * 0.55))), ([single]($widthPx * 0.42 * $SS))
+    $penLip.StartCap = [System.Drawing.Drawing2D.LineCap]::Round
+    $penLip.EndCap   = [System.Drawing.Drawing2D.LineCap]::Round
+    $gfx.DrawPath($penLip, $lip); $penLip.Dispose(); $lip.Dispose()
+  }
+
+  # One feather of a hussar wing. A long tapering LEAF with a quill down its middle -
+  # deliberately not the shoulder fin's shape, which is a blade and reads as a horn or a
+  # spike. What separates a feather from a spike is that it is widest a third of the way
+  # up, narrows again at the root, and carries a bright line down its spine.
+  function HFeather($gfx, [double]$rootFx, [double]$rootFy, [double]$len, [double]$wide,
+                    [double]$angleDeg, [double]$dir, [int]$alpha) {
+    $rad = $angleDeg * [Math]::PI / 180.0 * $dir
+    $cosA = [Math]::Cos($rad); $sinA = [Math]::Sin($rad)
+    $rootPt = HP $rootFx $rootFy
+    # local space: root at the origin, tip straight up at -len. Every element
+    # parenthesised - the comma operator binds tighter than arithmetic in PowerShell.
+    $raw = @(
+      @((0.0), (0.0)),
+      @((  $wide * 0.50), (-$len * 0.20)),
+      @((  $wide * 0.40), (-$len * 0.62)),
+      @((0.0), (-$len)),
+      @(( -$wide * 0.40), (-$len * 0.62)),
+      @(( -$wide * 0.50), (-$len * 0.20))
+    )
+    $pts = @()
+    foreach ($rawPt in $raw) {
+      $lx = $rawPt[0]; $ly = $rawPt[1]
+      $pts += (New-Object System.Drawing.PointF `
+        ([single]($rootPt.X + ((($lx * $cosA) - ($ly * $sinA)) * $SS))), `
+        ([single]($rootPt.Y + ((($lx * $sinA) + ($ly * $cosA)) * $SS))))
+    }
+    $feather = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $feather.AddClosedCurve([System.Drawing.PointF[]]$pts, [single]0.42)
+    $fRect = $feather.GetBounds()
+    if ($fRect.Width -lt 1) { $fRect.Width = 1 }
+    if ($fRect.Height -lt 1) { $fRect.Height = 1 }
+    $fDeep = Lerp3 $hDeep $hMid 0.35
+    $fBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $fRect, (RGB $hLit[0] $hLit[1] $hLit[2] $alpha), (RGB $fDeep[0] $fDeep[1] $fDeep[2] ([int]($alpha * 0.85))), ([single]90.0)
+    $gfx.FillPath($fBrush, $feather); $fBrush.Dispose()
+    $penF = New-Object System.Drawing.Pen (RGB $hHot[0] $hHot[1] $hHot[2] ([int]($alpha * 0.90))), ([single](1.3 * $SS))
+    $penF.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+    $gfx.DrawPath($penF, $feather); $penF.Dispose(); $feather.Dispose()
+    # the quill - the single line that says "feather" rather than "leaf"
+    $quillEnd = New-Object System.Drawing.PointF `
+      ([single]($rootPt.X + (((0.0 * $cosA) - ((-$len * 0.90) * $sinA))) * $SS)), `
+      ([single]($rootPt.Y + (((0.0 * $sinA) + ((-$len * 0.90) * $cosA))) * $SS))
+    $penQ = New-Object System.Drawing.Pen (RGB $hHot[0] $hHot[1] $hHot[2] ([int]($alpha * 0.62))), ([single](1.1 * $SS))
+    $gfx.DrawLine($penQ, $rootPt, $quillEnd); $penQ.Dispose()
+  }
+
+  # ---- 0. THE WINGS, hussar style ------------------------------------------------
+  # The user's note: the helm read "too round". A smooth dome has no silhouette to speak
+  # of, and this project's own rule is that an overlay which does not break the outline
+  # does not read. Five feathers per side, FANNED BY ANGLE - the same lesson the shoulder
+  # fins taught: three shapes at one angle in descending sizes render as ONE shape,
+  # because the smaller ones sit entirely inside the largest.
+  #
+  # Drawn FIRST, so the skull laps over their roots and they look mounted rather than
+  # stuck on - the same ordering the fins used against the torso plates.
+  # SIZE AND ROOT BOTH MATTER, and the first pass got both wrong. At half the helm's
+  # height, rooted high on the crown and fanning from near-vertical, the feathers came out
+  # as small tufts clustered at the top corners - which changes the silhouette not at all,
+  # and the silhouette was the entire point. A wing has to be comparable to the thing it
+  # is mounted on. These are 0.74 of the helm's half-height, rooted at the TEMPLE, and
+  # fanned from 10 to 82 degrees so they sweep OUT rather than up.
+  $wingLen = $hh * 0.74
+  $wingWide = $hw * 0.17
+  $fanAngles = @(10.0, 28.0, 46.0, 64.0, 82.0)
+  $fanScale  = @(0.78, 0.92, 1.00, 0.92, 0.76)
+  if ($rot -eq "east") {
+    # In profile the fan sweeps up and BACKWARD (the pawn faces +x), and it is one wing:
+    # the far one would be hidden behind the skull at this size and drawing it just
+    # thickens the near one.
+    # Rooted well BACK, not near the centre. At -0.20 the root sat deep inside the skull,
+    # and since the skull is drawn over the wings only the feather tips cleared it - the
+    # profile ended up with almost no wing at all while south and north had a full fan.
+    for ($fIdx = 0; $fIdx -lt $fanAngles.Count; $fIdx++) {
+      HFeather $g -0.62 -0.28 ($wingLen * [double]$fanScale[$fIdx]) $wingWide ([double]$fanAngles[$fIdx]) -1.0 $ALPHA
+    }
+  } else {
+    foreach ($wingSide in @(-1.0, 1.0)) {
+      for ($fIdx = 0; $fIdx -lt $fanAngles.Count; $fIdx++) {
+        HFeather $g ($wingSide * 0.86) -0.12 ($wingLen * [double]$fanScale[$fIdx]) $wingWide ([double]$fanAngles[$fIdx]) $wingSide $ALPHA
+      }
+    }
+  }
+
+  # ---- 1. THE SKULL --------------------------------------------------------------
+  # Widest at the temples, tapering to a rounded chin. AddClosedCurve, not AddPolygon -
+  # a helm is the one thing here that must be entirely round, like the pectorals and
+  # unlike the crest shards.
+  if ($rot -eq "east") {
+    # Profile. The pawn faces RIGHT, so +x is the face and -x the back of the skull.
+    $skullPts = @(
+      (HP  0.10 -1.00), (HP  0.78 -0.72), (HP  1.00 -0.10),
+      (HP  0.92  0.42), (HP  0.58  0.86), (HP  0.02  1.00),
+      (HP -0.62  0.84), (HP -1.00  0.16), (HP -0.80 -0.66)
+    )
+  } else {
+    $skullPts = @(
+      (HP  0.00 -1.00), (HP  0.72 -0.78), (HP  1.00 -0.22),
+      (HP  0.86  0.34), (HP  0.52  0.78), (HP  0.00  1.00),
+      (HP -0.52  0.78), (HP -0.86  0.34), (HP -1.00 -0.22),
+      (HP -0.72 -0.78)
+    )
+  }
+  $skull = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $skull.AddClosedCurve([System.Drawing.PointF[]]$skullPts, [single]0.42)
+
+  $dome = New-Object System.Drawing.Drawing2D.PathGradientBrush $skull
+  $domeX = if ($rot -eq "east") { 0.18 } else { 0.00 }
+  $dome.CenterPoint = HP $domeX -0.34
+  $dome.CenterColor = (RGB $hHot[0] $hHot[1] $hHot[2] ([int]([Math]::Min(255, $ALPHA * 1.05))))
+  $dome.SurroundColors = [System.Drawing.Color[]]@((RGB $hDeep[0] $hDeep[1] $hDeep[2] ([int]($ALPHA * 0.82))))
+  $g.FillPath($dome, $skull); $dome.Dispose()
+
+  # ---- 2. THE BROW BAND ----------------------------------------------------------
+  # A raised lame across the brow, dipping at the centre over the nose. The strongest
+  # horizontal on the piece and what stops the skull reading as an egg.
+  if ($rot -ne "north") {
+    if ($rot -eq "east") {
+      $browPts = @((HP -0.86 -0.30), (HP -0.10 -0.44), (HP 0.62 -0.34), (HP 0.98 -0.16))
+    } else {
+      $browPts = @((HP -0.97 -0.20), (HP -0.52 -0.40), (HP 0.00 -0.30), (HP 0.52 -0.40), (HP 0.97 -0.20))
+    }
+    $browTop = @(); $browBot = @()
+    foreach ($srcPt in $browPts) {
+      $browTop += (New-Object System.Drawing.PointF ([single]$srcPt.X), ([single]($srcPt.Y - (5.0 * $SS))))
+      $browBot += (New-Object System.Drawing.PointF ([single]$srcPt.X), ([single]($srcPt.Y + (4.0 * $SS))))
+    }
+    $browPath = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $browPath.AddCurve([System.Drawing.PointF[]]$browTop, [single]0.42)
+    $browPath.AddCurve([System.Drawing.PointF[]]($browBot[($browBot.Count - 1)..0]), [single]0.42)
+    $browPath.CloseFigure()
+    $g.SetClip($skull)
+    $browRect = $browPath.GetBounds()
+    if ($browRect.Width -lt 1) { $browRect.Width = 1 }
+    if ($browRect.Height -lt 1) { $browRect.Height = 1 }
+    $browBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $browRect, (RGB $hLit[0] $hLit[1] $hLit[2] $ALPHA), (RGB $hDeep[0] $hDeep[1] $hDeep[2] ([int]($ALPHA * 0.85))), ([single]90.0)
+    $g.FillPath($browBrush, $browPath); $browBrush.Dispose()
+    $penBrow = New-Object System.Drawing.Pen (RGB $hHot[0] $hHot[1] $hHot[2] ([int]($ALPHA * 0.80))), ([single](1.4 * $SS))
+    $g.DrawPath($penBrow, $browPath); $penBrow.Dispose()
+    $g.ResetClip(); $browPath.Dispose()
+  }
+
+  # ---- 3. THE FACE ---------------------------------------------------------------
+  $g.SetClip($skull)
+  # THE CORONET, replacing the eye slots. The user's call: those dark slots read as eyes
+  # rather than as armour, and a coronet says the same thing the slots were meant to -
+  # "there is a face under here" - without drawing a face. It is a circlet, so it goes all
+  # the way ROUND: five fleurons on the front, five across the back, three in profile.
+  # Tallest at the centre, falling away to the sides, which is what a coronet does and
+  # what stops five identical points reading as a fence.
+  function HFleuron($gfx, [double]$baseFx, [double]$baseFy, [double]$rise, [double]$halfWide, [int]$alpha) {
+    $pts = @(
+      (HP ($baseFx - $halfWide) $baseFy),
+      (HP ($baseFx - ($halfWide * 0.52)) ($baseFy - ($rise * 0.62))),
+      (HP $baseFx ($baseFy - $rise)),
+      (HP ($baseFx + ($halfWide * 0.52)) ($baseFy - ($rise * 0.62))),
+      (HP ($baseFx + $halfWide) $baseFy)
+    )
+    $path = New-Object System.Drawing.Drawing2D.GraphicsPath
+    $path.AddClosedCurve([System.Drawing.PointF[]]$pts, [single]0.30)
+    $rectF = $path.GetBounds()
+    if ($rectF.Width -lt 1) { $rectF.Width = 1 }
+    if ($rectF.Height -lt 1) { $rectF.Height = 1 }
+    $brushF = New-Object System.Drawing.Drawing2D.LinearGradientBrush $rectF, (RGB $hHot[0] $hHot[1] $hHot[2] $alpha), (RGB $hMid[0] $hMid[1] $hMid[2] ([int]($alpha * 0.88))), ([single]90.0)
+    $gfx.FillPath($brushF, $path); $brushF.Dispose()
+    $penF = New-Object System.Drawing.Pen (RGB $hHot[0] $hHot[1] $hHot[2] ([int]([Math]::Min(240, $alpha * 1.15)))), ([single](1.3 * $SS))
+    $penF.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+    $gfx.DrawPath($penF, $path); $penF.Dispose(); $path.Dispose()
+  }
+
+  if ($rot -eq "south") {
+    # the nasal ridge stays - it is the face plate's centre line, and it was never the
+    # thing that read as eyes
+    foreach ($barSide in @(-1.0, 1.0)) {
+      $barPts = @((HP ($barSide * 0.10) -0.10), (HP ($barSide * 0.115) 0.22), (HP ($barSide * 0.075) 0.56))
+      $bar = HCurve $barPts 0.40
+      $penBar = New-Object System.Drawing.Pen (RGB $hHot[0] $hHot[1] $hHot[2] ([int]($ALPHA * 0.55))), ([single](1.5 * $SS))
+      $g.DrawPath($penBar, $bar); $penBar.Dispose(); $bar.Dispose()
+    }
+    # cheek seams: brow band down and inward to the chin, one per side
+    foreach ($cheekSide in @(-1.0, 1.0)) {
+      HSeam $g @((HP ($cheekSide * 0.94) -0.14), (HP ($cheekSide * 0.74) 0.34), (HP ($cheekSide * 0.36) 0.82)) 2.6 2.0 $ALPHA
+    }
+  }
+  elseif ($rot -eq "east") {
+    # The cheek plate's rear seam. It runs from BEHIND where the face plate ends, down and
+    # backwards - an earlier version ran it crown-to-chin straight down the middle of the
+    # profile, which reads as a crack across the face rather than as a joint between two
+    # plates. A seam has to follow where the pieces actually meet.
+    HSeam $g @((HP 0.30 -0.30), (HP 0.10 0.20), (HP -0.12 0.64)) 2.6 2.0 $ALPHA
+  }
+  else {
+    # north: no face. Two nape seams where the neck lames overlap the skull.
+    HSeam $g @((HP -0.80 0.30), (HP 0.00 0.44), (HP 0.80 0.30)) 2.6 2.2 $ALPHA
+  }
+
+  $g.ResetClip()
+
+  # The coronet's fleurons, rising off the brow band. DRAWN AFTER THE CLIP IS RELEASED -
+  # inside it they were confined to the dome and read as five triangles painted on the
+  # helm rather than as a crown standing proud of it. A coronet is a separate object worn
+  # over a helm, so it has to be allowed past the skull's outline.
+  #
+  # Heights fall away hard from the centre (0.56 to 0.16). Five points of similar height
+  # read as a saw blade; one dominant point with the rest stepping down reads as a crown.
+  if ($rot -eq "east") {
+    $fleuronX = @(-0.30, 0.16, 0.62)
+    $fleuronH = @( 0.30, 0.50, 0.24)
+    $fleuronY = @(-0.44, -0.42, -0.26)
+  } else {
+    $fleuronX = @(-0.62, -0.32, 0.00, 0.32, 0.62)
+    $fleuronH = @( 0.16,  0.30, 0.56, 0.30, 0.16)
+    $fleuronY = @(-0.28, -0.34, -0.36, -0.34, -0.28)
+  }
+  for ($flIdx = 0; $flIdx -lt $fleuronX.Count; $flIdx++) {
+    HFleuron $g ([double]$fleuronX[$flIdx]) ([double]$fleuronY[$flIdx]) ([double]$fleuronH[$flIdx]) 0.100 $ALPHA
+  }
+
+  # ---- 4. NO COMB ----------------------------------------------------------------
+  # There was a raised crown ridge here, added when the brief was "no horns" and the helm
+  # needed a top. The coronet now occupies exactly that strip of crown, and two features
+  # sharing it read as one muddle - so the comb is gone rather than shortened out of the
+  # way. Removed, not disabled: the coronet supersedes it completely.
+
+  # ---- 5. THE NECK LAME ----------------------------------------------------------
+  # A curved band across the bottom, bowing DOWN at the centre - the same ellipse
+  # reasoning as the belt: it wraps the neck, so its near arc is its lower one.
+  if ($rot -eq "east") {
+    $neckPts = @((HP -0.72 0.74), (HP 0.00 0.94), (HP 0.60 0.78))
+  } else {
+    $neckPts = @((HP -0.60 0.72), (HP 0.00 0.96), (HP 0.60 0.72))
+  }
+  $neckTop = @(); $neckBot = @()
+  foreach ($srcPt in $neckPts) {
+    $neckTop += (New-Object System.Drawing.PointF ([single]$srcPt.X), ([single]($srcPt.Y - (4.5 * $SS))))
+    $neckBot += (New-Object System.Drawing.PointF ([single]$srcPt.X), ([single]($srcPt.Y + (3.5 * $SS))))
+  }
+  $neckPath = New-Object System.Drawing.Drawing2D.GraphicsPath
+  $neckPath.AddCurve([System.Drawing.PointF[]]$neckTop, [single]0.42)
+  $neckPath.AddCurve([System.Drawing.PointF[]]($neckBot[($neckBot.Count - 1)..0]), [single]0.42)
+  $neckPath.CloseFigure()
+  $g.SetClip($skull)
+  $neckRect = $neckPath.GetBounds()
+  if ($neckRect.Width -lt 1) { $neckRect.Width = 1 }
+  if ($neckRect.Height -lt 1) { $neckRect.Height = 1 }
+  $neckBrush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $neckRect, (RGB $hFill[0] $hFill[1] $hFill[2] $ALPHA), (RGB $hDeep[0] $hDeep[1] $hDeep[2] ([int]($ALPHA * 0.88))), ([single]90.0)
+  $g.FillPath($neckBrush, $neckPath); $neckBrush.Dispose()
+  $penNeck = New-Object System.Drawing.Pen (RGB $hHot[0] $hHot[1] $hHot[2] ([int]($ALPHA * 0.75))), ([single](1.4 * $SS))
+  $g.DrawPath($penNeck, $neckPath); $penNeck.Dispose()
+  $g.ResetClip(); $neckPath.Dispose()
+
+  # ---- 6. THE RIM, last so it edges everything under it --------------------------
+  $penRim = New-Object System.Drawing.Pen (RGB $hHot[0] $hHot[1] $hHot[2] ([int]([Math]::Min(240, $ALPHA * 1.35)))), ([single](2.0 * $SS))
+  $penRim.LineJoin = [System.Drawing.Drawing2D.LineJoin]::Round
+  $g.DrawPath($penRim, $skull); $penRim.Dispose()
+  $skull.Dispose()
+
+  $g.Dispose()
+  $out = New-Object System.Drawing.Bitmap $SIZE, $SIZE, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
+  $og = [System.Drawing.Graphics]::FromImage($out)
+  $og.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
+  $og.DrawImage($bmp, (New-Object System.Drawing.Rectangle 0, 0, $SIZE, $SIZE))
+  $og.Dispose(); $bmp.Dispose()
+  return $out
+}
+
 function BuildHelm([string]$rot) {
+  # The champion's helm is a different piece entirely - see BuildValorHelm. Dragon
+  # Aspect's own helm below is untouched.
+  if ($SHOULDER_STYLE -eq "pauldron") { return (BuildValorHelm $rot) }
   $bmp = New-Object System.Drawing.Bitmap $N, $N, ([System.Drawing.Imaging.PixelFormat]::Format32bppArgb)
   $g = [System.Drawing.Graphics]::FromImage($bmp)
   $g.Clear((RGB 0 0 0 0))
