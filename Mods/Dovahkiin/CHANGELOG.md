@@ -1,5 +1,64 @@
 # CHANGELOG
 
+## Call of Valor is a complete shout — words, abilities, icon (2026-08-01)
+
+`Hun / Kaal / Zoor`, one `ShoutDef`, three `AbilityDef`s, `CompAbilityEffect_CallOfValor`, and his
+own generated icon. Build clean, all defs parse, every referenced def resolves.
+**Never yet run in game — `TESTS/phase2l.md`.**
+
+### The level ladder was built, then deleted
+
+A ladder scaling range, stay and cost across one, two and three words shipped first. The user:
+*"ALL three words are learned at the same time during a quest... So no need to actualy tinker on
+what one word or two words will."*
+
+He is never at one or two words. The three AbilityDefs are now **identical**, and
+`callOfValorLifetimeByLevel` was **removed from the tuning def rather than left at defaults**.
+
+**A knob nobody can turn is not harmless — it is a lie about the design.** Left in, a future
+session reads a list called "lifetime by level", reasonably concludes there is a progression, and
+tunes numbers no player can ever see. Deleting it costs nothing; leaving it costs somebody a
+session.
+
+### The other two corrections
+
+- **Range 24.9 → 5.9.** The user asked for the summoning to land close to the Dovahkiin. He is a
+  bodyguard stepping in beside her, not artillery placed across the map.
+- **No wave** — *confirmed rather than changed.* The ring machinery lives on the other shout
+  comps (`ringRadius`, `SpawnRingBurst`); Call of Valor uses neither. It was already portal-only,
+  so the right answer was to verify and say so rather than to "fix" something.
+
+### `questOnly`, a flag with no reader — on purpose
+
+The word database now holds **45** words while the word-wall count must stay at **42**. Walls are
+Phase 7 and do not exist, so nothing can leak *today* — and that is exactly why the flag exists
+now. The obvious Phase 7 implementation, scatter every `WordOfPowerDef`, would silently put three
+quest shouts on walls, breaking both the user's explicit rule and `SPEC.md 4.4`'s ban on growing
+the wall list without re-costing Phase 7.
+
+**A flag that exists before the code that needs it is cheap. A wall handing out a quest shout is
+a spec violation nobody notices until a playthrough.**
+
+### The icon: one row, and the palette quoted rather than matched
+
+Bright white head grading to grey at the tip, core circle in the summon's blue — the user's spec.
+It is the 16th icon from the same generator, one row in its table plus one gradient entry, so it
+belongs to the family instead of being bolted on.
+
+**The blue is read from `Tools/ValorPalette.ps1`** — `C_AZURE`, the same file his armour and his
+greatsword read — so the icon's core and his own bloom are provably one colour. That file exists
+because the sword and the armour once carried near-identical *copies* of the same palette and
+drifted; a third copy here would have restarted it.
+
+The tip grey is faintly cool rather than neutral, for two reasons worth keeping: a dead grey reads
+as unfinished beside fifteen coloured icons, and Cyclone is already grey — a cool cast at full
+opacity keeps the two apart on the command bar.
+
+**Regenerating rewrites all sixteen files, so it was hash-checked: 15 of 15 existing icons
+byte-identical, one new file.** Nothing signed off moved.
+
+---
+
 ## The summons leave the colonist bar (2026-08-01)
 
 The user picked option 1 of the three offered. `Patch_ColonistBarHideSummons` drops both
