@@ -1,5 +1,68 @@
 # CHANGELOG
 
+## The summons leave the colonist bar (2026-08-01)
+
+The user picked option 1 of the three offered. `Patch_ColonistBarHideSummons` drops both
+temporary summons out of the bar's cached entries. Build clean, 0 warnings.
+
+**This fixes the two summon complaints and deliberately does NOT fix the third** — the
+Dovahkiin's own portrait still does not change under Dragon Aspect, because that needs a patch on
+the portrait render path and this mod has avoided every render patch on purpose. Recorded as
+open, not as done.
+
+### The alternative that needed no patch at all, and why it was rejected
+
+If the summons simply were not colonists they would never enter the list. Decompiled rather than
+guessed:
+
+```
+IsFreeColonist => IsColonist && HostFaction == null
+IsColonist     => Faction != null && Faction.IsPlayer && RaceProps.Humanlike   (plus slavery)
+```
+
+The only lever there is **`HostFaction`**, and setting one turns them into **guests** — which
+changes how they behave and who they fight for. **A gameplay change to fix a cosmetic complaint
+is the wrong trade**, so the patch is the narrower option even though it is a patch.
+
+### Where the patch had to go, and why anywhere later would have been wrong
+
+Postfix on the private `ColonistBar.CheckRecacheEntries`, reaching `cachedEntries` through
+Harmony's `___field` injection. The decompiled class shows why that exact spot:
+
+```csharp
+public List<Entry> Entries { get { CheckRecacheEntries(); return cachedEntries; } }
+```
+
+Every consumer goes through that property — **including `ColonistBarDrawLocsFinder`, which takes
+its icon positions from it.** Filtering anywhere later would have left the entry list and the
+draw positions disagreeing about how many icons exist. Filtering here happens before any caller
+sees the list.
+
+It also runs on the early-return path when nothing was recached, which is harmless: the list is
+already filtered and the second pass removes nothing.
+
+Matching is by **`PawnKindDef` reference compare**, not by walking hediffs: this is a GUI path hit
+every frame the bar is drawn, and a hediff search would scan every colonist's entire health
+record each time to answer something their kind already answers.
+
+### THE DECOMPILER EARNED ITS INSTALL INSIDE ONE JOB
+
+`ilspycmd` was installed this session, and every fact above — the `Entries` property's body, the
+`IsFreeColonist` chain, `Entry` being a public nested struct, `cachedEntries` being the private
+field to inject — was **read out of decompiled C# in about a minute**.
+
+The reflection script this replaces cannot do it. It dies with a `StackOverflowException` on
+every single run, eats its own console output, and can only ever list *which methods a method
+calls* — never the code. **That limitation is exactly what produced two wrong sword angles**: it
+could show that an angle was used and never how.
+
+Note it will not install unpinned on this machine: the newest package wants a newer SDK than the
+8.0.204 installed and fails with *"DotnetToolSettings.xml is not found in the package"*, which
+reads like a broken package rather than a version mismatch. **`--version 8.2.0.7535` installs
+cleanly.**
+
+---
+
 ## Call of Valor SIGNED OFF, reload included — and the portrait gap found (2026-08-01)
 
 *"Very good, all set, I even tested the reload and the timer is still good."*
