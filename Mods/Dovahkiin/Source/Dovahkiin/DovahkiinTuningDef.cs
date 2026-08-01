@@ -254,18 +254,11 @@ namespace Dovahkiin
         /// </summary>
         public int callOfValorLifetimeTicks = 30000;
 
-        /// <summary>
-        /// How long the hero stays at ONE, TWO and THREE words. Empty or zero at a position
-        /// falls back to thirds of <see cref="callOfValorLifetimeTicks"/>, so the ladder tracks
-        /// the full lifetime automatically rather than needing three numbers rewritten whenever
-        /// it moves.
-        ///
-        /// **Levels scaling the STAY is a decision, not a spec line.** The user's brief fixed the
-        /// full lifetime and said nothing about one or two words. Duration is what TES5's own
-        /// Call of Valor scales and what every other multi-level shout here scales, so it is the
-        /// least surprising answer - but it is one list to change if it should be something else.
-        /// </summary>
-        public List<int> callOfValorLifetimeByLevel = new List<int>();
+        // A callOfValorLifetimeByLevel list briefly existed here and was REMOVED 2026-08-01.
+        // The quest grants all three of his words at once, so he is only ever at three words and
+        // a per-level ladder describes states that cannot happen. Left in, it would have invited
+        // a future session to tune numbers no player could ever see. A knob nobody can turn is
+        // not harmless - it is a lie about the design.
 
         /// <summary>
         /// How Call of Valor holds his greatsword, per facing, in degrees.

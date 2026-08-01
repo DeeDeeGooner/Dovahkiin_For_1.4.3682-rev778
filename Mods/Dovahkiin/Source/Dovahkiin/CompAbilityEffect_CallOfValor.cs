@@ -5,16 +5,23 @@
 // nothing travelling: it opens a portal on the targeted cell and a hero of Sovngarde steps out
 // of it. All of that machinery already exists and is playtested - this comp only aims it.
 //
-// LEVELS SCALE THE HERO'S STAY, and that is a decision rather than a spec line. The user's brief
-// fixed his lifetime ("twice the Ancient Dragonborn") and said nothing about what one or two
-// words should do. Duration is what TES5's own Call of Valor scales, and it is what this mod
-// already scales on every other multi-level shout, so it is the least surprising answer. One
-// word is a third of the stay, two is two thirds, three is the full 12 hours the spec names.
-// FLAGGED so it can be overruled: it is one list in DovahkiinTuningDef.
+// THERE IS NO LEVEL LADDER, AND THAT IS THE POINT.
+//
+// A level ladder WAS built here - range, stay and cost scaling across one, two and three words -
+// and it was wrong. The user: *"Call of valor's ALL three words are learned at the same time
+// during a quest... So no need to actualy tinker on what one word or two words will."*
+//
+// He is never at one or two words. The quest hands over all three at once, so the only state
+// that can exist is three, and a ladder describing the other two describes nothing. Worse than
+// useless: a future session reading `callOfValorLifetimeByLevel` would reasonably conclude the
+// shout has a progression and tune it, and none of that tuning could ever be seen in play.
+//
+// The three AbilityDefs remain because the shout system is built on one ability per word, but
+// they are IDENTICAL. Whichever one the level resolves to, the hero arrives at full strength.
+//
+// **The general rule: a knob nobody can turn is not harmless, it is a lie about the design.**
 // ============================================================================================
-using System.Collections.Generic;
 using RimWorld;
-using UnityEngine;
 using Verse;
 
 namespace Dovahkiin
@@ -47,35 +54,9 @@ namespace Dovahkiin
             {
                 return;
             }
-            CallOfValorUtility.TrySummon(caster, target.Cell, LifetimeForLevel(Props.level));
-        }
-
-        /// <summary>
-        /// How long the hero stays at this word count.
-        ///
-        /// Read from the tuning list when it is present and long enough, so the whole ladder can
-        /// be retuned without a rebuild. Falls back to thirds of the full lifetime - derived, not
-        /// written out, for the same reason the full lifetime itself derives from the Ancient
-        /// Dragonborn's: a number written down stops meaning what it said the moment the number
-        /// it was derived from moves, and that has already happened once in this project.
-        /// </summary>
-        private static int LifetimeForLevel(int level)
-        {
-            int clamped = Mathf.Clamp(level, 1, 3);
-            DovahkiinTuningDef tuning = DovahkiinTuningDef.Current;
-            if (tuning == null)
-            {
-                return 30000 * clamped / 3;
-            }
-            List<int> ladder = tuning.callOfValorLifetimeByLevel;
-            if (ladder != null && ladder.Count >= clamped && ladder[clamped - 1] > 0)
-            {
-                return ladder[clamped - 1];
-            }
-            int full = tuning.callOfValorLifetimeTicks > 0
-                ? tuning.callOfValorLifetimeTicks
-                : tuning.ancientDragonbornLifetimeTicks * 2;
-            return full * clamped / 3;
+            // 0 = "use the tuning value", the same path the debug action takes. No level is
+            // passed because no level can differ: all three words arrive together.
+            CallOfValorUtility.TrySummon(caster, target.Cell, 0);
         }
     }
 }

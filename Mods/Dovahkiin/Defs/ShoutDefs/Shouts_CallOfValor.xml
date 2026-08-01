@@ -59,17 +59,20 @@
       <li>Dovahkiin_Ability_CallOfValor_3</li>
     </abilitiesByLevel>
     <!--
-      Priced against Storm Call (10/16/24), the most expensive shout in the mod, because this
-      one delivers a whole armoured ally for hours. Slightly under it at one word and level with
-      it at three: the hero is stronger than a lightning strike but he arrives once and stays,
-      where Storm Call can be repeated.
+      FLAT ACROSS ALL THREE, because he is only ever AT three words - the quest grants them
+      together. The lists have three entries because the system wants one per word; they hold the
+      same number on purpose, so no level can be cheaper or faster than another and no future
+      session tunes a level the player cannot reach.
 
-      The shared cooldown is long - two to four minutes - so this cannot be chained. Unlike
-      Dragon Aspect there is no separate per-ability day-long cooldown: this is a quest reward
-      the player earned, not a once-a-day power, and the Thu'um cost is what limits it.
+      24 is Storm Call's top cost, the most expensive in the mod, and this delivers a whole
+      armoured ally for twelve hours rather than a lightning strike. The shared cooldown is four
+      minutes, so it cannot be chained.
+
+      Unlike Dragon Aspect there is no separate per-ability day-long cooldown: this is a quest
+      reward the player earned, not a once-a-day power, and the Thu'um cost is what limits it.
     -->
-    <thuumCostByLevel><li>9</li><li>16</li><li>24</li></thuumCostByLevel>
-    <cooldownTicksByLevel><li>7200</li><li>10800</li><li>14400</li></cooldownTicksByLevel>
+    <thuumCostByLevel><li>24</li><li>24</li><li>24</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>14400</li><li>14400</li><li>14400</li></cooldownTicksByLevel>
     <!-- SPEC.md 4.5 / 4.6: dragons and draugr get only Force, Fire and Frost. Never this. -->
     <availableToDragons>false</availableToDragons>
     <availableToUndead>false</availableToUndead>

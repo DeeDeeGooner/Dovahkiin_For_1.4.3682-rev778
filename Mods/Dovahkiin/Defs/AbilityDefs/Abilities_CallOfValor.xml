@@ -11,10 +11,19 @@
   cooldown, because it is a once-per-day power; this is a quest reward governed by its Thu'um
   cost and the shared shout lockout, both in the ShoutDef.
 
-  RANGE grows with the words. One word reaches barely past arm's length and three reaches across
-  a fight, which is what makes the third word feel like the real thing rather than a longer
-  timer. Line of sight IS required: he steps out of a hole in the world, and opening one through
-  a wall reads as a bug even when it is not.
+  ALL THREE ARE IDENTICAL, AND THAT IS DELIBERATE. The user, 2026-08-01: *"ALL three words are
+  learned at the same time during a quest... So no need to actualy tinker on what one word or
+  two words will."* He is never at one or two words, so a ladder across them describes states
+  that cannot happen. An earlier version scaled range, stay and cost across the three; it was
+  removed rather than left to mislead whoever tunes this next.
+
+  The three defs remain because the shout system is one ability per word. Whichever the level
+  resolves to, the hero arrives at full strength.
+
+  RANGE IS SHORT - 5.9, a few tiles - because the user asked for the summoning to land close to
+  the Dovahkiin. He is a bodyguard stepping in beside her, not artillery placed across the map.
+  Line of sight IS required: he steps out of a hole in the world, and opening one through a wall
+  reads as a bug even when it is not.
 
   The icon is Dragon Aspect's for now - see ART_TODO.md. Call of Valor has no icon of its own,
   and shipping a magenta placeholder for a shout the player just earned from a quest is worse
@@ -48,10 +57,10 @@
   <AbilityDef ParentName="Dovahkiin_CallOfValorBase">
     <defName>Dovahkiin_Ability_CallOfValor_1</defName>
     <label>hun</label>
-    <description>Hero. The veil thins, and a shade of Sovngarde comes through - briefly.</description>
+    <description>Hero, Champion, Legend. A legend of the old world steps out of Sovngarde, greatsword in hand, and stands with you until the echo fades.</description>
     <verbProperties>
       <verbClass>Verb_CastAbility</verbClass>
-      <range>9.9</range>
+      <range>5.9</range>
       <warmupTime>1.4</warmupTime>
       <drawAimPie>false</drawAimPie>
       <requireLineOfSight>true</requireLineOfSight>
@@ -81,10 +90,10 @@
   <AbilityDef ParentName="Dovahkiin_CallOfValorBase">
     <defName>Dovahkiin_Ability_CallOfValor_2</defName>
     <label>hun kaal</label>
-    <description>Hero, Champion. The way opens wider, and he stays long enough to turn a fight.</description>
+    <description>Hero, Champion, Legend. A legend of the old world steps out of Sovngarde, greatsword in hand, and stands with you until the echo fades.</description>
     <verbProperties>
       <verbClass>Verb_CastAbility</verbClass>
-      <range>16.9</range>
+      <range>5.9</range>
       <warmupTime>1.4</warmupTime>
       <drawAimPie>false</drawAimPie>
       <requireLineOfSight>true</requireLineOfSight>
@@ -117,7 +126,7 @@
     <description>Hero, Champion, Legend. A legend of the old world steps out of Sovngarde, greatsword in hand, and stands with you until the echo fades.</description>
     <verbProperties>
       <verbClass>Verb_CastAbility</verbClass>
-      <range>24.9</range>
+      <range>5.9</range>
       <warmupTime>1.4</warmupTime>
       <drawAimPie>false</drawAimPie>
       <requireLineOfSight>true</requireLineOfSight>
