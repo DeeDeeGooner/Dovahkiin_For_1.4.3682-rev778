@@ -155,13 +155,25 @@
          "correct" this from the axe's -70 - they are different weapons and this one was
          picked by eye from a rendered sweep, which is the only thing that settles it. -->
     <callOfValorSwordAngleSouthEast>-20</callOfValorSwordAngleSouthEast>
-    <callOfValorSwordAngleNorth>62</callOfValorSwordAngleNorth>
-    <callOfValorSwordAngleWest>10</callOfValorSwordAngleWest>
+    <!-- North and west BOTH -70, chosen by the user off the rendered sweeps 2026-08-01.
+         Only south/east differs, at -20. -->
+    <callOfValorSwordAngleNorth>-70</callOfValorSwordAngleNorth>
+    <callOfValorSwordAngleWest>-70</callOfValorSwordAngleWest>
 
-    <!-- Facing north you see his back. TRUE draws the sword over him; false tucks it
-         behind, which is what the AXE does deliberately because it is broad enough to
-         hide his whole back. A tall narrow blade reads as missing back there. -->
-    <callOfValorSwordInFrontFacingNorth>true</callOfValorSwordInFrontFacingNorth>
+    <!-- DOES THE BODY HIDE PART OF THE BLADE? false = the body is drawn OVER the sword.
+
+         Worked out by the user from where the weapon actually hangs, which is the right
+         way round and not something arithmetic could have supplied:
+
+           NORTH - his back to us, blade held on his FRONT  -> body in front  -> false
+           WEST  - we see his LEFT side, blade on his RIGHT -> body in front  -> false
+           EAST  - we see his RIGHT side, blade on his right -> fully visible
+           SOUTH - facing us, blade out to his side          -> fully visible
+
+         South and east have no switch: no arrangement of a right-hand weapon puts the
+         body between it and the camera on those two facings. -->
+    <callOfValorSwordInFrontFacingNorth>false</callOfValorSwordInFrontFacingNorth>
+    <callOfValorSwordInFrontFacingWest>false</callOfValorSwordInFrontFacingWest>
 
     <!-- ============================================================================
          CALL OF VALOR'S PORTAL - the cast effect he steps out of.

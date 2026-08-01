@@ -268,8 +268,8 @@ namespace Dovahkiin
         /// the game can settle it. Edit, restart, no rebuild.
         /// </summary>
         public float callOfValorSwordAngleSouthEast = -20f;
-        public float callOfValorSwordAngleNorth = 62f;
-        public float callOfValorSwordAngleWest = 10f;
+        public float callOfValorSwordAngleNorth = -70f;
+        public float callOfValorSwordAngleWest = -70f;
 
         /// <summary>
         /// Draw his sword IN FRONT of him when he faces north, rather than behind.
@@ -278,7 +278,24 @@ namespace Dovahkiin
         /// his back"*. The axe is drawn behind on purpose - it is broad and covered his back -
         /// so this is per weapon, not a correction to the axe.
         /// </summary>
-        public bool callOfValorSwordInFrontFacingNorth = true;
+        /// <summary>
+        /// Whether the BODY hides part of the blade, per facing. FALSE means the body is drawn
+        /// over the sword.
+        ///
+        /// The user derived these from where the weapon actually hangs, which is the right way
+        /// round and not something arithmetic could have supplied:
+        ///
+        ///   NORTH - back to us, blade held on his FRONT -> body in front of it -> FALSE
+        ///   WEST  - we see his LEFT side, blade on his RIGHT -> body in front of it -> FALSE
+        ///   EAST  - we see his RIGHT side, blade on his right -> fully visible -> in front
+        ///   SOUTH - facing us, blade out to his side -> fully visible -> in front
+        ///
+        /// South and east are always drawn in front and have no switch, because there is no
+        /// arrangement of a right-hand weapon that puts the body between it and the camera on
+        /// those two facings.
+        /// </summary>
+        public bool callOfValorSwordInFrontFacingNorth = false;
+        public bool callOfValorSwordInFrontFacingWest = false;
 
         // --- Call of Valor's portal (the cast effect) ---
         //

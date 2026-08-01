@@ -320,14 +320,17 @@ namespace Dovahkiin
             // front when facing north - because this overlay drew "the weapon" at the only
             // angles it had, which were the axe's. All four are tunable without a rebuild.
             DovahkiinTuningDef tuning = DovahkiinTuningDef.Current;
-            float angleNorth = tuning != null ? tuning.callOfValorSwordAngleNorth : 62f;
-            float angleWest = tuning != null ? tuning.callOfValorSwordAngleWest : 10f;
-            float angleSouthEast = tuning != null ? tuning.callOfValorSwordAngleSouthEast : 70f;
-            bool inFrontNorth = tuning == null || tuning.callOfValorSwordInFrontFacingNorth;
+            float angleNorth = tuning != null ? tuning.callOfValorSwordAngleNorth : -70f;
+            float angleWest = tuning != null ? tuning.callOfValorSwordAngleWest : -70f;
+            float angleSouthEast = tuning != null ? tuning.callOfValorSwordAngleSouthEast : -20f;
+            // Both default FALSE for him - the body hides part of the blade on north and west,
+            // because on those two facings the weapon hangs on the far side of his body.
+            bool inFrontNorth = tuning != null && tuning.callOfValorSwordInFrontFacingNorth;
+            bool inFrontWest = tuning != null && tuning.callOfValorSwordInFrontFacingWest;
 
             overlay.AttachAs(summon, 3, DovahkiinDefOf.Dovahkiin_CallOfValor, ValorTexRoot,
                 DovahkiinDefOf.Dovahkiin_ValorGreatsword, false,
-                angleNorth, angleWest, angleSouthEast, inFrontNorth);
+                angleNorth, angleWest, angleSouthEast, inFrontNorth, inFrontWest);
         }
     }
 }

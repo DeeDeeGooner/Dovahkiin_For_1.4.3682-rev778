@@ -235,6 +235,27 @@ namespace Dovahkiin
         /// </summary>
         private bool weaponInFrontFacingNorth;
 
+        /// <summary>
+        /// Same question for WEST, and it needs its own answer because the two facings do not
+        /// agree for a given weapon.
+        ///
+        /// The user worked it out from where the weapon actually hangs, which is the right way
+        /// round and not something arithmetic could have told us:
+        ///
+        ///   NORTH - his back to us, the blade held on his FRONT, so his body is between the
+        ///           camera and the blade and must hide part of it.
+        ///   WEST  - we see his LEFT side, the blade held on his RIGHT, so again the body is in
+        ///           front of it.
+        ///   EAST  - we see his RIGHT side, the blade on his right, nearest the camera, so it is
+        ///           fully visible.
+        ///   SOUTH - facing us, blade out to his side, fully visible.
+        ///
+        /// So layering is a property of WHERE THE WEAPON HANGS relative to the viewer, per
+        /// facing - not one flag for the whole weapon. Defaults preserve the axe exactly: it is
+        /// drawn behind on north and in front on west.
+        /// </summary>
+        private bool weaponInFrontFacingWest = true;
+
         private string ActiveTexRoot
         {
             get { return string.IsNullOrEmpty(texRootOverride) ? TexRoot : texRootOverride; }
@@ -274,7 +295,7 @@ namespace Dovahkiin
         /// </summary>
         public void AttachAs(Pawn pawn, int shoutLevel, HediffDef watch, string texRoot,
             ThingDef weapon, bool withAura, float angleNorth, float angleWest,
-            float angleSouthEast, bool weaponInFrontNorth)
+            float angleSouthEast, bool weaponInFrontNorth, bool weaponInFrontWest)
         {
             Attach(pawn, shoutLevel, watch, weapon != null);
             texRootOverride = texRoot;
@@ -284,6 +305,7 @@ namespace Dovahkiin
             holdAngleWest = angleWest;
             holdAngleSouthEast = angleSouthEast;
             weaponInFrontFacingNorth = weaponInFrontNorth;
+            weaponInFrontFacingWest = weaponInFrontWest;
         }
 
         /// <summary>
@@ -437,7 +459,11 @@ namespace Dovahkiin
                 }
                 else if (rot == Rot4.West)
                 {
-                    axeAltitude = AltitudeLayer.PawnState.AltitudeFor() + 0.006f;
+                    // Facing west we see his LEFT side while the weapon hangs on his RIGHT, so
+                    // for the greatsword the body belongs in front of the blade. The axe is the
+                    // other way and keeps its own answer.
+                    axeAltitude = AltitudeLayer.PawnState.AltitudeFor()
+                        + (weaponInFrontFacingWest ? 0.006f : -0.006f);
                     axeLocal.x = -0.30f * scale / RefBodyWidth;
                     axeAngle = holdAngleWest;
                 }
@@ -995,6 +1021,7 @@ namespace Dovahkiin
             Scribe_Values.Look(ref holdAngleWest, "holdAngleWest", -10f);
             Scribe_Values.Look(ref holdAngleSouthEast, "holdAngleSouthEast", -70f);
             Scribe_Values.Look(ref weaponInFrontFacingNorth, "weaponInFrontFacingNorth", false);
+            Scribe_Values.Look(ref weaponInFrontFacingWest, "weaponInFrontFacingWest", true);
         }
     }
 }
