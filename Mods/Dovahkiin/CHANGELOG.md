@@ -1,5 +1,51 @@
 # CHANGELOG
 
+## Call of Valor SIGNED OFF, reload included — and the portrait gap found (2026-08-01)
+
+*"Very good, all set, I even tested the reload and the timer is still good."*
+
+**That is the save-safety check passing on a brand-new summon**, and it is the thing `RISKS.md`
+§9 exists for. It has been the outstanding item on this feature family since the Ancient
+Dragonborn's very first playtest round. Both summons are now confirmed to survive save → reload
+with their timers intact.
+
+Also confirmed by that same session: all four sword facings, angle and layering, after the
+rendered sweep replaced guessing.
+
+### The remaining polish: the colonist-bar portraits show a NAKED PAWN
+
+Three symptoms, **one cause**, reported together:
+
+- Call of Valor's top-of-screen icon is a naked colonist
+- so is the Ancient Dragonborn's
+- and the Dovahkiin's own icon **does not change** when Dragon Aspect is up
+
+All three follow from the architecture rather than from a bug: **the armour is a world-space
+`Thing`, and a portrait is not the world.** `PortraitsCache` renders a pawn through its own path
+using only that pawn's own graphics — body, apparel, head, hair. A follower `Thing` drawing
+quads in map space is not reachable from there, by construction.
+
+That architecture was chosen deliberately and is still right: it is what keeps the overlay off
+`PawnRenderer` and clear of RocketMan (`RISKS.md` §10). The portrait gap is the price of it, and
+it was not foreseen.
+
+The two ways out, neither free, **put to the user rather than picked**:
+
+1. **Make the armour real apparel** — already considered and rejected once: it needs 15 textures
+   rather than 3 (`ApparelGraphicRecordGetter` resolves per `BodyTypeDef`), and it becomes a real
+   item that shows in the Gear tab, can be taken off, and drops on death.
+2. **Harmony-patch the portrait render path.** Portraits are rendered separately from the live
+   pawn, so this is a *narrower* patch than the one §10 warns about — but it is still a render
+   patch, and this mod has avoided every one of those on purpose.
+
+There is also a cheaper third answer for two of the three symptoms: **the summons were never
+meant to be in the colonist bar at all.** The notebook records the intent as *"not draftable and
+not in the colonist bar"*, and `drafter = null` delivered the first half only — setting it does
+nothing about the bar, which lists player-faction humanlikes. Removing them from the bar would
+close both summon complaints and leave only the Dovahkiin's own portrait.
+
+---
+
 ## Playtest 1 of Call of Valor: two defects, both mine, both structural (2026-08-01)
 
 *"His sword tilts in the wrong direction (the opposite being the right one): facing east, facing
