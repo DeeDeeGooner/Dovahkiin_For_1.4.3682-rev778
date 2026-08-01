@@ -150,7 +150,11 @@
          one number in this mod that has needed the most rounds to settle; the axe's
          took three. If the sword still leans wrong, nudge rather than negate again:
          try 60 or 80 for south/east and see which way it improves. -->
-    <callOfValorSwordAngleSouthEast>70</callOfValorSwordAngleSouthEast>
+    <!-- -20 CHOSEN BY THE USER off Tools/PreviewWeaponAngles.ps1, 2026-08-01, after two
+         guesses failed in play (-70 read as the wrong tilt, +70 as upside down). Do not
+         "correct" this from the axe's -70 - they are different weapons and this one was
+         picked by eye from a rendered sweep, which is the only thing that settles it. -->
+    <callOfValorSwordAngleSouthEast>-20</callOfValorSwordAngleSouthEast>
     <callOfValorSwordAngleNorth>62</callOfValorSwordAngleNorth>
     <callOfValorSwordAngleWest>10</callOfValorSwordAngleWest>
 

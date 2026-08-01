@@ -267,7 +267,7 @@ namespace Dovahkiin
         /// that has needed the most retuning - the axe's took three playtest rounds - and only
         /// the game can settle it. Edit, restart, no rebuild.
         /// </summary>
-        public float callOfValorSwordAngleSouthEast = 70f;
+        public float callOfValorSwordAngleSouthEast = -20f;
         public float callOfValorSwordAngleNorth = 62f;
         public float callOfValorSwordAngleWest = 10f;
 

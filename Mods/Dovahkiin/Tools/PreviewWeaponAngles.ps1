@@ -27,7 +27,17 @@ $HEAD_KIND = "Male_Average_Pointy"
 
 $OUTDIR = if ($env:DOVAH_PREVIEW) { $env:DOVAH_PREVIEW } else { $PSScriptRoot }
 if (-not (Test-Path $OUTDIR)) { New-Item -ItemType Directory -Force $OUTDIR | Out-Null }
-$OUTFILE = Join-Path $OUTDIR "weapon_angles.png"
+# DOVAH_FACING picks which facing to sweep: south (default), north or west.
+# The code holds THREE separate angles - one shared by south and east, one for north, one for
+# west - so each needs its own sweep. Deriving the other two from the first is exactly the
+# guessing this tool exists to replace.
+$FACING = if ($env:DOVAH_FACING) { $env:DOVAH_FACING } else { "south" }
+$OUTFILE = Join-Path $OUTDIR ("weapon_angles_" + $FACING + ".png")
+
+# West is drawn from the EAST sprite mirrored - what Graphic_Multi does for free from three
+# files - so the body, head, armour and helm all come from east and the whole cell is flipped.
+$SPRITE_ROT = if ($FACING -eq "west") { "east" } else { $FACING }
+$MIRROR = ($FACING -eq "west")
 
 # Same constants as the C# and PreviewAncientDragonborn.ps1
 $CELLPX    = 256.0
@@ -40,8 +50,16 @@ $C_WHITE   = @(255, 255, 255)
 # Thing_DragonAspectOverlay.DrawAt's own weapon placement, south facing:
 #   axeLocal.x = +0.34 * scale/RefBodyWidth ; axeLocal.z = -0.06 * scale/RefBodyWidth
 # z is negative = DOWN the screen, hence +0.06 in screen y below.
+#   north:     axeLocal.x = -0.34   west: -0.30   (read out of DrawAt, not guessed)
 $WEAPON_DX = 0.34
+if ($FACING -eq "north") { $WEAPON_DX = -0.34 }
+elseif ($FACING -eq "west") { $WEAPON_DX = -0.30 }
 $WEAPON_DY = 0.06
+
+# BaseHeadOffsetAt's x component applies to east and west only, sign flipped on west.
+$HEAD_DX = 0.0
+if ($FACING -eq "east") { $HEAD_DX = 0.04 }
+elseif ($FACING -eq "west") { $HEAD_DX = -0.04 }
 
 $ANGLES = @( (-120), (-90), (-70), (-45), (-20), (0), (20), (45), (70), (90), (120), (145), (180), (215) )
 
@@ -76,7 +94,7 @@ function DrawGround($gfx, [double]$originX, [double]$originY, [double]$size, [in
 }
 
 function DrawTex($gfx, $img, [double]$centreX, [double]$centreY, [double]$width, [double]$height,
-                 $tint, [double]$alpha, [double]$angle = 0.0) {
+                 $tint, [double]$alpha, [double]$angle = 0.0, [bool]$mirror = $false) {
   if ($img -eq $null -or $alpha -le 0.01) { return }
   $matrix = New-Object System.Drawing.Imaging.ColorMatrix
   $matrix.Matrix00 = [single]($tint[0] / 255.0)
@@ -89,6 +107,9 @@ function DrawTex($gfx, $img, [double]$centreX, [double]$centreY, [double]$width,
   $saved = $gfx.Save()
   $gfx.TranslateTransform([single]$centreX, [single]$centreY)
   if ($angle -ne 0.0) { $gfx.RotateTransform([single]$angle) }
+  # Mirror AFTER the rotate, the same order Graphic_Multi's west uses - flipping first would
+  # also flip the direction the rotation turns.
+  if ($mirror) { $gfx.ScaleTransform([single](-1.0), [single]1.0) }
   $rect = New-Object System.Drawing.Rectangle ([int](-$width / 2)), ([int](-$height / 2)), ([int]$width), ([int]$height)
   $gfx.DrawImage($img, $rect, 0, 0, $img.Width, $img.Height, [System.Drawing.GraphicsUnit]::Pixel, $attrs)
   $gfx.Restore($saved)
@@ -96,10 +117,10 @@ function DrawTex($gfx, $img, [double]$centreX, [double]$centreY, [double]$width,
 }
 
 # --- assets --------------------------------------------------------------------
-$bodyImg   = LoadPng (Join-Path $BODY_DIR "Naked_Male_south.png")
-$headImg   = LoadPng (Join-Path $HEAD_DIR "${HEAD_KIND}_south.png")
-$armourImg = LoadPng (Join-Path $TEXDIR "DragonAspect_L2_Male_south.png")
-$helmImg   = LoadPng (Join-Path $TEXDIR "DragonAspectHelm_south.png")
+$bodyImg   = LoadPng (Join-Path $BODY_DIR "Naked_Male_$SPRITE_ROT.png")
+$headImg   = LoadPng (Join-Path $HEAD_DIR "${HEAD_KIND}_$SPRITE_ROT.png")
+$armourImg = LoadPng (Join-Path $TEXDIR "DragonAspect_L2_Male_$SPRITE_ROT.png")
+$helmImg   = LoadPng (Join-Path $TEXDIR "DragonAspectHelm_$SPRITE_ROT.png")
 $swordImg  = LoadPng (Join-Path $EQUIP "ValorGreatsword.png")
 $axeImg    = LoadPng (Join-Path $EQUIP "DovahkiinAncientAxe.png")
 foreach ($asset in @($bodyImg, $headImg, $armourImg, $helmImg, $swordImg, $axeImg)) {
@@ -128,8 +149,8 @@ $brGold  = New-Object System.Drawing.SolidBrush (RGB 226 178 92 255)
 $brDim   = New-Object System.Drawing.SolidBrush (RGB 178 178 186 255)
 $brGood  = New-Object System.Drawing.SolidBrush (RGB 120 220 130 255)
 
-$gfx.DrawString("WEAPON HOLD ANGLE - every value, facing SOUTH. Pick the number, do not reason about it.",
-  $fontTitle, $brWhite, [single]$PAD, [single]10)
+$titleText = "WEAPON HOLD ANGLE - every value, facing " + $FACING.ToUpper() + ". Pick the number, do not reason about it."
+$gfx.DrawString($titleText, $fontTitle, $brWhite, [single]$PAD, [single]10)
 
 # Draw one weapon's sweep. Returns the y below it.
 function DrawSweep($gfx, [double]$topY, $weaponImg, [double]$weaponDrawSize, [string]$label,
@@ -154,10 +175,12 @@ function DrawSweep($gfx, [double]$topY, $weaponImg, [double]$weaponDrawSize, [st
     $drawnCell = $CELLPX * $shrink
 
     # the invisible pawn under the armour, exactly as the summon renders
-    DrawTex $gfx $bodyImg $centreX $centreY $drawnCell $drawnCell $C_INVIS $INVIS_A
-    DrawTex $gfx $headImg $centreX ($centreY - ($HEAD_DZ * $pxPerUnit)) $drawnCell $drawnCell $C_INVIS $INVIS_A
-    DrawTex $gfx $armourImg $centreX $centreY $drawnCell $drawnCell $C_WHITE 1.0
-    DrawTex $gfx $helmImg $centreX ($centreY - ($HEAD_DZ * $pxPerUnit)) $drawnCell $drawnCell $C_WHITE 1.0
+    $headX = $centreX + ($HEAD_DX * $pxPerUnit)
+    $headY = $centreY - ($HEAD_DZ * $pxPerUnit)
+    DrawTex $gfx $bodyImg $centreX $centreY $drawnCell $drawnCell $C_INVIS $INVIS_A 0.0 $MIRROR
+    DrawTex $gfx $headImg $headX $headY $drawnCell $drawnCell $C_INVIS $INVIS_A 0.0 $MIRROR
+    DrawTex $gfx $armourImg $centreX $centreY $drawnCell $drawnCell $C_WHITE 1.0 0.0 $MIRROR
+    DrawTex $gfx $helmImg $headX $headY $drawnCell $drawnCell $C_WHITE 1.0 0.0 $MIRROR
 
     $angle = [double]$ANGLES[$idx]
     DrawTex $gfx $weaponImg ($centreX + ($WEAPON_DX * $pxPerUnit)) ($centreY + ($WEAPON_DY * $pxPerUnit)) `
