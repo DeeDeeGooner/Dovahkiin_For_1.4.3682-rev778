@@ -109,6 +109,29 @@ Note when testing criterion 5: five mods in `MODLIST.md` (`XenotypeCharmweaverRe
    Hard-referencing Harmony and HugsLib is fine; hard-referencing anything else is not.
 6. Nothing the player unlocks is lost by loading a save. All state in `ExposeData`.
 
+## Tools installed on this machine — use them
+
+**A DECOMPILER IS INSTALLED. Read RimWorld's real C# instead of guessing at it.**
+
+```powershell
+& "$env:USERPROFILE\.dotnet\tools\ilspycmd.exe" -t Verse.PawnRenderer `
+  "C:\Games\Rimworld\RimWorld\RimWorldFolder\RimWorldWin64_Data\Managed\Assembly-CSharp.dll" `
+  | Out-File "$scratch\PawnRenderer.cs" -Encoding utf8
+```
+
+One `-t Type.Name` per call, seconds each, and it gives **property bodies and the order of
+operations** — not just member lists. Installed 2026-08-01.
+
+**This is the first thing to reach for when you need to know how vanilla does something.** The
+reflection recipe in the notebook still has its uses (is this member public, scanning IL for
+callers) but it dies with a `StackOverflowException` on every run and can never show you code.
+That limit is what produced two wrong weapon hold angles in a row: it could show *that* an angle
+was used, never *how*.
+
+If it is ever missing, reinstall **pinned** — unpinned fails on this machine's SDK with a
+misleading *"DotnetToolSettings.xml is not found in the package"*:
+`dotnet tool install -g ilspycmd --version 8.2.0.7535`
+
 ## Anti-patterns — do not do these
 
 - Do not use any API introduced after 1.4 (`LayoutDef`, Anomaly types, 1.5 ability rework).

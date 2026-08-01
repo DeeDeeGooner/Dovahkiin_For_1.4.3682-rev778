@@ -48,7 +48,11 @@ namespace Dovahkiin
         /// already-spawned caster, and builds the hero from defs when it flashes. A bool cannot
         /// be orphaned; the worst case is that no hero arrives.
         /// </summary>
-        public static void TrySummon(Pawn caster, IntVec3 targetCell)
+        /// <param name="lifetimeOverride">
+        /// Ticks the hero should stay, or 0 to use the tuning value. The shout passes a
+        /// level-scaled figure; the debug action passes 0.
+        /// </param>
+        public static void TrySummon(Pawn caster, IntVec3 targetCell, int lifetimeOverride = 0)
         {
             if (caster == null || caster.Map == null || !caster.Spawned)
             {
@@ -70,11 +74,11 @@ namespace Dovahkiin
 
             // If the portal cannot be made, fall back to bringing him straight through rather
             // than dropping the summon: the portal is the decoration, he is the feature.
-            if (Thing_ValorPortal.OpenAndSummon(caster.Map, cell, caster) == null)
+            if (Thing_ValorPortal.OpenAndSummon(caster.Map, cell, caster, lifetimeOverride) == null)
             {
                 Log.Warning("[Dovahkiin] Call of Valor: no portal, so the hero arrives without "
                     + "one rather than not at all.");
-                SpawnHeroAt(caster, caster.Map, cell);
+                SpawnHeroAt(caster, caster.Map, cell, lifetimeOverride);
             }
         }
 
@@ -82,7 +86,7 @@ namespace Dovahkiin
         /// Build the hero and put him on the map. Called BY THE PORTAL at its flash, and
         /// directly only as the fallback above.
         /// </summary>
-        public static void SpawnHeroAt(Pawn caster, Map map, IntVec3 cell)
+        public static void SpawnHeroAt(Pawn caster, Map map, IntVec3 cell, int lifetimeOverride = 0)
         {
             if (map == null || !cell.IsValid)
             {
@@ -143,6 +147,12 @@ namespace Dovahkiin
                     lifetime = tuning.callOfValorLifetimeTicks > 0
                         ? tuning.callOfValorLifetimeTicks
                         : tuning.ancientDragonbornLifetimeTicks * 2;
+                }
+                // The shout passes a level-scaled figure; the debug action passes 0 and gets the
+                // full stay, which is what makes it useful for testing him rather than the ladder.
+                if (lifetimeOverride > 0)
+                {
+                    lifetime = lifetimeOverride;
                 }
                 doom.Configure(lifetime, Rand.Value < 0.5f);
                 summon.health.AddHediff(doom);

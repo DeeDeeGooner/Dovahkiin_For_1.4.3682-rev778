@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  CALL OF VALOR's three abilities.
+
+  UNLIKE EVERY OTHER SHOUT IN THIS MOD, THIS ONE TARGETS A CELL. The others send a cone, a lane
+  or a ring out from the caster; this opens a portal where the player points, and the hero walks
+  out of it. So targetParams allows LOCATIONS and nothing else - no pawns, no buildings - and
+  targetRequired is true, which is the opposite of every self-cast shout here.
+
+  There is deliberately NO <cooldownTicksRange>. Only Dragon Aspect needs vanilla's per-ability
+  cooldown, because it is a once-per-day power; this is a quest reward governed by its Thu'um
+  cost and the shared shout lockout, both in the ShoutDef.
+
+  RANGE grows with the words. One word reaches barely past arm's length and three reaches across
+  a fight, which is what makes the third word feel like the real thing rather than a longer
+  timer. Line of sight IS required: he steps out of a hole in the world, and opening one through
+  a wall reads as a bug even when it is not.
+
+  The icon is Dragon Aspect's for now - see ART_TODO.md. Call of Valor has no icon of its own,
+  and shipping a magenta placeholder for a shout the player just earned from a quest is worse
+  than borrowing a related one. It is flagged rather than hidden.
+-->
+<Defs>
+
+  <AbilityDef Name="Dovahkiin_CallOfValorBase" Abstract="True">
+    <hostile>false</hostile>
+    <targetRequired>true</targetRequired>
+    <showWhenDrafted>true</showWhenDrafted>
+    <displayGizmoWhileUndrafted>true</displayGizmoWhileUndrafted>
+    <disableGizmoWhileUndrafted>false</disableGizmoWhileUndrafted>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_DragonAspect</iconPath>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <warmupTime>1.4</warmupTime>
+      <drawAimPie>false</drawAimPie>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetPawns>false</canTargetPawns>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetItems>false</canTargetItems>
+        <canTargetSelf>false</canTargetSelf>
+      </targetParams>
+    </verbProperties>
+  </AbilityDef>
+
+  <!-- ===================== Hun - one word ===================== -->
+  <AbilityDef ParentName="Dovahkiin_CallOfValorBase">
+    <defName>Dovahkiin_Ability_CallOfValor_1</defName>
+    <label>hun</label>
+    <description>Hero. The veil thins, and a shade of Sovngarde comes through - briefly.</description>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>9.9</range>
+      <warmupTime>1.4</warmupTime>
+      <drawAimPie>false</drawAimPie>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetPawns>false</canTargetPawns>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetItems>false</canTargetItems>
+        <canTargetSelf>false</canTargetSelf>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_CallOfValor</shout>
+        <level>1</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_CallOfValor">
+        <level>1</level>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <!-- ===================== Hun Kaal - two words ===================== -->
+  <AbilityDef ParentName="Dovahkiin_CallOfValorBase">
+    <defName>Dovahkiin_Ability_CallOfValor_2</defName>
+    <label>hun kaal</label>
+    <description>Hero, Champion. The way opens wider, and he stays long enough to turn a fight.</description>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>16.9</range>
+      <warmupTime>1.4</warmupTime>
+      <drawAimPie>false</drawAimPie>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetPawns>false</canTargetPawns>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetItems>false</canTargetItems>
+        <canTargetSelf>false</canTargetSelf>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_CallOfValor</shout>
+        <level>2</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_CallOfValor">
+        <level>2</level>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+  <!-- ===================== Hun Kaal Zoor - three words ===================== -->
+  <AbilityDef ParentName="Dovahkiin_CallOfValorBase">
+    <defName>Dovahkiin_Ability_CallOfValor_3</defName>
+    <label>hun kaal zoor</label>
+    <description>Hero, Champion, Legend. A legend of the old world steps out of Sovngarde, greatsword in hand, and stands with you until the echo fades.</description>
+    <verbProperties>
+      <verbClass>Verb_CastAbility</verbClass>
+      <range>24.9</range>
+      <warmupTime>1.4</warmupTime>
+      <drawAimPie>false</drawAimPie>
+      <requireLineOfSight>true</requireLineOfSight>
+      <targetParams>
+        <canTargetLocations>true</canTargetLocations>
+        <canTargetPawns>false</canTargetPawns>
+        <canTargetBuildings>false</canTargetBuildings>
+        <canTargetItems>false</canTargetItems>
+        <canTargetSelf>false</canTargetSelf>
+      </targetParams>
+    </verbProperties>
+    <comps>
+      <li Class="Dovahkiin.CompProperties_Shout">
+        <shout>Dovahkiin_Shout_CallOfValor</shout>
+        <level>3</level>
+      </li>
+      <li Class="Dovahkiin.CompProperties_CallOfValor">
+        <level>3</level>
+      </li>
+      <li Class="CompProperties_AbilityRequiresCapacity">
+        <capacity>Talking</capacity>
+      </li>
+    </comps>
+  </AbilityDef>
+
+</Defs>

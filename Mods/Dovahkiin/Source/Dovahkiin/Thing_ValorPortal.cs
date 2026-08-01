@@ -85,6 +85,9 @@ namespace Dovahkiin
         private bool summonPending;
         private Pawn summonCaster;
 
+        /// <summary>Ticks the hero should stay, or 0 for the tuning default. Set by the shout.</summary>
+        private int summonLifetime;
+
         // --- the orbit table -----------------------------------------------------------
         //
         // NOT in DovahkiinTuningDef, and that is a judgement rather than an oversight.
@@ -208,7 +211,7 @@ namespace Dovahkiin
                 // ticking forever, and it must never propagate into Thing.Tick.
                 try
                 {
-                    CallOfValorUtility.SpawnHeroAt(caster, here, cell);
+                    CallOfValorUtility.SpawnHeroAt(caster, here, cell, summonLifetime);
                 }
                 catch (Exception ex)
                 {
@@ -488,6 +491,7 @@ namespace Dovahkiin
             // unspawned summon - see summonPending.
             Scribe_Values.Look(ref summonPending, "summonPending", false);
             Scribe_References.Look(ref summonCaster, "summonCaster");
+            Scribe_Values.Look(ref summonLifetime, "summonLifetime", 0);
         }
 
         /// <summary>
@@ -500,13 +504,15 @@ namespace Dovahkiin
         /// <summary>
         /// Open a portal that a hero will step out of at its flash.
         /// </summary>
-        public static Thing_ValorPortal OpenAndSummon(Map map, IntVec3 cell, Pawn caster)
+        public static Thing_ValorPortal OpenAndSummon(Map map, IntVec3 cell, Pawn caster,
+            int lifetimeOverride = 0)
         {
             Thing_ValorPortal portal = Open(map, cell);
             if (portal != null)
             {
                 portal.summonPending = true;
                 portal.summonCaster = caster;
+                portal.summonLifetime = lifetimeOverride;
             }
             return portal;
         }

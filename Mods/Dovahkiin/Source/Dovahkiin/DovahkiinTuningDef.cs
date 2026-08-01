@@ -255,6 +255,19 @@ namespace Dovahkiin
         public int callOfValorLifetimeTicks = 30000;
 
         /// <summary>
+        /// How long the hero stays at ONE, TWO and THREE words. Empty or zero at a position
+        /// falls back to thirds of <see cref="callOfValorLifetimeTicks"/>, so the ladder tracks
+        /// the full lifetime automatically rather than needing three numbers rewritten whenever
+        /// it moves.
+        ///
+        /// **Levels scaling the STAY is a decision, not a spec line.** The user's brief fixed the
+        /// full lifetime and said nothing about one or two words. Duration is what TES5's own
+        /// Call of Valor scales and what every other multi-level shout here scales, so it is the
+        /// least surprising answer - but it is one list to change if it should be something else.
+        /// </summary>
+        public List<int> callOfValorLifetimeByLevel = new List<int>();
+
+        /// <summary>
         /// How Call of Valor holds his greatsword, per facing, in degrees.
         ///
         /// **These are the NEGATIVE of the Ancient Dragonborn's axe angles**, and that is the

@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  CALL OF VALOR - the first of the three QUEST-LOCKED shouts.
+
+  Hun Kaal Zoor: Hero, Champion, Legend. It summons a hero of Sovngarde through a portal on the
+  targeted cell, who fights beside the Dovahkiin and then returns.
+
+  IT IS A QUEST REWARD AND NEVER APPEARS ON A WORD WALL. Confirmed explicitly with the user
+  2026-07-30. That is not a detail: SPEC.md 4.4 forbids growing the word-wall list "without
+  re-costing 7", and the wall count went 33 -> 42 when three shouts were promoted. These three
+  words are handed over by a quest, so the wall count does NOT move and the Phase 7 re-cost
+  problem is not made worse. Do not add them to any wall table.
+
+  LEVELS SCALE HOW LONG HE STAYS, and that is a DECISION rather than a spec line - flagged so it
+  can be overruled cheaply. The user's brief fixed the full lifetime ("twice the Ancient
+  Dragonborn") and said nothing about what one or two words should do. Duration is what TES5's
+  own Call of Valor scales, and what every other multi-level shout in this mod scales.
+  One list changes it: callOfValorLifetimeByLevel in DovahkiinTuningDef.xml.
+-->
+<Defs>
+
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Hun</defName>
+    <label>Hun</label>
+    <word>Hun</word>
+    <meaning>Hero</meaning>
+    <!-- QUEST REWARD. Phase 7's wall generation MUST skip this. -->
+    <questOnly>true</questOnly>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Kaal</defName>
+    <label>Kaal</label>
+    <word>Kaal</word>
+    <meaning>Champion</meaning>
+    <!-- QUEST REWARD. Phase 7's wall generation MUST skip this. -->
+    <questOnly>true</questOnly>
+  </Dovahkiin.WordOfPowerDef>
+  <Dovahkiin.WordOfPowerDef>
+    <defName>Dovahkiin_Word_Zoor</defName>
+    <label>Zoor</label>
+    <word>Zoor</word>
+    <meaning>Legend</meaning>
+    <!-- QUEST REWARD. Phase 7's wall generation MUST skip this. -->
+    <questOnly>true</questOnly>
+  </Dovahkiin.WordOfPowerDef>
+
+  <Dovahkiin.ShoutDef>
+    <defName>Dovahkiin_Shout_CallOfValor</defName>
+    <label>Call of Valor</label>
+    <description>Hero, Champion, Legend. The Thu'um reaches across to Sovngarde itself, and a champion of the old world steps back through to fight beside you.</description>
+    <words>
+      <li>Dovahkiin_Word_Hun</li>
+      <li>Dovahkiin_Word_Kaal</li>
+      <li>Dovahkiin_Word_Zoor</li>
+    </words>
+    <abilitiesByLevel>
+      <li>Dovahkiin_Ability_CallOfValor_1</li>
+      <li>Dovahkiin_Ability_CallOfValor_2</li>
+      <li>Dovahkiin_Ability_CallOfValor_3</li>
+    </abilitiesByLevel>
+    <!--
+      Priced against Storm Call (10/16/24), the most expensive shout in the mod, because this
+      one delivers a whole armoured ally for hours. Slightly under it at one word and level with
+      it at three: the hero is stronger than a lightning strike but he arrives once and stays,
+      where Storm Call can be repeated.
+
+      The shared cooldown is long - two to four minutes - so this cannot be chained. Unlike
+      Dragon Aspect there is no separate per-ability day-long cooldown: this is a quest reward
+      the player earned, not a once-a-day power, and the Thu'um cost is what limits it.
+    -->
+    <thuumCostByLevel><li>9</li><li>16</li><li>24</li></thuumCostByLevel>
+    <cooldownTicksByLevel><li>7200</li><li>10800</li><li>14400</li></cooldownTicksByLevel>
+    <!-- SPEC.md 4.5 / 4.6: dragons and draugr get only Force, Fire and Frost. Never this. -->
+    <availableToDragons>false</availableToDragons>
+    <availableToUndead>false</availableToUndead>
+  </Dovahkiin.ShoutDef>
+
+</Defs>

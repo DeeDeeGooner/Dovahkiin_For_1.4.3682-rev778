@@ -16,6 +16,24 @@ namespace Dovahkiin
 
         /// <summary>Its meaning, shown when the word is learned: "Force".</summary>
         public string meaning;
+
+        /// <summary>
+        /// This word is a QUEST REWARD and must never be placed on a word wall.
+        ///
+        /// Nothing reads it yet, and that is precisely why it exists now. Word walls are Phase 7
+        /// and do not exist; when they are built, the obvious implementation - walk every
+        /// WordOfPowerDef and scatter them - would silently put Call of Valor, Summon Durnehviir
+        /// and Call Odahviing on walls. That breaks two things at once: the user confirmed
+        /// explicitly on 2026-07-30 that all three are quest rewards and never found on walls,
+        /// and `SPEC.md 4.4` forbids growing the wall list "without re-costing 7" - a re-cost
+        /// that is deliberately not done. The wall count must stay at 42 while the database holds
+        /// 45.
+        ///
+        /// **PHASE 7 MUST FILTER ON THIS.** A flag that exists before the code that needs it is
+        /// cheap; a wall that hands out a quest shout is a spec violation nobody would notice
+        /// until a playthrough.
+        /// </summary>
+        public bool questOnly;
     }
 
     /// <summary>
