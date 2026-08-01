@@ -25,9 +25,11 @@
   Line of sight IS required: he steps out of a hole in the world, and opening one through a wall
   reads as a bug even when it is not.
 
-  The icon is Dragon Aspect's for now - see ART_TODO.md. Call of Valor has no icon of its own,
-  and shipping a magenta placeholder for a shout the player just earned from a quest is worse
-  than borrowing a related one. It is flagged rather than hidden.
+  HIS OWN ICON, generated 2026-08-01 to the user's spec: bright white at the head running down to
+  grey at the tip, with the head's core circle in the summon's own blue. That blue is C_AZURE
+  read from Tools/ValorPalette.ps1 - the same file his armour and his greatsword read - so the
+  icon quotes the hero rather than a blue that merely looks like his. It briefly borrowed Dragon
+  Aspect's icon; that is over. Regenerating proved the other 15 icons byte-identical.
 -->
 <Defs>
 
@@ -37,7 +39,7 @@
     <showWhenDrafted>true</showWhenDrafted>
     <displayGizmoWhileUndrafted>true</displayGizmoWhileUndrafted>
     <disableGizmoWhileUndrafted>false</disableGizmoWhileUndrafted>
-    <iconPath>UI/Abilities/Dovahkiin_Shout_DragonAspect</iconPath>
+    <iconPath>UI/Abilities/Dovahkiin_Shout_CallOfValor</iconPath>
     <verbProperties>
       <verbClass>Verb_CastAbility</verbClass>
       <warmupTime>1.4</warmupTime>

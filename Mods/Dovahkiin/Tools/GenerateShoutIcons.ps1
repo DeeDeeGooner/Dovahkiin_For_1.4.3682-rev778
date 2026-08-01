@@ -45,7 +45,21 @@ $TABLE = @(
   @("DragonAspect",     255,140, 40,  255,255,255, 1.00),
   # Tip is clear light azure, head deep azure. Core lightened to match, since a grey core in an
   # all-azure comet read as a smudge rather than a highlight.
-  @("Dragonrend",       135,205,250,  235,248,255, 1.00)
+  @("Dragonrend",       135,205,250,  235,248,255, 1.00),
+  # CALL OF VALOR. The user's spec: bright white at the head running down to grey at the tip,
+  # with the head's core circle in the summon's own blue.
+  #
+  # The core is C_AZURE (120,196,255) from Tools/ValorPalette.ps1 - the SAME file both his armour
+  # and his greatsword read, so the icon quotes the hero rather than a blue that merely looks
+  # like his. That palette exists precisely because the sword and the armour once carried two
+  # near-identical copies of the same colours and drifted apart; a third copy here would restart
+  # the problem.
+  #
+  # The tip grey is faintly COOL (150,155,165) rather than neutral. A pure grey tip on a
+  # white-to-grey comet reads as an uncoloured placeholder; a cool cast ties it to his spectral
+  # palette and, at full opacity, keeps it clear of Cyclone's (185,190,200) at 0.60 - the only
+  # other grey in the family.
+  @("CallOfValor",      150,155,165,  120,196,255, 1.00)
 )
 
 # ---------------------------------------------------------------------------------------------
@@ -72,6 +86,10 @@ $HEAD_GRADIENT = @{
   "StormCall"      = @( 52,  56,  64)
   # deep azure -> clear light azure
   "Dragonrend"     = @( 18,  68, 148)
+  # BRIGHT WHITE head -> grey tip. Pure white, not off-white: he is the only shout in the family
+  # whose head is meant to read as light itself rather than as a colour, which is what separates
+  # a hero of Sovngarde from the rest of the bar at a glance.
+  "CallOfValor"    = @(255, 255, 255)
 }
 
 $src = [System.Drawing.Bitmap]::FromFile($MASTER)
