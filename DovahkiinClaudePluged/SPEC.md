@@ -86,11 +86,55 @@ Alongside it the pawn gets:
 
 ### 3.2 Route A — "A Dragon!!!" (the awakening event)
 
-The rarest incident in the mod. **OD-1 is answered: it fires at most once per _Dovahkiin slot_,
-not once per save.** Eligibility is: no Dovahkiin currently exists, **and** the registry's slot
-is open — meaning either none has ever existed, or the previous one died and the grieving delay
-in §2/OD-1 has elapsed. `dragonEventFiredCount` is compared against
-`dovahkiinDeaths + 1`, which is why it is a counter and not a bool.
+> **REWRITTEN 2026-08-01. IT IS NO LONGER A RARE ROLL — IT IS A CERTAINTY ON A RISING TIMER.**
+>
+> The user, deciding this as the deliberate counterweight to §3.3's harsher lockout: *"change it
+> from a very rare event to an event bond to happen (so instead of keeping it's chance of
+> happening constant, it should increase overtime more and more until it happens). So yes it is
+> harsher now since the punishement of losing a dragonborn is heavier, but on the other you are
+> guaranted the chance to get one."*
+>
+> **THE TWO RULES ARE A PAIR AND MUST NOT BE SEPARATED.** §3.3 makes losing the Dovahkiin close
+> the door on everyone who knew him; this guarantees the door opened in the first place. Softening
+> either alone breaks the bargain — a rare event plus a harsh lockout is a colony that may never
+> see a Dragonborn at all, and a certain event plus a soft lockout is no loss worth fearing.
+
+**Once per save, and bound to happen.** Eligibility is: no Dovahkiin currently exists **and** the
+event has never fired. `dragonEventFiredCount` stays a counter rather than a bool, so the
+once-per-slot behaviour is one comparison away if this is ever revisited — but the shipped rule is
+once, ever.
+
+**THE RISING CHANCE.** Rolled once per in-game day. Before `graceDays` nothing happens at all; a
+colony three days old should not be fighting a dragon. After it, the per-day chance climbs
+linearly and never falls:
+
+```
+chance(day) = clamp01( baseChancePerDay + rampPerDay * (day - graceDays) )
+```
+
+Three candidate tunings, with the day by which the event has fired for that share of colonies.
+**Computed, not guessed** — a RimWorld year is 60 days:
+
+| tuning | per-day chance | 50% | 75% | 90% | 99% |
+|---|---|---|---|---|---|
+| gentle | 0.5% rising +0.08%/day after day 20 | day 57 | 74 | 91 | 123 |
+| **middle (recommended)** | **0.8% rising +0.15%/day after day 20** | **day 45** | **57** | **70** | **92** |
+| brisk | 1.0% rising +0.40%/day after day 15 | day 31 | 38 | 46 | 59 |
+
+**Middle is the recommendation**: half of colonies meet their dragon inside the first year, nearly
+all inside two, and it is still possible to be the colony that waited. Brisk makes it routine;
+gentle risks a player finishing a run without ever seeing the mod's premise.
+
+All three numbers belong in `DovahkiinTuningDef` — `dragonEventGraceDays`,
+`dragonEventBaseChancePerDay`, `dragonEventRampPerDay`.
+
+**Guaranteed to FIRE, not guaranteed to SUCCEED.** The dragon still has to die on the map. A
+colony that loses the fight has had its one event and gets no Dovahkiin from this route — which is
+the whole reason §8.1 says to tune the dragon so an unprepared colony can lose. The guarantee is
+that the *opportunity* arrives, and the user's own words are "guaranteed the chance".
+
+**Not built.** The dragon is Phase 3, and the timer belongs with it — a rising chance with nothing
+to spawn is a knob nobody can turn.
 
 An enraged dragon assaults the colony. If it dies on the map, a colonist awakens (see the
 resolution order below). See §8.1.
@@ -744,7 +788,7 @@ all rates are tunable. Ordered roughly from most to least common.
 | 8.5b | **"Dragons descend upon us… feeling a strange presence…"** | Very rare | Two dragons. Reserve for late game / high wealth. |
 | 8.6 | **"A strange individual begs to join the Dovahkiin's conquests."** | Rare | One pawn requests to join the colony. Requires a Dovahkiin. Flavour them as a follower/thane figure; give them decent combat stats and a bespoke backstory. |
 | 8.7 | **"A wanderer with a strange bearing has joined."** | Rare. **Requires no living Dovahkiin.** | A wanderer-joins incident where the arriving pawn **is** a Dovahkiin (§3.4 Route C). No quest, no fanfare — the quiet discovery route. Distinct from 8.6, which is an ordinary follower joining an *existing* Dovahkiin. |
-| 8.1 | **"A dragon!!!"** | **Once per Dovahkiin slot (OD-1). Rarest.** Fires only when no Dovahkiin exists *and* the registry slot is open — see §3.2. | An enraged dragon attacks the colony. If it dies on the map, a random eligible colonist awakens as the Dovahkiin (§3.2), and every living dragonblood pawn is permanently locked out. Tune the dragon so an unprepared colony can lose — but make it possible to win with preparation and terrain. |
+| 8.1 | **"A dragon!!!"** | **ONCE PER SAVE, AND BOUND TO HAPPEN — rewritten 2026-08-01.** No longer the rarest incident: a per-day chance that RISES until it fires, so every colony is guaranteed the opportunity. Fires only when no Dovahkiin exists and it has never fired. Full rule, formula and tuning table in §3.2. Paired with §3.3's harsher lockout — **do not retune one without the other.** | An enraged dragon attacks the colony. If it dies on the map, a random eligible colonist awakens as the Dovahkiin (§3.2), and every living dragonblood pawn is permanently locked out. Tune the dragon so an unprepared colony can lose — but make it possible to win with preparation and terrain. |
 
 Discovery parity with sanguophages means **two routes, one of them a quest** — 8.7 and §9.4.
 See the design note in §3.4: Biotech has no sanguophage *incident*, so match the shape, not a

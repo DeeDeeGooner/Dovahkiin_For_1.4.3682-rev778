@@ -12,7 +12,31 @@ they change what you actually play.
 |---|---|
 | **Q1 / OD-9** — power source for shouts | **Own Thu'um bar.** Magic-mod bars grow as a bonus when present. |
 | **Q2 / OD-10** — word-to-level rule | **Faithful (word N → level N), trimmed to ~10 shouts.** ~30 word walls. |
-| **Q3 / OD-1** — death of the Dragonborn | **Slot reopens slowly.** Heirs of the dead one stay locked out. |
+| **Q3 / OD-1** — death of the Dragonborn | ~~**Slot reopens slowly.**~~ **SUPERSEDED 2026-08-01 — see below.** |
+
+> **OD-1 IS NOW SETTLED THE OTHER WAY. The "A Dragon!!!" event fires ONCE PER SAVE.**
+>
+> "Slot reopens slowly" meant the event could fire again after a Dovahkiin died and a grieving
+> delay passed. The user replaced that on 2026-08-01, as one half of a deliberate pair with the
+> §3.3 lockout:
+>
+> - **§3.3 got harsher** — everyone who lived alongside the Dovahkiin burns their roll, so his
+>   death closes the door on the whole colony that knew him.
+> - **§3.2 got kinder** — the event is no longer a rare roll but a **rising chance that climbs
+>   until it happens**, so every colony is guaranteed the opportunity.
+>
+> *"So yes it is harsher now since the punishement of losing a dragonborn is heavier, but on the
+> other you are guaranted the chance to get one."*
+>
+> **Read those as one decision, not two.** A rare event plus a harsh lockout is a colony that may
+> never see a Dragonborn; a certain event plus a soft lockout is a loss with no weight. Whoever
+> retunes either half must check the other.
+>
+> After the death, the remaining routes into a new Dovahkiin are an heir **born or arriving after
+> he died** (§3.3), an outsider (§3.4), or a scenario (§11). That is intended.
+>
+> `dragonEventFiredCount` stays a counter rather than becoming a bool — the once-per-slot
+> behaviour is one comparison away if this is ever revisited, and a counter costs nothing.
 
 All three matched the recommendation. `SPEC.md` has been updated to match: §4.1 and §4.4
 (shout list trimmed to ten plus Dragonrend), §5.2 (Thu'um resource), §3.2 and §8.1
