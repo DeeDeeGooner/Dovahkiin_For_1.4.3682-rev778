@@ -132,6 +132,22 @@ If it is ever missing, reinstall **pinned** — unpinned fails on this machine's
 misleading *"DotnetToolSettings.xml is not found in the package"*:
 `dotnet tool install -g ilspycmd --version 8.2.0.7535`
 
+**AND YOU CAN SEE THE RUNNING GAME. `Tools/CaptureGame.ps1`.**
+
+```powershell
+$env:DOVAH_PREVIEW = "<scratch folder>"
+& "C:\Games\Rimworld\RimWorld\RimWorldFolder\Mods\Dovahkiin\Tools\CaptureGame.ps1"
+```
+
+Captures the RimWorld window to `game_capture.png`, which you then read like any other image.
+**Ask for it whenever a report is visual** — nearly every defect in this project has been, and
+each one has cost at least one round of guessing at what the words meant. The sword hold angle
+took three. "Show me" beats "describe it".
+
+Exit 2 means RimWorld is not running. **It captures the RimWorld window ONLY and never falls
+back to the whole desktop** — that is deliberate and must stay that way; the user's screen is
+their private business.
+
 ## Anti-patterns — do not do these
 
 - Do not use any API introduced after 1.4 (`LayoutDef`, Anomaly types, 1.5 ability rework).
