@@ -1240,6 +1240,68 @@ reads as *glowing* is a property of the texture, not of an emissive shader. A br
 orange on a pale face will read as glowing at play distance. If a true light-emitting glow is
 wanted, that is a separate and harder question — raise it rather than assume the gene delivers it.
 
+### 15.7 THE TWO VAMPIRE XENOTYPES — full spec, given by the user 2026-08-01
+
+**Two new `XenotypeDef`s: `Vampire` and `Vampire Lord`.** Both are acquired, never born into.
+
+*(The user's note on the earlier confusion: "the fault is on my behalf, I missed to precise you
+the term xenotype." Recorded because it is gracious and because the real lesson is the
+parenthetical rule above, not who mis-worded what.)*
+
+#### Traits, and how the two tiers differ
+
+| trait | Vampire | Vampire Lord |
+|---|---|---|
+| orange glowing eyes | yes | yes |
+| pale skin | yes | yes |
+| night vision | yes | yes |
+| **frost resistance** | yes | **same — NOT increased** |
+| **fire weakness** | yes | **same — NOT increased** |
+| blood filtration | raised | **more pronounced** |
+| manipulation | raised | **more pronounced** |
+| melee | raised | **more pronounced** |
+| speed | raised | **more pronounced** |
+| *(other body function)* | raised | **more pronounced** |
+
+**THE FIRE AND FROST NUMBERS ARE DELIBERATELY FLAT ACROSS BOTH TIERS.** The user singled them
+out — *"more pronounced on being a vampirelord (appart from the frost and fire effects)"*. A Lord
+is a stronger creature, not a differently-vulnerable one. Do not "improve" this into a ladder.
+
+#### Mapping each trait to what actually exists — checked, not assumed
+
+| trait | implementation |
+|---|---|
+| orange glowing eyes | a gene with `graphicData.drawOnEyes` + `color`, modelled on Biotech's `GeneEyeColor` |
+| pale skin | `GeneDef.skinColorOverride` |
+| night vision | **Biotech already ships a dark-vision gene — reuse it, do not write one** |
+| blood filtration / manipulation | `capMods` (`BloodFiltration`, `Manipulation`) |
+| speed | `statOffsets` → `MoveSpeed` |
+| melee buff | `MeleeDamageFactor` — **normally forbidden by invariant 5 as Biotech-only, but this content is Biotech-gated anyway (§15.2), so it is fair game HERE and only here** |
+| fire weakness | negative `ArmorRating_Heat` offset |
+| **frost resistance** | ⚠ **THERE IS NO FROST RESISTANCE STAT IN VANILLA.** Already learned the hard way on Dragon Aspect: `ArmorRating_Heat` really is fire, but cold has no damage-armour equivalent — `Insulation_Cold` is weather comfort only. So this must be `Insulation_Cold` **plus** resistance to this mod's own Frost Breath chill, or it will do nothing in a fight. See §5 of the save notebook. |
+
+#### EXCLUSIVITY — a hard rule, in the same family as the one-Dovahkiin invariant
+
+**A pawn may be at most ONE of: Vampire, Vampire Lord, Sanguophage.** Never two, never all three.
+
+**And the precedence is directional: a vampire cannot convert a Vampire Lord back down into an
+ordinary vampire.** The user's words, and it is a rule about *conversion attempts*, not only about
+the end state — the bite must be refused or be a no-op, not silently demote a Lord.
+
+Known precedence: **Vampire Lord > Vampire.**
+
+> **OPEN — ASK BEFORE BUILDING: where does SANGUOPHAGE sit in that order?** The user named all
+> three as mutually exclusive and gave the direction only for the two vampires. It matters at
+> every conversion site: can a sanguophage be turned into a vampire, or a vampire into a
+> sanguophage, and which wins? **Do not infer it.**
+
+**Implementation notes:** gene-level exclusivity is `GeneDef.exclusionTags` (Biotech's own
+`GeneEyeColor` uses `EyeColor` for exactly this). But exclusion tags alone will NOT deliver this
+rule — a pawn carries one `XenotypeDef` yet genes can be mixed via xenogerms, so the guarantee has
+to be enforced at every **conversion** path as well, and refusals must be explicit rather than
+silent. **This is the same shape as `GameComponent_DragonbornRegistry`'s one-Dovahkiin invariant,
+and it should be owned in one place for the same reason.**
+
 ### The one thing that survives from the wrong answer
 
 **A NEW RACE IS STILL THE WRONG SHAPE** — and the user agrees, since they were never asking for

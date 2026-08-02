@@ -130,6 +130,13 @@ rejected as all cost and no gain, since nothing else in the design needs it.
 an ordinary word wall when it is not. **So the word-wall count is install-dependent — 42 without
 Biotech, 39 with it — and §4.4's Phase 7 re-cost must be done against the LARGER number.**
 
+**TWO vampire xenotypes — `Vampire` and `Vampire Lord`** (§15.7), both acquired, never born into.
+Orange glowing eyes, pale skin, night vision, frost resistance, fire weakness, and raised body
+function — **all the body stats are more pronounced on a Lord EXCEPT fire and frost, which are
+flat across both tiers on purpose.** A pawn may be at most one of Vampire / Vampire Lord /
+Sanguophage, and **a vampire can never convert a Lord back down** — enforce that at every
+conversion path, not just in the end state.
+
 **Vampires are a BIOTECH XENOTYPE of custom genes** (§15.6) — not a race, and **not** an overlay.
 Genes change the pawn for real: `skinColorOverride` for pale skin, `drawOnEyes` for the glowing
 eyes (Biotech's own `GeneEyeColor` uses it), hemogen and `Bloodfeed` reused as-is. Only two pieces
