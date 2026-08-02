@@ -83,6 +83,31 @@ $gfx = [System.Drawing.Graphics]::FromImage($bmp)
 $gfx.CopyFromScreen($rect.Left, $rect.Top, 0, 0, (New-Object System.Drawing.Size $wide, $high))
 $gfx.Dispose()
 $bmp.Save($OUTFILE, [System.Drawing.Imaging.ImageFormat]::Png)
+
+# IS THE PICTURE ACTUALLY BLACK? A game running in EXCLUSIVE FULLSCREEN often cannot be read this
+# way - the desktop compositor never sees its pixels, and CopyFromScreen returns a black
+# rectangle with no error at all. That is the worst kind of failure here: it hands over a
+# perfectly valid PNG of nothing, and a session reading it would report on an empty screen rather
+# than say "I cannot see it".
+#
+# So sample a grid and say so. Cheap, and it converts a silent wrong answer into an instruction.
+$sampled = 0
+$lit = 0
+for ($sy = 10; $sy -lt $high; $sy += [Math]::Max(1, [int]($high / 24))) {
+  for ($sx = 10; $sx -lt $wide; $sx += [Math]::Max(1, [int]($wide / 24))) {
+    $pixel = $bmp.GetPixel($sx, $sy)
+    $sampled++
+    if (($pixel.R + $pixel.G + $pixel.B) -gt 24) { $lit++ }
+  }
+}
 $bmp.Dispose()
 
 Write-Output ("CAPTURED {0}x{1} -> {2}" -f $wide, $high, $OUTFILE)
+if ($sampled -gt 0 -and ($lit / [double]$sampled) -lt 0.02) {
+  Write-Output ""
+  Write-Output "*** THE CAPTURE IS BLANK ($lit of $sampled sample points had any colour). ***"
+  Write-Output "RimWorld is almost certainly in EXCLUSIVE FULLSCREEN, which cannot be read this"
+  Write-Output "way. Switch it to WINDOWED or BORDERLESS in Options > Graphics and try again."
+  Write-Output "Do NOT trust the image above - it is a picture of nothing, not a picture of a"
+  Write-Output "dark scene."
+}
