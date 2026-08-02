@@ -1043,14 +1043,63 @@ SOUL TEAR**.
 > drops by three.** §4.4's re-cost problem gets *easier*, not harder. Do not miss this when
 > Phase 7 is planned.
 
+> ### ⚠ AND THAT LEAVES A HOLE. SOUL TEAR BECOMES UNOBTAINABLE WITHOUT BIOTECH — DECIDE THIS.
+>
+> Follow the chain the two 2026-08-01 rulings create together:
+>
+> 1. Soul Tear leaves the word walls; it is now earned from the Durnehviir side quest.
+> 2. That side quest is triggered by returning from the Soul Cairn, inside the vampire questline.
+> 3. The vampire questline is `MayRequire`-gated on Biotech.
+> 4. **So on a Biotech-less install, a fully built and signed-off shout can never be acquired.**
+>
+> Neither ruling is wrong; the hole is in their intersection, and neither message mentioned Soul
+> Tear. **This was not asked and must not be answered by assumption.** The options, cheapest
+> first:
+>
+> - **Leave Soul Tear on the word walls after all.** Costs the narrative link, keeps the wall
+>   count at 42, and the shout stays reachable everywhere. Contradicts the questline reward.
+> - **Give it a second, non-Biotech acquisition route** — a word wall only when Biotech is absent,
+>   or an unrelated quest. Keeps both intents; needs a conditional the word-wall system does not
+>   have yet.
+> - **Accept it.** No Biotech, no Soul Tear. Clean rule, and it silently removes one of fourteen
+>   signed-off shouts from those installs.
+>
+> **Whoever picks this up: put it to the user before Phase 7, because Phase 7 is where the wall
+> count is settled and the answer changes that number.**
+
 **Home and dungeons:** *Gothicstyle Vampire Furniture* is the user's preferred dressing for the
 Volkihar home and for any vampire den or dungeon encounter. **Recommended, never required.**
 
-> **⚠ BIOTECH. Sanguophages are a Biotech xenotype, and `CLAUDE.md` invariant 5 says the mod must
-> run on the baseline with Biotech absent.** So this questline cannot simply *be* sanguophages.
-> Either it degrades gracefully to a non-Biotech vampire faction of our own, or the whole
-> questline is `MayRequire`-gated and silently absent without Biotech. **DECIDE THIS BEFORE
-> BUILDING ANY OF IT** — it changes what the faction is made of, not just whether it appears.
+> **BIOTECH — ANSWERED 2026-08-01. THIS QUESTLINE REQUIRES IT; THE MOD STILL DOES NOT.**
+>
+> The user: *"who is still playing vanilla without biotech and royalty at least on?? make biotech
+> a hard requirement (the price to pay for not having would be having no dawnguard related quest
+> at all then)"*
+>
+> **The parenthetical is the operative half and it is narrower than the opening sentence.** "The
+> price to pay for not having it is no Dawnguard quest" only makes sense if the mod still LOADS
+> without Biotech — a genuine hard requirement has no price, the mod simply refuses to run. So:
+>
+> - **The vampire war questline is `MayRequire`-gated on `Ludeon.RimWorld.Biotech`** and is
+>   silently absent without it. The Volkihar clan really is sanguophages; no non-Biotech
+>   substitute faction is built.
+> - **`CLAUDE.md` invariant 5 stands unchanged.** The mod still loads and plays on Core + Royalty
+>   + Ideology + Harmony + HugsLib.
+>
+> **Making Biotech a GLOBAL hard requirement would buy nothing.** This questline is the only
+> Biotech-dependent content in the design — gating it achieves exactly the outcome the user
+> described, while a global requirement would additionally rewrite invariant 5, `ROADMAP.md`'s
+> universal exit criterion 5, and every phase's load-test matrix. All cost, no gain. **If a
+> future session is ever told "make Biotech required", check whether gating the content is
+> enough first — it was, here.**
+>
+> *(Royalty needs no decision: it is already in the baseline.)*
+>
+> **What "silently absent" must mean in practice:** no dangling quest that cannot complete, no
+> letter referencing a faction that does not exist, and no red errors on a Biotech-less load.
+> The whole questline — faction, quests, Durnehviir, and Soul Tear's reward path — is one gated
+> unit. **Soul Tear itself is NOT gated**; see the word-wall consequence above, which applies on
+> every install.
 
 ### 15.3 Questline: the main story → Call of Valor, and Call Odahviing
 

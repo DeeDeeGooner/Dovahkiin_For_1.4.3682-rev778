@@ -119,9 +119,17 @@ synonym for "quest" and not a one-off side quest — when anything in this proje
 **All three quest-locked shouts are earned at or near the END of a questline, never from a random
 quest drop.** Call of Valor and Call Odahviing come from **the main questline**; Summon Durnehviir
 from the Dawnguard-inspired vampire war. **Read `SPEC.md §15` before touching any of it** — it
-carries the three questlines, the realm-travel answer, the Vampire Lord verdict, and two
-constraints that will bite (Soul Tear must leave the word walls; sanguophages are Biotech and
-invariant 5 says the mod runs without it).
+carries the three questlines, the realm-travel answer and the Vampire Lord verdict.
+
+**The vampire questline is `MayRequire`-gated on Biotech** (user's call, 2026-08-01) and silently
+absent without it. **Invariant 5 below is UNCHANGED** — the mod still loads and plays on the
+baseline; only that questline disappears. A *global* Biotech requirement was considered and
+rejected as all cost and no gain, since nothing else in the design needs it.
+
+**⚠ One open question sits inside that decision and is flagged in §15.2: Soul Tear becomes a
+reward from the Biotech-gated questline while also leaving the word walls, which makes a
+signed-off shout unobtainable without Biotech.** Nobody has been asked yet. **Settle it before
+Phase 7**, because Phase 7 fixes the word-wall count and the answer moves that number.
 
 Confirmed feasible: `QuestPart_SubquestGenerator` with `maxActiveSubquests = 1` is exactly this
 behaviour, and the chain's progress is stored by the game rather than by us.
