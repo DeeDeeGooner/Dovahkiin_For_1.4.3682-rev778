@@ -130,11 +130,17 @@ rejected as all cost and no gain, since nothing else in the design needs it.
 an ordinary word wall when it is not. **So the word-wall count is install-dependent — 42 without
 Biotech, 39 with it — and §4.4's Phase 7 re-cost must be done against the LARGER number.**
 
-**Vampires are a HEDIFF, never a new race** (§15.6) — the same shape invariant 3 already sets for
-the Dovahkiin. Every mechanism it needs is already built here: the pawn overlay for pale skin and
-glowing eyes, Storm Call's roof check for sunlight, `Need_Thuum`'s pattern for blood hunger, a
-`MentalStateDef` for the feeding madness. **The ordinary vampire is cheap; only the Vampire Lord's
-winged form hits the art ceiling — do not conflate the two.**
+**Vampires are a BIOTECH XENOTYPE of custom genes** (§15.6) — not a race, and **not** an overlay.
+Genes change the pawn for real: `skinColorOverride` for pale skin, `drawOnEyes` for the glowing
+eyes (Biotech's own `GeneEyeColor` uses it), hemogen and `Bloodfeed` reused as-is. Only two pieces
+need writing — the sunlight burn and the feeding madness. **The ordinary vampire is cheap; only
+the Vampire Lord's winged form hits the art ceiling — do not conflate the two.**
+
+**⚠ READ THE WHOLE MESSAGE BEFORE ANSWERING ITS FIRST CLAUSE. This user puts the operative
+instruction in the PARENTHETICAL**, and it has produced two wrong answers in one day: *"make
+biotech a hard requirement (…no dawnguard quest…)"* meant gate the content, not the mod; *"a new
+race (with sanguophages's genetic overwritte active skill)"* meant the xenotype mechanism, not a
+race. §15.6 has both.
 
 Confirmed feasible: `QuestPart_SubquestGenerator` with `maxActiveSubquests = 1` is exactly this
 behaviour, and the chain's progress is stored by the game rather than by us.

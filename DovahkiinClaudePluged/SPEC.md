@@ -1180,10 +1180,70 @@ is a sprite set nobody in this project can draw procedurally.
 > madness, and they cast magic. Art is minimal — *orange glowing eyes, pale skin, fangs hidden in
 > the mouth*.
 >
-> **RECOMMENDATION — NOT A DECISION. The user asked what is best; this is the answer given, and it
-> is theirs to accept or overrule.**
+> ### ⚠ THE FIRST ANSWER TO THIS WAS WRONG. CORRECTED 2026-08-01. USE THIS SECTION, NOT THE ONE BELOW IT.
+>
+> I recommended **a hediff, not a xenotype**, and argued at length against making "a new race".
+> **The user never asked for a race.** Their question said *"a new race (with sanguophages's
+> genetic overwritte active skill)"* — and the parenthetical was the actual request: **the
+> XENOTYPE mechanism.** I answered the literal word and missed it.
+>
+> Their correction, and every clause of it checks out against the assembly:
+>
+> *"sanguophage isnt a race now is it? you aren't born one, you become one, and while you become
+> one every of your base trait actually is kept, only a few are added on top of it... the glowing
+> eyes shouldnt be an overlay like dragon aspect, it should be using biotech's features, changing
+> the apparence for real not just as an overlay."*
+>
+> **CORRECT ON ALL COUNTS. VERIFIED, NOT CONCEDED:**
+>
+> | claim | evidence in 1.4's own assembly and defs |
+> |---|---|
+> | sanguophage is not a race | it is a `XenotypeDef`; the race stays Human |
+> | you become one, keeping what you were | xenogerm implantation swaps genes, not the pawn |
+> | genes change appearance **for real** | `GeneDef.graphicData` → `GeneGraphicData` with `graphicPath`, `drawLoc`, `layer`, `colorType`, `useSkinShader` |
+> | pale skin | `GeneDef.skinColorOverride` / `skinColorBase` |
+> | **glowing eyes specifically** | **`GeneGraphicData.drawOnEyes`** — and Biotech's own `GeneEyeColor` abstract base uses exactly that, with `drawOnEyes: true` and `layer: PostTattoo` |
+> | genes can carry behaviour | `GeneDef.geneClass` (defaults to `Gene`, so a subclass can tick), plus `abilities`, `forcedTraits`, `statOffsets`, `capMods`, `makeImmuneTo` |
+>
+> **SO THE ANSWER IS: A XENOTYPE MADE OF CUSTOM GENES.** Not a race, and not the overlay I
+> proposed. An overlay would have been *painting over* the pawn; genes change what the pawn IS,
+> which is what the user asked for and is also simply better.
+>
+> **A NOTE ON HOW THIS USER WRITES, BECAUSE IT HAS NOW COST TWO WRONG ANSWERS IN ONE DAY: THE
+> OPERATIVE INSTRUCTION IS OFTEN IN THE PARENTHETICAL.**
+> - *"make biotech a hard requirement (the price to pay for not having would be having no dawnguard
+>   related quest at all then)"* — the parenthetical means gate the CONTENT, not the mod.
+> - *"a new race (with sanguophages's genetic overwritte active skill)"* — the parenthetical means
+>   the xenotype mechanism, not a race.
+>
+> **Read the whole message before answering the first clause of it.**
 
-**DO NOT MAKE A NEW RACE.** Three independent reasons, any one of which is sufficient:
+### What to build, corrected
+
+**A `XenotypeDef` with custom `GeneDef`s.** Biotech already provides nearly all of it natively:
+
+| Skyrim vampire trait | Biotech feature |
+|---|---|
+| pale skin | `skinColorOverride` on a cosmetic gene |
+| glowing orange eyes | an eye gene with `drawOnEyes` + `color`, modelled on `GeneEyeColor` |
+| fangs | nothing to draw — the user's own point |
+| blood hunger | **hemogen already exists** (`Gene_Hemogen`), and it is the sanguophage's own resource |
+| bloodfeeding | Biotech's `Bloodfeed` ability, reusable as-is |
+| burns in sunlight | **custom** — a `geneClass` subclass ticking a roof/daylight check, the same test Storm Call already does |
+| feeding madness | **custom** — a `MentalStateDef` driven off the hemogen need |
+| casts magic | `GeneDef.abilities` |
+
+**Only two of those need writing.** The rest is configuration of features that already ship.
+
+**Honest caveat on "glowing":** `drawOnEyes` draws a coloured graphic over the eyes; whether it
+reads as *glowing* is a property of the texture, not of an emissive shader. A bright saturated
+orange on a pale face will read as glowing at play distance. If a true light-emitting glow is
+wanted, that is a separate and harder question — raise it rather than assume the gene delivers it.
+
+### The one thing that survives from the wrong answer
+
+**A NEW RACE IS STILL THE WRONG SHAPE** — and the user agrees, since they were never asking for
+one. Kept because the reasoning is sound and someone may propose it again:
 
 1. **`CLAUDE.md` invariant 4 forbids race swaps outright**, and invariant 3 already settled this
    exact shape for the Dovahkiin: *"not a xenotype, not a race, not a gene — a trait + hediff +
@@ -1195,10 +1255,10 @@ is a sprite set nobody in this project can draw procedurally.
 3. **A new race needs its own body art for every apparel item** in the modlist. That is the
    §15.5 art ceiling again, at ten times the scale.
 
-**BUILD IT AS A HEDIFF, exactly as the Dovahkiin is.** It then composes with any race, any
-xenotype, and any other mod's pawns for free.
-
-**Every mechanism this needs is ALREADY BUILT AND PLAYTESTED IN THIS MOD:**
+> **~~BUILD IT AS A HEDIFF~~ — SUPERSEDED by the corrected answer above. A xenotype of custom
+> genes is the right shape: it changes the pawn for real, which is what was asked. The table
+> below is kept because the *mechanisms* named in it are still the reference for the two genes
+> that need custom code — the sunlight burn and the feeding madness.**
 
 | Skyrim vampire trait | machinery that already exists here |
 |---|---|
