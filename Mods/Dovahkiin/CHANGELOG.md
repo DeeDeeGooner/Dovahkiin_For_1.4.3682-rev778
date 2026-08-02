@@ -1,5 +1,34 @@
 # CHANGELOG
 
+## Design session: questlines, vampires, and the awakening rewritten (2026-08-01)
+
+**No code changed.** Recorded here because three of these decisions land on content that is
+already built and signed off, and a changelog that only tracks code would not warn anyone.
+
+- **Soul Tear becomes a CONDITIONAL word.** With Biotech it is a questline reward and leaves the
+  word walls; without Biotech it stays on the walls exactly as it ships today. **So the word-wall
+  count is install-dependent — 42 without Biotech, 39 with it — and §4.4's Phase 7 re-cost must
+  be done against the larger number.** Soul Tear itself is unchanged; only how it is *learned*.
+- **The awakening rules were rewritten and they are a PAIR.** §3.3 got harsher (presence beside a
+  living Dovahkiin burns a pawn's roll permanently); §3.2 got kinder (the "A Dragon!!!" event is
+  no longer rare but a per-day chance that RISES until it fires — **middle tuning chosen: half of
+  colonies by day 45, 90% by day 70**). **Neither may be retuned without the other**, and both
+  overturn answers this project had previously settled (OD-1 and OD-2).
+- **`SPEC.md §15` is new and large**: "questline" as project jargon, the three shout questlines,
+  the realm-travel verdict, and two vampire xenotypes with a full trait and precedence spec.
+
+Nothing in it is built. It is written down so that it survives the session, which is the point.
+
+### The method lesson from this one
+
+**Two wrong answers in one day, both from answering the first clause of a message and missing the
+parenthetical** — *"make biotech a hard requirement (…no dawnguard quest…)"* meant gate the
+content, not the mod; *"a new race (with sanguophages's genetic overwritte active skill)"* meant
+the xenotype mechanism, not a race. Recorded in `CLAUDE.md`, because it is a fact about how this
+user writes and it will keep being true.
+
+---
+
 ## Call of Valor is a complete shout — words, abilities, icon (2026-08-01)
 
 `Hun / Kaal / Zoor`, one `ShoutDef`, three `AbilityDef`s, `CompAbilityEffect_CallOfValor`, and his
