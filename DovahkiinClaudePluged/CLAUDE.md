@@ -133,9 +133,17 @@ Biotech, 39 with it — and §4.4's Phase 7 re-cost must be done against the LAR
 **TWO vampire xenotypes — `Vampire` and `Vampire Lord`** (§15.7), both acquired, never born into.
 Orange glowing eyes, pale skin, night vision, frost resistance, fire weakness, and raised body
 function — **all the body stats are more pronounced on a Lord EXCEPT fire and frost, which are
-flat across both tiers on purpose.** A pawn may be at most one of Vampire / Vampire Lord /
-Sanguophage, and **a vampire can never convert a Lord back down** — enforce that at every
-conversion path, not just in the end state.
+flat across both tiers on purpose.**
+
+**Precedence: `VAMPIRE LORD > VAMPIRE > SANGUOPHAGE`** — *"supernatural beats the natural."* A
+pawn is at most one of the three. Lords convert both and are converted by nobody; vampires convert
+only sanguophages; **sanguophages convert NOBODY**, which deliberately strips a vanilla mechanic
+and must be enforced with an explicit refusal, not a silent no-op. Both vampire tiers get a
+`blooddrain` active ability — **its design is deferred by the user; do not invent its numbers.**
+
+**The war is three-sided** (§15.2): the human/Divine Order faction, **several** ordinary vampire
+factions (rogue and organised), and **exactly one** Vampire Lord faction — the Volkihar court.
+The uniqueness rule applies to the court ONLY.
 
 **Vampires are a BIOTECH XENOTYPE of custom genes** (§15.6) — not a race, and **not** an overlay.
 Genes change the pawn for real: `skinColorOverride` for pale skin, `drawOnEyes` for the glowing

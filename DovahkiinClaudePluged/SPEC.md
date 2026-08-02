@@ -1022,16 +1022,29 @@ standalone rewards.
 
 ### 15.2 Questline: the vampire war → Summon Durnehviir
 
-*Dawnguard-inspired.* A war between two factions:
+*Dawnguard-inspired.* **REVISED 2026-08-01 — it is a THREE-sided structure, not two, and the
+Volkihar are Vampire LORDS rather than sanguophages:**
 
-- a **human** faction — **Divine Order** is the user's preferred casting (*"much better visually
-  and immersively"*), and it is therefore a **RECOMMENDED mod, never a requirement**
-- the **Volkihar clan**, a **sanguophage** faction
+| side | who | how many |
+|---|---|---|
+| the mortals | a **human** faction — **Divine Order** is the user's preferred casting (*"much better visually and immersively"*), a **RECOMMENDED mod, never a requirement** | as the world generates |
+| the vampires | **ordinary `Vampire` factions** — *"a few vampires rogue or organised factions here and there"* | **PLURAL, and deliberately so** |
+| the court | **the Volkihar court — `Vampire Lord`s** | **EXACTLY ONE, uniquely** |
 
-**The Volkihar clan must exist as EXACTLY ONE faction on the world map.** Not one settlement —
+**The Volkihar court must exist as EXACTLY ONE faction on the world map.** Not one settlement —
 one faction, uniquely. That is a hard constraint of the same family as the one-Dovahkiin and
 one-Alduin invariants, and it belongs in the registry rather than being left to faction
 generation.
+
+**The ordinary vampire factions are NOT unique** — several may exist, some rogue and unorganised,
+some structured. **Do not apply the Volkihar uniqueness rule to them**; the contrast between a
+scattered vampire underclass and one singular court is the point of the structure.
+
+> **THIS SUPERSEDES the earlier line calling the Volkihar "a sanguophage faction".** Under §15.7's
+> precedence sanguophages are now the *weakest* tier, converting nobody — so a court of them
+> would be the least threatening faction in the war rather than its apex. Sanguophages still
+> exist in the world as Biotech generates them; they are simply prey and recruiting stock for the
+> two vampire tiers, not a side.
 
 At some point the Dovahkiin is **invited to the Soul Cairn**, and returns after a delay with
 **Summon Durnehviir**. That in turn **triggers the side quest to summon Durnehviir, which rewards
@@ -1288,12 +1301,35 @@ is a stronger creature, not a differently-vulnerable one. Do not "improve" this 
 ordinary vampire.** The user's words, and it is a rule about *conversion attempts*, not only about
 the end state — the bite must be refused or be a no-op, not silently demote a Lord.
 
-Known precedence: **Vampire Lord > Vampire.**
+**THE FULL PRECEDENCE, SETTLED 2026-08-01:**
 
-> **OPEN — ASK BEFORE BUILDING: where does SANGUOPHAGE sit in that order?** The user named all
-> three as mutually exclusive and gave the direction only for the two vampires. It matters at
-> every conversion site: can a sanguophage be turned into a vampire, or a vampire into a
-> sanguophage, and which wins? **Do not infer it.**
+```
+VAMPIRE LORD  >  VAMPIRE  >  SANGUOPHAGE
+```
+
+The user's reasoning, worth keeping because it decides every future edge case: **"supernatural
+beats the natural after all."** Sanguophages are bio-engineered; the vampires are not.
+
+| tier | can convert | can be converted by |
+|---|---|---|
+| **Vampire Lord** | vampires, sanguophages | nobody |
+| **Vampire** | sanguophages | Vampire Lords |
+| **Sanguophage** | **NOBODY** | both |
+
+**Sanguophages lose their defining trick here.** In vanilla a sanguophage's bite converts; under
+this rule it converts nothing, because everything above it is supernatural and everything below
+it is an ordinary human. **That is a deliberate demotion of a vanilla mechanic and it must be
+enforced, not just documented** — a sanguophage attempting to convert a vampire or a Lord is a
+refusal, and the refusal should say why rather than silently failing.
+
+#### The blood drain
+
+**Both vampire tiers get a `blooddrain` ACTIVE ability.** Sanguophages keep Biotech's own
+`Bloodfeed`; this is ours and sits alongside it.
+
+> **DESIGN DEFERRED BY THE USER — *"we'll work on that later."* Do not invent its numbers,
+> targeting, cost or whether it converts. It is named here so it is not forgotten, and that is
+> all it is.**
 
 **Implementation notes:** gene-level exclusivity is `GeneDef.exclusionTags` (Biotech's own
 `GeneEyeColor` uses `EyeColor` for exactly this). But exclusion tags alone will NOT deliver this
