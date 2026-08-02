@@ -1052,20 +1052,22 @@ SOUL TEAR**.
 > 3. The vampire questline is `MayRequire`-gated on Biotech.
 > 4. **So on a Biotech-less install, a fully built and signed-off shout can never be acquired.**
 >
-> Neither ruling is wrong; the hole is in their intersection, and neither message mentioned Soul
-> Tear. **This was not asked and must not be answered by assumption.** The options, cheapest
-> first:
+> **ANSWERED 2026-08-01, same day it was raised. The user: *"soultear becomes a word wall if
+> biotech isn't on."*** Soul Tear's words are **conditionally quest-locked**:
 >
-> - **Leave Soul Tear on the word walls after all.** Costs the narrative link, keeps the wall
->   count at 42, and the shout stays reachable everywhere. Contradicts the questline reward.
-> - **Give it a second, non-Biotech acquisition route** — a word wall only when Biotech is absent,
->   or an unrelated quest. Keeps both intents; needs a conditional the word-wall system does not
->   have yet.
-> - **Accept it.** No Biotech, no Soul Tear. Clean rule, and it silently removes one of fourteen
->   signed-off shouts from those installs.
+> | install | how Soul Tear is learned |
+> |---|---|
+> | **with Biotech** | questline reward, via the Durnehviir side quest. NOT on walls |
+> | **without Biotech** | ordinary word walls, exactly as it ships today |
 >
-> **Whoever picks this up: put it to the user before Phase 7, because Phase 7 is where the wall
-> count is settled and the answer changes that number.**
+> **This is the first CONDITIONAL word in the design, and Phase 7 must be built for it.** The
+> `questOnly` flag on `WordOfPowerDef` is currently a plain bool; Soul Tear's three words need it
+> to be *conditional on a loaded mod* instead. Simplest workable shape: keep the bool, and let a
+> `MayRequire`d patch set it — so on a Biotech install the flag is on and Phase 7 skips those
+> three, while on a baseline install it is never set and they scatter normally.
+>
+> **The wall count is therefore install-dependent: 42 without Biotech, 39 with it.** §4.4's
+> re-cost must be done against the LARGER number, or a baseline game runs short of walls.
 
 **Home and dungeons:** *Gothicstyle Vampire Furniture* is the user's preferred dressing for the
 Volkihar home and for any vampire den or dungeon encounter. **Recommended, never required.**
@@ -1168,3 +1170,54 @@ a baseline install has nothing to be adjacent to.
 
 *Verdict to give the user:* the transformation is buildable and the machinery exists; the blocker
 is a sprite set nobody in this project can draw procedurally.
+
+### 15.6 What a vampire IS, mechanically — race vs xenotype vs hediff
+
+> **The user's question, 2026-08-01, and their own analysis was correct:** sanguophages are
+> *bio-engineered* — they shrug off blood loss, fire biological projectiles, longjump, and are
+> "physically vampires". **Skyrim vampires are magical**: no biological projectiles, no longjump,
+> **blood boils in sunlight**, starvation drives them into an uncontrollable primal hunting
+> madness, and they cast magic. Art is minimal — *orange glowing eyes, pale skin, fangs hidden in
+> the mouth*.
+>
+> **RECOMMENDATION — NOT A DECISION. The user asked what is best; this is the answer given, and it
+> is theirs to accept or overrule.**
+
+**DO NOT MAKE A NEW RACE.** Three independent reasons, any one of which is sufficient:
+
+1. **`CLAUDE.md` invariant 4 forbids race swaps outright**, and invariant 3 already settled this
+   exact shape for the Dovahkiin: *"not a xenotype, not a race, not a gene — a trait + hediff +
+   title on an otherwise ordinary pawn of any race or xenotype."* Vampirism is the same kind of
+   thing and should be the same kind of implementation.
+2. **The player is meant to BECOME one.** A race swap on an existing colonist is the worst case:
+   it discards apparel fit, body art, and every compatibility this mod has with the 40 installed
+   mods. A hediff added to the pawn they already are costs nothing and is trivially reversible.
+3. **A new race needs its own body art for every apparel item** in the modlist. That is the
+   §15.5 art ceiling again, at ten times the scale.
+
+**BUILD IT AS A HEDIFF, exactly as the Dovahkiin is.** It then composes with any race, any
+xenotype, and any other mod's pawns for free.
+
+**Every mechanism this needs is ALREADY BUILT AND PLAYTESTED IN THIS MOD:**
+
+| Skyrim vampire trait | machinery that already exists here |
+|---|---|
+| pale skin, glowing eyes | `Thing_DragonAspectOverlay` — paints art onto a pawn, no render patch, and as of 2026-08-01 takes **multiple texture sets** |
+| burns in sunlight | the roof/outdoor check Storm Call already does, on a `TickRare` |
+| blood hunger as a resource | `Need_Thuum` — a custom Need attached to ONE pawn via `causesNeed` + `onlyIfCausedByHediff` |
+| starvation → primal madness | `MentalStateDef`, as Dismay already uses for `PanicFlee` |
+| casts magic | `AbilityDef` + comps, which is the whole shout system |
+
+**So the ordinary vampire is CHEAP.** Its art is a tint and two glowing dots — nothing like the
+Vampire Lord's winged silhouette. **Keep those two asks apart:** §15.5's blocker does not apply
+here, and conflating them would make an easy feature look impossible.
+
+**Biotech's role, given §15.2's gate:** hemogen and bloodfeeding are genuinely good and genuinely
+Biotech. Use them **as an enhancement layered on the hediff** where present — not as the thing
+vampirism *is*. The Volkihar faction is Biotech-gated anyway, so the question only matters if
+vampirism is ever wanted outside that questline.
+
+**The one thing worth stealing from sanguophages regardless:** their *xenotype* is the vanilla
+answer to "how does a pawn get converted", and reading how `Xenogerm` implantation converts a
+colonist is the right reference for how the Dawnguard choice should feel — even if the
+implementation is a hediff rather than a genome.

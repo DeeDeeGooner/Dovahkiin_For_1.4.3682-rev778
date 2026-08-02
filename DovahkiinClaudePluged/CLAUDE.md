@@ -126,10 +126,15 @@ absent without it. **Invariant 5 below is UNCHANGED** — the mod still loads an
 baseline; only that questline disappears. A *global* Biotech requirement was considered and
 rejected as all cost and no gain, since nothing else in the design needs it.
 
-**⚠ One open question sits inside that decision and is flagged in §15.2: Soul Tear becomes a
-reward from the Biotech-gated questline while also leaving the word walls, which makes a
-signed-off shout unobtainable without Biotech.** Nobody has been asked yet. **Settle it before
-Phase 7**, because Phase 7 fixes the word-wall count and the answer moves that number.
+**Soul Tear is the design's first CONDITIONAL word**: a questline reward when Biotech is loaded,
+an ordinary word wall when it is not. **So the word-wall count is install-dependent — 42 without
+Biotech, 39 with it — and §4.4's Phase 7 re-cost must be done against the LARGER number.**
+
+**Vampires are a HEDIFF, never a new race** (§15.6) — the same shape invariant 3 already sets for
+the Dovahkiin. Every mechanism it needs is already built here: the pawn overlay for pale skin and
+glowing eyes, Storm Call's roof check for sunlight, `Need_Thuum`'s pattern for blood hunger, a
+`MentalStateDef` for the feeding madness. **The ordinary vampire is cheap; only the Vampire Lord's
+winged form hits the art ceiling — do not conflate the two.**
 
 Confirmed feasible: `QuestPart_SubquestGenerator` with `maxActiveSubquests = 1` is exactly this
 behaviour, and the chain's progress is stored by the game rather than by us.
