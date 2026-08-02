@@ -92,10 +92,33 @@ unrecoverable.
 These are technical or minor. I've picked the option and moved on; say the word if you disagree.
 
 **OD-2 — When do dragonblood children burn their one chance?**
-*Decided: only when there is no living Dragonborn.* A child never gets a chance while the
-current hero is alive, so it would be unfair to spend it. The harsher literal reading burns
-everyone's chance on every dragon death, which quietly kills the whole heir storyline in the
-background without the player ever seeing it happen.
+
+> **~~Decided: only when there is no living Dragonborn.~~ OVERTURNED BY THE USER, 2026-08-01.**
+> This was one of the seven I answered myself, and the user has now taken it back. **Their ruling
+> stands; do not restore the reasoning below.**
+
+**The rule is now: PRESENCE burns the roll.** *"If a dovahkiin is alive, everybody present and
+was present during his time burns their roll."* Not on a dragon death — on having lived alongside
+him at all. Once he dies, only a heir who appears **after** that carries a live roll, spendable on
+any dragon death they witness. **Ordinary pawns never roll at all** — the §3.2 dragon event,
+arrival, or a scenario are their only routes. Full text and implementation consequences in
+`SPEC.md §3.3`.
+
+*Why my original answer was wrong, kept because the mistake is instructive:* I argued the harsh
+reading "quietly kills the whole heir storyline in the background without the player ever seeing
+it happen". That is true of the version I was imagining — heirs burning rolls on dragon deaths
+they had no stake in. It is **not** true of what the user actually wants, which is narrower and
+has a clear fiction behind it: *the universe already had its Dragonborn while you stood next to
+him.* The succession still works, it just runs through pawns who arrive after the old hero is
+gone rather than the ones who grew up beside him.
+
+**I answered a design question by predicting how it would feel, and predicted wrong.** The
+questions in Part B are the ones I judged safe to settle alone; this is the evidence that "minor"
+and "technical" are not the same thing, and that a rule about *fiction* is never mine to close.
+
+⚠ **See also the OD-1 conflict flagged in `SPEC.md §3.3`** — the same message described the dragon
+event as "once per save", where OD-1 and the shipped code say once per Dovahkiin *slot*. Unresolved
+on purpose.
 
 **OD-3 — What makes Alduin stay dead?**
 *Decided: the killing blow must come from the Dragonborn.* Cleaner to read and to explain than

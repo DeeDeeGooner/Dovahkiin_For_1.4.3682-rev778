@@ -112,17 +112,59 @@ Dovahkiin exists yet, so §3.3's precondition is satisfied too. Resolve as follo
 
 ### 3.3 Route B — Dragonblood heirs
 
-Children of a Dovahkiin get the `Dragonblood` trait (§10). A dragonblood pawn who is **alive
-and on the map when a dragon dies** rolls exactly once:
+> **OD-2 IS ANSWERED, AND IT REVERSES WHAT THIS SECTION USED TO SAY. 2026-08-01, the user:**
+>
+> *"yes all living heirs and pawns also burns their roll if a dovahkiin is alive. Think of it as
+> if a dovahkiin is alive, everybody present and was present during his time burns their roll.
+> Once the dovahkiin dies: if a dragonblood heir appears ONLY AFTER that, whether through birth
+> or anything else, they then have that one time roll chance on any dragon death they witness.
+> Normal pawns don't have that roll, they can only get the trait through the 'dragon!!!' event."*
+>
+> The old rule was the opposite — heirs did *not* burn their roll while a Dovahkiin lived,
+> explicitly "to preserve the drama of the succession". **That reasoning is superseded. Do not
+> restore it.**
 
-- Roll a small chance (default **2%**, tunable) to awaken.
-- **On failure, that pawn is permanently locked out** — added to `lockedOutPawnIds`, never
-  rolls again for the rest of the save.
-- The roll only happens if no Dovahkiin currently exists.
-- If a Dovahkiin *does* exist when the dragon dies, the heir does **not** roll and is **not**
-  locked out — they simply had no opportunity. (Design note: this preserves the drama of the
-  succession without silently burning everyone's chance while the current hero is alive.
-  If you disagree, raise it — see **OD-2**.)
+Children of a Dovahkiin get the `Dragonblood` trait (§10). The rule is about **WHEN A PAWN CAME
+INTO CONTACT WITH THE LIVING DOVAHKIIN**, not about what happens at the moment a dragon dies:
+
+**1. While a Dovahkiin is alive, presence burns the roll.**
+Any pawn present during his lifetime — heir or not — is locked out permanently. Not "when a
+dragon dies", not "when they roll": **being there during his time is itself the disqualification.**
+The universe already had its Dragonborn while they stood next to him.
+
+**2. Only pawns who appear AFTER his death can ever roll.**
+A dragonblood heir who arrives *after* the Dovahkiin dies — by birth, by joining, by any route —
+carries a live, one-time roll. They spend it on **any dragon death they witness**: a small chance
+(default **2%**, tunable) to awaken, and on failure they are locked out for good.
+
+**3. Ordinary pawns never roll at all.**
+Being non-dragonblood is not a small chance, it is *no* chance. An ordinary colonist can only
+become the Dovahkiin through the §3.2 dragon event, or by arriving as one (§3.4), or by scenario
+(§11).
+
+**What this means for implementation — none of it is written yet, and it is not what the registry
+currently does:**
+
+- `LockOutAllDragonblood` fires today only at the moment of awakening. Under this rule the lockout
+  must also catch **every pawn who joins the colony while a Dovahkiin lives** — so it needs a hook
+  on pawn arrival/birth, not only on awakening.
+- The registry must be able to answer **"did this pawn exist alongside the living Dovahkiin?"**
+  The cheapest correct form is to keep locking out on contact rather than trying to reconstruct
+  history later: lock a pawn out the moment they and a living Dovahkiin are both present.
+- It must also lock out **ordinary** pawns, not just dragonblood ones, or rule 3 has to be
+  enforced somewhere else and the two places can disagree.
+
+> **⚠ UNRESOLVED CONFLICT WITH OD-1 — ASK BEFORE BUILDING.** The user's message above describes
+> the "A Dragon!!!" event as *"only happens once per save"*. **§3.2 and the shipped code say
+> otherwise**: it fires once per *Dovahkiin slot*, which is why `dragonEventFiredCount` is a
+> counter compared against `dovahkiinDeaths + 1` rather than a bool.
+>
+> This may be an incidental phrasing rather than a reversal — it was said in passing while making
+> a different point. **It matters, because combined with the rule above it decides whether a
+> colony that loses its Dovahkiin can ever produce another from within:** if the event is truly
+> once per save, and everyone who lived alongside him is locked out, then the only remaining
+> routes are an heir born *after* his death, or an outsider arriving (§3.4). That is coherent and
+> quite dramatic — but it should be chosen, not inherited from a parenthesis.
 
 ### 3.4 Route C — Arrival
 
