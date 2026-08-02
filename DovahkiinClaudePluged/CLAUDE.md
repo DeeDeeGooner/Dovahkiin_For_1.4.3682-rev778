@@ -109,6 +109,23 @@ Note when testing criterion 5: five mods in `MODLIST.md` (`XenotypeCharmweaverRe
    Hard-referencing Harmony and HugsLib is fine; hard-referencing anything else is not.
 6. Nothing the player unlocks is lost by loading a save. All state in `ExposeData`.
 
+## Project jargon — "QUESTLINE"
+
+**A QUESTLINE is a TRAIN OF QUESTS: the next becomes available only after the previous one is
+completed.** The user coined the word on 2026-08-01 and intends to add several. It is not a
+synonym for "quest" and not a one-off side quest — when anything in this project says
+*questline*, it means that structure.
+
+**All three quest-locked shouts are earned at or near the END of a questline, never from a random
+quest drop.** Call of Valor and Call Odahviing come from **the main questline**; Summon Durnehviir
+from the Dawnguard-inspired vampire war. **Read `SPEC.md §15` before touching any of it** — it
+carries the three questlines, the realm-travel answer, the Vampire Lord verdict, and two
+constraints that will bite (Soul Tear must leave the word walls; sanguophages are Biotech and
+invariant 5 says the mod runs without it).
+
+Confirmed feasible: `QuestPart_SubquestGenerator` with `maxActiveSubquests = 1` is exactly this
+behaviour, and the chain's progress is stored by the game rather than by us.
+
 ## Tools installed on this machine — use them
 
 **A DECOMPILER IS INSTALLED. Read RimWorld's real C# instead of guessing at it.**

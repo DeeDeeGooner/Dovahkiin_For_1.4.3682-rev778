@@ -118,7 +118,7 @@ Three candidate tunings, with the day by which the event has fired for that shar
 | tuning | per-day chance | 50% | 75% | 90% | 99% |
 |---|---|---|---|---|---|
 | gentle | 0.5% rising +0.08%/day after day 20 | day 57 | 74 | 91 | 123 |
-| **middle (recommended)** | **0.8% rising +0.15%/day after day 20** | **day 45** | **57** | **70** | **92** |
+| **middle — CHOSEN BY THE USER 2026-08-01** | **0.8% rising +0.15%/day after day 20** | **day 45** | **57** | **70** | **92** |
 | brisk | 1.0% rising +0.40%/day after day 15 | day 31 | 38 | 46 | 59 |
 
 **Middle is the recommendation**: half of colonies meet their dragon inside the first year, nearly
@@ -980,3 +980,142 @@ kept for rationale. Answers, and where each now lives:
   §4.4 list; cheap reading (one word unlocks the shout, souls buy levels) = 21.
   *Recommendation:* faithful, with §4.4 trimmed and §7 wall density raised. Whichever is
   chosen, it sets the world-content budget, so it cannot wait until Phase 5.
+
+---
+
+## 15. QUESTLINES — the ongoing stories
+
+> **ADDED 2026-08-01 from a single design message. Nothing here is built. Nothing here is
+> negotiable without the user — it is their story, not a set of defaults.**
+
+### 15.0 "QUESTLINE" IS PROJECT JARGON. Use the word.
+
+**A QUESTLINE is a TRAIN OF QUESTS: the next one becomes available only after the previous one
+has been completed.** The user coined it here and intends to add several.
+
+It is not a synonym for "quest", not a synonym for "quest chain in general", and not the same as
+a one-off side quest. When this document or any commit message says *questline*, it means that
+specific structure.
+
+**IT IS CONFIRMED FEASIBLE, AND CHEAPLY.** RimWorld ships `QuestPart_SubquestGenerator`, an
+abstract `QuestPartActivable` whose `maxActiveSubquests` field set to **1** gives exactly this
+behaviour: the next leg cannot be generated while one is still running. The order is chosen by
+overriding `GetNextSubquestDef()`. Vanilla uses the same base class twice
+(`QuestPart_SubquestGenerator_RelicHunt`, `QuestPart_SubquestGenerator_ArchonexusVictory`).
+
+**The chain's progress is stored by the GAME, not by us** — `Quest.parent` plus each quest's
+`QuestState`. There is no bespoke "which chapter am I on" counter to write, save, or corrupt,
+which is the single reason this is cheap rather than a `RISKS.md` §9 hazard. Full research notes
+in the save notebook.
+
+### 15.1 The three shout questlines — NOT random quest drops
+
+**All three quest-locked shouts are earned at or near the END of a questline, not from a quest
+that happens to turn up.** This supersedes any earlier reading of §3.4/§9 that treated them as
+standalone rewards.
+
+| shout | questline | where in it |
+|---|---|---|
+| **Summon Durnehviir** | the Dawnguard-inspired vampire war | via the Soul Cairn, late |
+| **Call of Valor** | **the MAIN questline** | one of the last quests |
+| **Call Odahviing** | **the MAIN questline** | won by defeating him |
+
+### 15.2 Questline: the vampire war → Summon Durnehviir
+
+*Dawnguard-inspired.* A war between two factions:
+
+- a **human** faction — **Divine Order** is the user's preferred casting (*"much better visually
+  and immersively"*), and it is therefore a **RECOMMENDED mod, never a requirement**
+- the **Volkihar clan**, a **sanguophage** faction
+
+**The Volkihar clan must exist as EXACTLY ONE faction on the world map.** Not one settlement —
+one faction, uniquely. That is a hard constraint of the same family as the one-Dovahkiin and
+one-Alduin invariants, and it belongs in the registry rather than being left to faction
+generation.
+
+At some point the Dovahkiin is **invited to the Soul Cairn**, and returns after a delay with
+**Summon Durnehviir**. That in turn **triggers the side quest to summon Durnehviir, which rewards
+SOUL TEAR**.
+
+> **CONSEQUENCE, AND IT CONTRADICTS SHIPPED CONTENT: SOUL TEAR MUST NOT BE FOUND ON WORD WALLS.**
+> It is a questline reward. Soul Tear is **already built, playtested and signed off** as a normal
+> shout — so its three words need the `questOnly` flag added, and **the Phase 7 word-wall count
+> drops by three.** §4.4's re-cost problem gets *easier*, not harder. Do not miss this when
+> Phase 7 is planned.
+
+**Home and dungeons:** *Gothicstyle Vampire Furniture* is the user's preferred dressing for the
+Volkihar home and for any vampire den or dungeon encounter. **Recommended, never required.**
+
+> **⚠ BIOTECH. Sanguophages are a Biotech xenotype, and `CLAUDE.md` invariant 5 says the mod must
+> run on the baseline with Biotech absent.** So this questline cannot simply *be* sanguophages.
+> Either it degrades gracefully to a non-Biotech vampire faction of our own, or the whole
+> questline is `MayRequire`-gated and silently absent without Biotech. **DECIDE THIS BEFORE
+> BUILDING ANY OF IT** — it changes what the faction is made of, not just whether it appears.
+
+### 15.3 Questline: the main story → Call of Valor, and Call Odahviing
+
+**Call Odahviing** is won by **defeating him** — he must NOT die. In TES5 he is trapped, then
+released to fly the Dragonborn to Skuldafn. A retreat/flee mechanic is needed;
+`RimWorld.LordJob_AssistColony` is already recorded in the notebook as the vanilla shape for an
+ally that arrives and leaves under its own AI. **The user's instruction: plan exactly what happens
+before writing any code.**
+
+**Call of Valor** is one of the last quests, and the climax is **the fight with Alduin in
+Sovngarde**.
+
+### 15.4 CAN WE ENTER ANOTHER REALM? — Sovngarde and the Soul Cairn
+
+**YES, and it is a headache rather than a wall. Feasible in 1.4, moderate cost, not
+game-breaking.** Checked on disk rather than assumed:
+
+- **`MapGeneratorDef` is a normal, moddable def type.** Core ships `Base_Faction`, `Settlement`,
+  `Encounter`, `EscapeShip`; Ideology ships `BasePlayer_SecondArchonexusCycle` and
+  `_ThirdArchonexusCycle` — **generators whose entire job is relocating the colony to a new map.**
+- Quest sites already generate maps on demand and are entered and left routinely.
+
+So a realm is a **generated map with its own `MapGeneratorDef`** — its own terrain, no weather, its
+own light — reached by a scripted transition rather than an ordinary caravan.
+
+**The honest costs, none of them fatal:**
+
+- Every map hangs off a **world object on a world tile**. Sovngarde is not a place on the planet,
+  so it needs a world object somewhere — hidden or remote. Slightly awkward fiction, and it is how
+  every mod that has done this handles it.
+- **A second map costs performance.** RocketMan is installed, which helps, but it is a real cost.
+- **Getting pawns BACK is the risky half**, and it is the same family of hazard as the temporary
+  summons: a pawn stranded in a realm that no longer exists is `RISKS.md` §9 wearing a hat. It
+  must survive save → reload mid-realm.
+
+> **THE FALLBACK IS A LEGITIMATE DESIGN, NOT A CONSOLATION PRIZE.** The user proposed it
+> themselves: send the Dovahkiin away for a delay, fight Alduin **on the colony map**, and be
+> rewarded with Call of Valor on return. It costs a fraction as much, carries none of the
+> stranded-pawn risk, and the "away for a delay" shape is already needed for the Soul Cairn trip
+> in §15.2. **Recommendation: build the delay version FIRST for both realms.** If it plays well,
+> the real map is a later upgrade to the same questline rather than a prerequisite for shipping
+> it.
+
+### 15.5 The Vampire Lord transformation — feasibility
+
+**Mechanically: EASY-TO-MODERATE. Artistically: this is the whole problem.**
+
+The mechanism is one this project has now built and playtested **twice**: a hediff plus
+`Thing_DragonAspectOverlay`, a follower Thing that paints art onto a pawn with no Harmony patch
+and nothing on the pawn render path. As of 2026-08-01 that overlay already supports **multiple
+texture sets and per-wearer weapons**, because Call of Valor needed exactly that. Granting
+abilities on transformation is what Dragon Aspect already does.
+
+**So the code is largely a re-skin of solved work.** What is NOT solved is the art: a vampire lord
+is a hunched, winged, bat-faced creature — **a completely different silhouette from a humanoid**,
+not a costume over one. The overlay draws *onto* a human body quad, which is what makes Dragon
+Aspect's armour work and is exactly wrong for a shape that is not human.
+
+**This runs straight into the honest ceiling already recorded in the notebook:** the procedural
+generator draws polygons at 256px on a ~102px-wide pawn, and it cannot draw a new creature. A
+Vampire Lord needs **hand-drawn art**, or it does not happen. Say so plainly rather than shipping
+a near-miss.
+
+**And it inherits §15.2's Biotech problem** — a transformation into a sanguophage-adjacent form on
+a baseline install has nothing to be adjacent to.
+
+*Verdict to give the user:* the transformation is buildable and the machinery exists; the blocker
+is a sprite set nobody in this project can draw procedurally.
