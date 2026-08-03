@@ -98,6 +98,44 @@ Also in VEF 1.4: `MVCF.dll` (multi-verb framework, used by Dragon's Descent), `O
 Hard-requires `brrainz.harmony` and `OskarPotocki.VanillaFactionsExpanded.Core`. Version
 folders 1.1–1.6; **use `1.4/`**. Single assembly `DDLib.dll` (262 KB).
 
+### ⚠ IT SHIPS TWO CONTRADICTORY LICENCES — read this before using anything of theirs
+
+Verified on disk 2026-08-02. The mod contains **both**:
+
+| file | says |
+|---|---|
+| `About/Legal License.txt` | *"Copyright (c) 2020 Onyxae. **All rights reserved.** … This does not imply a license to distribute any such copies or substantial portions."* → **no** |
+| `LICENSE` (mod root) | full **GNU GPL v3**, with their project name and all three authors filled into the boilerplate → **yes, with conditions** |
+
+**What this does and does not block:**
+
+- **Requiring their mod is fine and needs no permission at all.** Declaring `modDependencies`
+  copies nothing; the player installs their mod themselves. Their own `About.xml` does exactly
+  this to Harmony and VEF, and their description advertises an add-on ("Void Dwellers"), so the
+  add-on pattern is blessed by the authors.
+- **Shipping their art or defs, modified or not, is redistribution** and the two licences
+  disagree about whether it is allowed. GPL-3 would permit it but would drag *our whole mod*
+  under GPL-3 with a source-disclosure obligation; "all rights reserved" forbids it outright.
+  **Do not do it without asking them** — their Discord is in `About.xml`.
+- The route that sidesteps the question entirely is the one this project already uses for
+  weapons: **inherit their behaviour by def parenting, ship our own art.** *Their art is a
+  ruler, never a source.*
+
+Also note: requiring Dragon's Descent transitively requires **Vanilla Expanded Framework**,
+and it would reverse `CLAUDE.md` invariant 5 (the mod must run on the baseline alone). That is
+a design cost, not a legal one, and it is the bigger of the two.
+
+### Flight graphics are THEIR mechanism, not vanilla
+
+`flyingGraphicData` is declared `Class="DD.AnimationGraphicData"` with
+`graphicClass DD.Graphic_Animation`, inside their own comp — it is not a vanilla field and we
+cannot use it without referencing `DDLib.dll`.
+
+The vanilla-reachable equivalent, **verified by decompiling**: `Verse.PawnGraphicSet.nakedGraphic`
+is a **public `Graphic`** field and `ResolveAllGraphics()` is **public void**. So swapping a
+pawn's sprite at runtime needs no Harmony patch. **Members confirmed present; the swap
+sequence itself is NOT yet verified to behave** — decompile once more before building on it.
+
 ### The dragons (ThingDef and PawnKindDef share defNames)
 
 | defName | Base | combatPower | wildness |

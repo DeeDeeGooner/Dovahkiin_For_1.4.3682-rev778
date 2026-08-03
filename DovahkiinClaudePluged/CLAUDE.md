@@ -183,6 +183,61 @@ If it is ever missing, reinstall **pinned** — unpinned fails on this machine's
 misleading *"DotnetToolSettings.xml is not found in the package"*:
 `dotnet tool install -g ilspycmd --version 8.2.0.7535`
 
+## CREATURE ART — READ `Tools/DRAGON_ART_PIPELINE.md` BEFORE TOUCHING A SPRITE
+
+That file is the operating manual and it lives beside the scripts. Headlines only here:
+
+**THE ROUTE: generate a flat reference with `Tools/GEMINI_CREATURE_PROMPT.md` → trace it with
+`Tools/TraceRef.ps1` → LOOK AT THE MASK → build with `Tools/BuildFromMask.ps1`.** Four
+references made with that prompt traced perfectly first time; four made without it cost
+multiple rounds each. **The prompt is the artefact — do not paraphrase or shorten it.**
+
+**THE ONE-LINE LESSON, which cost most of 2026-08-03: YOU CANNOT SUBTRACT YOUR WAY TO RIMWORLD
+SIMPLICITY.** Mean blur, median filter, fewer tone levels and area-opening were each tried on a
+detailed reference; every one destroys structure and noise together and the result is mush.
+RimWorld art is **drawn simple from the start**, so the fix is always upstream in the prompt,
+never downstream in a filter.
+
+**Hand-drawing a creature does not work either** — eight attempts, all failing the same way:
+style right, proportions wrong. `GenerateAlduinHead.ps1` and `GenerateDovahEast.ps1` are kept
+**marked as rejected**; do not build on them.
+
+**Flight rotates, ground never does.** From directly overhead you see a creature's back
+whichever way it flies, so all four flight facings come from one sprite
+(`Tools/MakeFlightRotations.ps1`). RimWorld's ground sprites are drawn from slightly in front —
+`_south` shows a face, `_north` the back of the skull, both head-up — so each needs its own
+drawing. Applying the ground rule to a flying creature produced a dragon craning at the camera
+mid-flight.
+
+**Fallback when no reference can exist → `Tools/DovahArtEngine.ps1`.** Dot-source it; never copy pieces out of it.
+Built 2026-08-03. It exists because hand-writing the same tapered-spike and wing code four
+times in one session made every creature a sibling of the first — the user spotted that before
+I did.
+
+```powershell
+. "$PSScriptRoot\DovahArtEngine.ps1"
+$gfx   = Initialize-DovahCanvas -Frame 512 -Supersample 3
+$spine = New-DovahSpine -ControlPoints $SPINE -Samples 140
+$body  = New-DovahLoft  -Spine $spine -ThicknessProfile $THICKNESS
+```
+
+What it gives you: **`New-DovahSpine`** (Catmull-Rom centreline), **`New-DovahLoft`** (sweeps a
+thickness profile along it — head, neck, chest and tail become ONE organic silhouette, which
+is what stops bodies coming out as tubes or stacked blobs), **`New-DovahSpike`**,
+**`Get-DovahCrestBlades`**, **`New-DovahWing`** (membrane sags as a **catenary**, not a bezier —
+leather with weight in it), **`Get-DovahPlates`**, the flat RimWorld shading passes, and
+**`New-DovahPreviewSheet`** (dark / lit ground / silhouette / play-distance, the standard sheet).
+
+**`Test-DovahSilhouette` is the validator, and it deliberately does NOT count vertices.** A
+vertex-count "complexity gate" was proposed and rejected on evidence: the most detailed dragon
+built that session — 22 dorsal spines plus 13 cross-bands — was the worst of them (it read as a
+beetle), and the fix was FEWER, LARGER features. A vertex gate would have passed the beetle and
+failed the fix. It measures fill density, **concavity count** (valleys, not tips — the redraw
+that failed had tips and no valleys), and legibility at 48px. **It reports; it never throws.**
+
+**Creature scale, measured:** Dragon's Descent adults draw at **4.2 cells** (elder 4.4, ancient
+4.6) against a colonist's 1.5, so creature frames are **512**, not 256.
+
 **AND YOU CAN SEE THE RUNNING GAME. `Tools/CaptureGame.ps1`.**
 
 ```powershell

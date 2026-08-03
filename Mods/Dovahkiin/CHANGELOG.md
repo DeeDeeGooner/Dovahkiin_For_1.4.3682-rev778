@@ -1,5 +1,79 @@
 # CHANGELOG
 
+## Alduin's air art, and a creature-art pipeline that works (2026-08-03)
+
+**Eight shipping sprites** in `Tools/DragonArt_2026-08-03/` — the FLIGHT and SOAR sets, four
+facings each, hash-manifested. **No code, no defs; art and tooling only.**
+
+The user's design, given mid-session: **three movement states — flight (high, fast), soar (low,
+ground speed), grounded** — *"for more attack patterns and game dynamics"*. Grounded is still
+to do.
+
+### Root cause of a wasted afternoon: you cannot subtract your way to simplicity
+
+The session's first half tried to reach RimWorld's look by taking a detailed reference and
+simplifying it. In order: a **mean blur** (smeared the head into a featureless blob — averaging
+cannot tell an edge from noise), a **median filter** (kept edges, still too busy), **fewer tone
+levels** (the metrics matched a real RimWorld animal *exactly* and the picture became
+high-contrast speckle), and an **area-opening** (removed the blotches, left mush). The user's
+verdict: *"looks more like a hail of blur rather than a rimworld creature."*
+
+**RimWorld art is drawn simple from the start.** Every one of those operations destroys
+structure and noise together. The fix had to move upstream, to the reference itself.
+
+**Why this fix and not "keep tuning":** eight hand-drawn attempts had already failed the other
+way — style right, proportions wrong, reading as a bat, a beetle, a newt, a tribal mask. Neither
+half of the problem was going to cross over. Generating a reference that is *already flat* and
+tracing it gets both at once.
+
+### The prompt is the artefact — `Tools/GEMINI_CREATURE_PROMPT.md`
+
+Four references made with it traced **perfectly first time**: one blob, ≤2 px of holes, no
+threshold tuning. Four made without it needed multiple rounds each and two were unusable. It is
+long on purpose; every clause exists because something broke. **Do not paraphrase it.**
+
+### Four tracer bugs, all found by looking at the mask
+
+Each produced a *silently wrong* mask rather than an error:
+
+1. **Threshold is per-reference.** A cut suited to white paper classified an entire tan
+   parchment card as creature — 99.7% of the frame.
+2. **A frame ringing the image** leaves the outside-flood with no seed, so every interior pixel
+   counts as a hole and the mask returns fully solid. Now has an **abort guard**.
+3. **A drop shadow bridges wing-to-body** at too high a cut and the wings fill in solid.
+4. **The hole-fill loop must be restricted to the inset region** — 92,486 px were filled on one
+   run because it ran over the whole image while the mask was cropped.
+
+And one in the interior fill: **normalising luminance by min/max instead of percentiles.** A
+single bright pixel bleeding in from the parchment set the max at 227.8 and squashed **70% of
+the creature into one band with the highlight band empty.** p2–p98 gives 35/36/20/8.
+
+### Flight rotates; nothing else does
+
+From directly overhead you see a creature's back whichever way it flies, so **flight south is
+flight north turned 180°** and east/west are 90° turns — `MakeFlightRotations.ps1`. RimWorld's
+*ground* sprites are drawn from slightly in front (verified against Dragon's Descent's own
+north/south), so those can never be derived from each other.
+
+Applying the ground rule to a flying creature produced a dragon craning at the camera
+mid-flight. The user had it right first — *"flight north view is just the image downward I
+guess."*
+
+### Also landed
+
+- **`Tools/DovahArtEngine.ps1`** — the from-scratch drawing library (spine loft, catenary wing
+  membranes, tapered-spike primitive, flat shading passes, `Test-DovahSilhouette`). Second
+  choice now, but the only route where no reference can exist. A proposed vertex-count
+  "complexity gate" was **rejected on evidence** and replaced by a silhouette check — see the
+  notebook.
+- **`Tools/MeasureStyle.ps1`** and a measured style target: a shipped RimWorld-style animal uses
+  **5 tone bands, top-3 covering 89.3%**. A rendered-then-simplified attempt measured 10 and
+  37.5%.
+- **Dragon's Descent ships two contradictory licences** — GPL-3 at the root, all-rights-reserved
+  in `About/`. Recorded in `COMPAT.md §4` with what it does and does not block.
+
+---
+
 ## Design session: questlines, vampires, and the awakening rewritten (2026-08-01)
 
 **No code changed.** Recorded here because three of these decisions land on content that is
