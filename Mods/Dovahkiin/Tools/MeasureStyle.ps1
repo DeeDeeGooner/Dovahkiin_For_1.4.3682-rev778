@@ -13,11 +13,23 @@
 
 Add-Type -AssemblyName System.Drawing
 
+# The two REFERENCE rows are the rulers and stay fixed. The third row is whatever you are
+# judging: set DOVAH_MEASURE to it.
+#
+# It used to be hardcoded to "Alduin27_clean.png" - the flatten-a-rendered-image attempt,
+# a route this project TRIED AND REJECTED, and a file no longer on disk. So the row reported
+# MISSING on every run and measured nothing. A hardcoded path to a dead artefact is the same
+# trap as a stale number in a document: it looks like the tool is working.
+$OURS = if ($env:DOVAH_MEASURE) { $env:DOVAH_MEASURE } else { "" }
 $TARGETS = @(
     @( "Dragon's Descent - black dragon", "C:\Games\Rimworld\RimWorld\RimWorldFolder\Mods\Dragons Descent\Textures\Things\Pawn\Animal\BDragon\BDragon1_south.png" ),
-    @( "Divine Order - horse",            "C:\Games\Rimworld\RimWorld\RimWorldFolder\Mods\Divine Order\Textures\Things\Pawn\Animal\DivineOrderHorse\DivineOrderHorse_south.png" ),
-    @( "OURS - Alduin (flattened)",         (Join-Path $PSScriptRoot "Alduin27_clean.png") )
+    @( "Divine Order - horse",            "C:\Games\Rimworld\RimWorld\RimWorldFolder\Mods\Divine Order\Textures\Things\Pawn\Animal\DivineOrderHorse\DivineOrderHorse_south.png" )
 )
+if ($OURS -ne "") {
+    $TARGETS += , @( ("OURS - " + [System.IO.Path]::GetFileNameWithoutExtension($OURS)), $OURS )
+} else {
+    Write-Output "note: set DOVAH_MEASURE to the sprite you want judged against the two rulers."
+}
 
 foreach ($target in $TARGETS) {
     $label = $target[0]; $path = $target[1]

@@ -111,6 +111,54 @@ Four separate bugs, all found by **looking at the mask**:
 4. **The hole-fill loop must be restricted to the inset region**, or everything outside the
    crop counts as an unreached hole (92,486 px on one run).
 
+### AND SO IS THE COLOUR PALETTE — RUN `FindPalette.ps1` FOR EVERY REFERENCE
+
+**Added 2026-08-03, after the grounded north sprite came back speckled and the user caught it
+on sight: *"you added extra shades to his back".*** They were right, and nothing else in the
+pipeline reported a problem — the trace was perfect, the mask was perfect, the build logged
+no error.
+
+`BuildFromMask.ps1` assigns every pixel to its **nearest** entry in `$SOURCE_COLOURS`. Those
+values were hand-written for the FIRST reference. On the grounded one they put **8.4% of the
+creature — 24,076 pixels — within a coin flip of the wrong band**, and **92% of those were
+torn between "body dark" and "body light"**. Neighbouring pixels of one flat surface landed in
+different bands, so a drawn-flat back rendered as **speckle**.
+
+**THE OBVIOUS DIAGNOSIS WAS WRONG, AND THE REAL ONE IS MORE USEFUL.** The guess was "the
+reference has a third tone the list has no slot for". It does not — k-means says it is a clean
+three-tone drawing. The fault is that the hand-written light entry **(124,128,140)** sits well
+**ABOVE** that reference's true light cluster of **(110,111,120)**, so the midpoint between
+dark and light fell **inside a dense part of the distribution** instead of in the empty gap
+between two populations. A boundary is only safe where there are no pixels.
+
+| palette | pixels within a coin flip of the wrong band |
+|---|---|
+| the hand-written list | **8.4%** |
+| k=3, derived from the picture | 2.1% |
+| **k=4, derived** — what shipped | **1.7%** |
+| k=5 | 6.3% — splits the dark cluster and re-creates the problem |
+
+**More bands is not better.** k=5 is worse than k=3 because it puts a new boundary through the
+middle of the body tone. Take the k with the lowest ambiguity, not the highest count.
+
+```powershell
+$env:DOVAH_REF = "<the reference>"; $env:DOVAH_K = "5"
+& "Tools\FindPalette.ps1"        # prints centres + an ambiguity score per k
+# then pass the winner in - no need to edit the script:
+$env:DOVAH_SRC_PALETTE = "4,4,5;64,67,73;107,109,118;192,191,191"
+$env:DOVAH_OUT_PALETTE = "4,4,5;64,67,73;107,109,118;0,0,0"
+$env:DOVAH_OUT_ALPHA   = "255;255;255;0"
+```
+
+The last entry is by convention the background/gap tone and emits **alpha 0**. On this
+reference k=4's fourth cluster (192,191,191) is the anti-aliased halo around background gaps,
+so it belongs there rather than being a real body tone.
+
+**The habit that caught it: crop the region the user named and magnify it with NEAREST
+NEIGHBOUR, next to the reference.** A smooth interpolation invents the very in-between tones
+the complaint is about and flatters both versions equally. Judging speckle on a whole-body
+view is how two rounds got spent on the fur strands.
+
 ---
 
 ## TWO MEASURED FACTS TO BUILD AGAINST
@@ -136,5 +184,34 @@ sprite — and it cannot be fixed downstream.
 
 Flat bands get **smeared back into gradients by our own render**: the shading is drawn into a
 3× supersampled canvas and downsampled, and that resample blends across every band boundary.
-`BuildFromMask.ps1` snaps the finished sprite back to its own palette afterwards. Without that
-step "flat" measures as 10 tone bands.
+
+> **⚠ CORRECTED 2026-08-03. This section used to end: *"`BuildFromMask.ps1` snaps the finished
+> sprite back to its own palette afterwards. Without that step 'flat' measures as 10 tone
+> bands."* **THAT SNAP DOES NOT EXIST IN THE SCRIPT.** Grepped for it and read the file end to
+> end: the last thing `BuildFromMask.ps1` does is draw the supersampled canvas into the 512
+> frame with `HighQualityBicubic` and save it. There is no palette pass after it.
+>
+> **The measurement agrees, which is how it was caught.** Every sprite this script has produced
+> carries **~1570 distinct raw colours and 8 tone bands**, where a genuinely snapped sprite
+> would have four colours and about four bands:
+>
+> | sprite | tone bands >1% | top-3 cover | raw distinct colours |
+> |---|---|---|---|
+> | Divine Order horse (the vanilla-style ruler) | 5 | 89.3% | 259 |
+> | Dragon's Descent dragon | 6 | 42.2% | 1247 |
+> | **`Alduin_soar_northview` — SHIPPED AND APPROVED** | **8** | **45.7%** | 1573 |
+> | **`Alduin_ground_north` — built 2026-08-03** | **8** | **47.5%** | 1569 |
+>
+> **So the eight approved sprites do NOT meet the "~5 bands, top-3 above ~85%" target stated
+> above** — they sit in Dragon's Descent territory, not vanilla-horse territory. The user
+> signed them off anyway, and they read correctly in the preview at play distance, so the
+> target is aspirational rather than a gate.
+>
+> **DO NOT "FIX" THIS BY ADDING THE SNAP WITHOUT ASKING.** It would change the character of
+> eight signed-off sprites, and the evidence that it is even a problem is a metric, not a
+> picture. If it is ever wanted, add it behind a knob defaulting to off, regenerate into a
+> scratch folder, and show the user both.
+>
+> The lesson is the project's own: **a document asserting the code does something is not
+> evidence that it does.** This one went unchallenged because the claim was plausible and the
+> output looked fine.

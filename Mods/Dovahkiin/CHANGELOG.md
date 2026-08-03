@@ -1,5 +1,228 @@
 # CHANGELOG
 
+## Grounded east — ALDUIN'S ART IS COMPLETE (2026-08-04)
+
+**Twelve sprites: flight, soar and grounded, four facings each.** Signed off — *"Good job"*.
+Manifest rewritten and re-verified at **39 of 39**. West came free by mirroring east, which is
+how RimWorld handles west for every creature. **Still art only: no ThingDef, no PawnKindDef,
+nothing loads any of it.**
+
+### The prompt round: describing what a tool did wrong is a BUG REPORT, not a spec
+
+Costly and worth recording. The user wrote *"makes the legs longer to touch the ground rather
+than lowering the body toward it"* — a description of **Gemini's** error. It was read as an
+instruction, and the next prompt therefore demanded exactly the behaviour being complained
+about, with a self-check and a named failure mode reinforcing it. The user's reply: *"still
+keeps on just lengthening the legs rather than lowering the body."*
+
+**The notebook already warns that this user puts the operative content in an unexpected clause.
+This is a new flavour of the same trap: a sentence with no imperative verb, describing a tool's
+output, is a symptom report.** When a message describes behaviour rather than requesting it,
+the request is to STOP that behaviour.
+
+The corrected prompt inverted it — *the body comes down to meet the legs, the legs do not grow
+down to meet the body* — plus a checkable test (*a gap under the belly no deeper than his own
+thigh*) and the named mistake (*if you find yourself drawing long legs, you have misunderstood*).
+That produced a usable pose first time.
+
+### The defect: the tail hung below the ground he stands on
+
+Measured, not eyeballed: the tail's underside reached **y=851** while his near foot bottoms at
+**y≈770** — it drooped **81px below his own ground line** and tangled with the legs.
+
+**NEW `Tools/LiftTail.ps1`** swings it up about the hip. It moves **Gemini's own tail** — the
+dorsal spine ridge, the lighter stripe, the taper — rather than redrawing them, by isolating the
+tail with a flood fill bounded by a cut half-plane at the hip. The half-plane alone also contains
+the left wing, but the wing is not *connected* to the tail, so the flood never reaches it. The
+isolated piece was rendered on its own and **looked at** before anything moved.
+
+The canvas is **padded 170px left first**: his wings span x 5..1019 of 1024, so a lift of any
+size would have thrown the tip straight off the frame.
+
+### Why bending beat cutting — the reusable part
+
+| version | what it did | verdict |
+|---|---|---|
+| cut at the hip, rotate rigidly | tore the tail off the body; a cut's corners swing ±22px at 20°, leaving a **white notch** between tail and leg | rejected |
+| same, plus extrude the cut cross-section back | notch filled, but the tail's own keylines and stripe were dragged into the body as **straight bands** | *"the part where the cut was made is still noticeable"* |
+| **ramp the angle along the tail** | 0° at the root rising to 20° further out — **nothing at the root moves, so there is no join to blend** | **shipped** |
+
+**The bend is exact, not an approximation.** Rotation about the pivot preserves distance from
+the pivot, so a destination pixel's radius equals its source's; the angle to undo is known from
+the destination alone, with no search and no iteration.
+
+Two details that decided it:
+
+- **Smoothstep the ramp, never a power law.** `t^n` is flat at the root but arrives at the full
+  angle with its slope still climbing, so curvature jumps where the bend ends and leaves a faint
+  **kink** across the tail. `3t²−2t³` has zero slope at both ends.
+- **The extrusion could then be deleted outright**, which is the measure of the fix: its
+  footprint fell from **13,779px** hidden behind the body to **80**. A patch that large was
+  evidence the approach was wrong, not that the patch needed tuning.
+
+Verified after: tail bottoms at y≈765 against feet at 773, and it is horizontally clear of both
+legs at every row (y=740: tail ends x=495, near leg starts x=580).
+
+### Also
+
+- The palette was **derived per reference** again — k=4 at **1.1%** boundary pixels, and k=5
+  **worse** at 2.2% for the third time running. That pattern is now consistent across all three
+  grounded references: more bands split the body tone and make it worse.
+- Two PowerShell traps hit again, both already in the notebook: `$DBG`/`$dbg` are **one
+  variable** (the debug path became a Bitmap object, so the mask silently never wrote), and
+  `New-Object T (a), (b), (c)` builds an array rather than an argument list.
+
+## Grounded south, and a tail that had to be put back by hand (2026-08-03, later still)
+
+**Alduin's grounded SOUTH sprite, signed off** — *"good let's pick that"*. Installed in
+`Tools/DragonArt_2026-08-03/`, manifest rewritten and re-verified at **32 of 32**. The grounded
+set is now north + south; **east is the last one**, and west mirrors it. Still art only.
+
+### The prompt round: two clauses a FRONT view needs that no other view does
+
+Getting a usable reference took several prompt revisions, and two of the fixes are reusable:
+
+1. **Lock the limb count and make it countable.** Asked for a standing winged dragon, the model
+   added *a pair of arms in addition to the wings* — six limbs. Saying "it is a wyvern" does not
+   prevent it. What does: a numbered list of the four limbs, the statement that *the wings ARE
+   the front limbs*, and a named exception for the small claw at the wing's leading bend, which
+   is otherwise the seed the arm grows from.
+2. **Say which limb is in front where they overlap.** A front view is the only one where the
+   tail is *behind* the body. Left to itself the model curled the tail around **in front of his
+   feet**. "The tail is behind him" is not a drawing instruction; **"where the tail and a leg
+   overlap, the LEG is in front"** is.
+
+Both are now in `GEMINI_CREATURE_PROMPT.md`, along with the three GROUNDED view blocks and a
+correction: the template's opening line said *"Create a **top-down** … sprite"*, which
+contradicted every VIEW block except the flight one.
+
+### The defect: a correct pose with no tail at all
+
+The accepted reference had the pose right and the tail **completely occluded by his own body** —
+he read as having no tail. The user asked for a piece of it brought back "playing on
+perspectives".
+
+**NEW `Tools/AddTail.ps1`** draws it **in source space**, so trace and build run unchanged — the
+same principle as `ExtendTail.ps1`, and the reason there is still only one code path through the
+pipeline. It **can only paint where the source is background**, so the dragon is untouchable by
+construction and the tail is clipped exactly at his own outline, which is what makes it read as
+passing *behind* him rather than in front. Verified on the final render: **0 changed pixels on
+him.**
+
+### Why this version over the four that were rejected
+
+| version | what it did | verdict |
+|---|---|---|
+| out of the right flank, root y=583 | full-length tail, visible end to end | *"a huge spike sticking out his right leg"* |
+| same, root lowered to y=636 | still a flank tail | same fault |
+| threaded through the leg gap, high | gap is only 40px there → a sliver reading as shadow, plus a blunt stub past the foot | rejected |
+| threaded through the gap, low | both pieces legible, but the tip ran on as a rod | rejected |
+| **tip only, on the LEFT** | runs hidden inside his left leg, only the tip clears his foot | **shipped** |
+
+**The lesson, and it decides the east view too: size the tail to the HOLE IT SHOWS THROUGH, not
+to his body.** A tail leaving the flank of a front-on creature has nothing in front of it to hide
+behind, so its entire length is visible at once and it becomes the loudest shape on the sprite.
+What shipped is almost entirely hidden.
+
+Two silent traps found while fitting it:
+
+- **`$TIP_HALF` must be finer than `$KEYLINE`.** The stroke's round cap adds ~12px all round, so
+  a half-width of 5 ends in a 17px blob — the tip read as a cut-off bar instead of a point.
+- **Check the changed-pixel bounding box against the leg gap, not the render.** A root at x=500
+  put an 18px sliver of tail into the gap between his legs — precisely the thing just rejected.
+  `max x = 524` against a gap edge of `507` caught it in one number; the picture did not.
+
+Also fixed in passing: `AddTail.ps1` returned its point list without the `,` operator, so
+PowerShell **unrolled the `List[PointF]`** and `.ToArray()` bound to each *element*. Non-
+terminating, so the script carried on and wrote a **tail-less image** — the same silent-empty-
+result family as the `$B`/`$b` collisions already in the notebook.
+
+## Grounded north, and the palette is per-reference too (2026-08-03, later)
+
+**Alduin's grounded NORTH sprite, traced from the user's reference and signed off** — *"Good,
+much better, save it."* Installed in `Tools/DragonArt_2026-08-03/`, manifest rewritten and
+re-verified at **26 of 26**. Still art only: no ThingDef, no PawnKindDef, nothing loads it.
+
+The reference traced first time — **one blob, 2 px of holes, no threshold tuning** — which is
+the benchmark the pipeline doc sets for a good reference. The trace was never the problem.
+
+### The defect: "you added extra shades to his back"
+
+The first build came back **speckled** across the back and shoulders. The user caught it on
+sight. Nothing in the pipeline had reported anything: perfect trace, perfect mask, clean build,
+no error. Only the picture showed it.
+
+**Root cause — and the obvious diagnosis was WRONG.** `BuildFromMask.ps1` assigns each pixel to
+the *nearest* entry in `$SOURCE_COLOURS`, a table hand-written for the **first** reference. On
+this one it left **8.4% of the creature — 24,076 px — within a coin flip of the wrong band**,
+and **92% of those were torn between "body dark" and "body light"**. Neighbouring pixels of one
+flat surface landed in different bands, so a back drawn flat rendered as noise.
+
+The first guess was "the reference has a third tone the table has no slot for." **It does not** —
+k-means says it is a clean three-tone drawing. The real fault is that the hand-written light
+entry `(124,128,140)` sits well **above** this reference's true light cluster `(110,111,120)`,
+so the dark/light boundary fell **inside a dense part of the distribution** instead of in the
+empty gap between two populations. **A boundary is only safe where there are no pixels.**
+
+### Why this fix over the alternatives
+
+| candidate | on-a-boundary pixels | verdict |
+|---|---|---|
+| the hand-written table | **8.4%** | what the user saw |
+| k=3, derived from the picture | 2.1% | good |
+| **k=4, derived** | **1.7%** | **shipped** |
+| k=5 | 6.3% | **rejected — worse** |
+
+**k=5 is the instructive one: more bands made it worse**, because the fifth centre split the
+body tone and created a *new* boundary through the middle of a dense population. The reflex of
+"add another band to capture more detail" is precisely wrong here. Take the k with the lowest
+ambiguity, never the highest count.
+
+Rejected alternatives: *hand-nudging the two existing values* (a fit to one reference by eye,
+which is how the problem arose in the first place), and *emitting the reference's raw pixels
+unbanded* (inherits its compression noise and abandons the controlled palette the whole build
+exists to produce).
+
+The output now emits **the reference's own measured tones** — `#040405`, `#404349`, `#6B6D76` —
+rather than our cooler charcoal, because the instruction was that the texture be *identical*.
+
+### Changes
+
+- **NEW `Tools/FindPalette.ps1`** — k-means over a reference's own creature pixels, reporting
+  centres and an ambiguity score per k. **Deterministic** (seeded by even luminance spacing,
+  never `Get-Random`): a palette that changed between runs would make this project's hash-checked
+  art checkpoints worthless.
+- **`BuildFromMask.ps1` takes the palette from the environment** — `DOVAH_SRC_PALETTE`,
+  `DOVAH_OUT_PALETTE`, `DOVAH_OUT_ALPHA` — with the old values as defaults, plus a length-
+  agreement guard.
+- **`BuildFromMask.ps1` takes `DOVAH_VIEW`.** It previously hardcoded `_east`/`_west` filenames,
+  **always emitted a mirrored west**, and titled its preview sheet *"this is a SIDE view"*. All
+  three are wrong for a north view, and only **east** may mirror. Fixed by parameterising rather
+  than by captioning around it — this harness has already shipped a sheet asserting the wrong
+  subject, and the rule from that round is **re-render, do not annotate**.
+- **Both refactors PROVED INERT, not assumed:** a fresh default-settings run reproduced
+  `Alduin_soar_northview.png` **byte-identical** to its manifest hash.
+- **`MeasureStyle.ps1` takes `DOVAH_MEASURE`.** Its third row was hardcoded to
+  `Alduin27_clean.png` — an artefact of the *rejected* flatten-a-render route, no longer on
+  disk — so it silently reported MISSING and measured nothing on every run.
+- **`DRAGON_ART_PIPELINE.md` corrected on a false claim.** It stated that `BuildFromMask.ps1`
+  snaps the finished sprite back to its palette. **No such code exists** — grepped and read end
+  to end, and the ~1570 distinct colours in every sprite confirm it. So the doc's "~5 tone bands,
+  top-3 above 85%" target has never been met by anything this pipeline produced: the eight
+  approved sprites measure **8 bands / 45.7%**, and the new one **8 bands / 47.5%**. Left
+  unimplemented deliberately — adding it would change the character of eight signed-off sprites
+  on the strength of a metric rather than a picture.
+- **`GEMINI_CREATURE_PROMPT.md` gained the three GROUNDED view blocks**, and a rule that later
+  views of a creature must override the template's colour list with that creature's own measured
+  tones.
+
+### The constraint on the two remaining grounded views
+
+**The pose must match.** The north reference has his **wings fully spread**. A south or east
+reference with folded wings reads as a different animal the moment the player rotates him, and
+that is **not fixable downstream** — it needs a new reference. Recorded in the art folder's
+README, the pipeline doc and the notebook.
+
 ## Alduin's air art, and a creature-art pipeline that works (2026-08-03)
 
 **Eight shipping sprites** in `Tools/DragonArt_2026-08-03/` — the FLIGHT and SOAR sets, four

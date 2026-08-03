@@ -8,6 +8,11 @@ each cost multiple rounds, and two were unusable.
 broke. If you drop the grid line, you get a grid. If you drop the shadow line, the drop shadow
 bridges the wings and the mask fills solid.
 
+> **One correction, 2026-08-03:** the opening line used to read *"Create a **top-down** video
+> game creature sprite of…"*. That word contradicted every VIEW block except the flight one —
+> a profile or front view is not top-down, and the prompt was asserting both at once. Removed;
+> the VIEW block is the only thing that should name the camera.
+
 ---
 
 ## Why it matters more than any of our drawing code
@@ -29,7 +34,7 @@ downstream can recover it if the prompt is weakened.
 Swap only the block marked **VIEW** for each facing.
 
 ```text
-Create a top-down video game creature sprite of <CREATURE DESCRIPTION>.
+Create a video game creature sprite of <CREATURE DESCRIPTION>.
 
 === VIEW ===
 <one of the view blocks below>
@@ -119,6 +124,91 @@ his own height.
 - Do NOT flip, rotate or mirror a previous image. Only the SIDE of the
   creature I am seeing changes, never the direction he points.
 ```
+
+### The GROUNDED blocks — added 2026-08-03
+
+**Grounded is NOT soar with the legs down.** A soaring creature is seen slightly from above
+with its legs tucked; a grounded one stands with its weight on four legs and the camera
+slightly in front. The legs are the whole difference and they must be *drawn*, not implied.
+
+**Standing, seen from behind (grounded north)** — this is the one Alduin already has:
+```text
+STANDING ON THE GROUND on all four legs, seen from BEHIND and very slightly
+above, as if I am walking up behind him.
+- Head at the TOP of the image, tail running DOWN to the bottom and ending
+  in a visible point.
+- I see the BACK of the skull and the back of the neck. The FACE MUST NOT BE
+  VISIBLE. NO EYES, no muzzle, no jaw.
+- A ridge of large spines runs down the centre of neck, back and tail.
+- All FOUR legs planted on the ground and clearly visible, two either side of
+  the tail. He is STANDING, not flying and not lying down.
+- Wings SPREAD WIDE and symmetrically to both sides, seen from behind.
+```
+
+**Standing, seen from the front (grounded south):**
+```text
+STANDING ON THE GROUND on all four legs, facing me, seen from the FRONT and
+very slightly above.
+- CRITICAL: I see his FRONT, not his back. FULL FACE visible and pointed at
+  me: two glowing orange eyes, muzzle, nostrils, jaw, mouth line.
+- I see his CHEST and BELLY, with smooth belly plating down the underside.
+- There must be NO dorsal spine ridge visible - that is on his back.
+- All FOUR legs planted on the ground and clearly visible. He is STANDING.
+- Wings SPREAD WIDE and symmetrically to both sides. I see the FRONT faces
+  of the wings, not the undersides - he is standing, not flying overhead.
+- Head still points toward the TOP of the image; tail runs DOWN behind him
+  and is visible between or past the hind legs.
+- Do NOT flip, rotate or mirror a previous image. Only the SIDE of the
+  creature I am seeing changes, never the direction he points.
+```
+
+**Standing, seen from the side (grounded east):**
+```text
+STANDING ON THE GROUND on all four legs, in a full SIDE PROFILE at roughly
+his own height. Facing RIGHT.
+- Head on the RIGHT, tail trailing to the LEFT and ending in a visible point.
+- Body roughly HORIZONTAL, held up on four legs. I can see the ground line
+  his feet stand on.
+- All FOUR legs visible and planted - the near pair fully, the far pair
+  behind them. He is STANDING, NOT flying and NOT perched.
+- One glowing orange eye on the near side of the head.
+- The dorsal spine ridge runs along his back in profile.
+- Wings SPREAD; the near wing fully visible, the far wing behind the body.
+- I see ONE SIDE only. Do NOT draw both wings spread symmetrically as if
+  seen from the front or from above.
+```
+
+### Two clauses that a FRONT view needs and the others do not
+
+Both learned on Alduin's grounded south, 2026-08-03, and both were produced by a model that had
+followed every other instruction correctly.
+
+**1. LOCK THE LIMB COUNT, AND MAKE IT COUNTABLE.** Asked for a standing winged dragon, the model
+added a **pair of arms in addition to the wings** — a six-limbed creature. "It is a wyvern" does
+not prevent it. What does: an explicit numbered list of the four limbs, the statement that *the
+wings ARE the front limbs*, and a named exception for the small claw at the wing's leading bend,
+which is otherwise the seed the arm grows from.
+
+**2. SAY WHICH LIMB IS IN FRONT WHERE THEY OVERLAP.** A front view is the only one where the
+tail is *behind* the body, so the model has to be told what hides what. Left to itself it drew
+the tail **curling around in front of the feet**, which reads as the tail being in front of the
+creature. "Tail behind him" is not enough — the drawable instruction is **"where the tail and a
+leg overlap, the LEG is in front"**, plus a ban on the tip coming back toward the viewer.
+
+A profile view needs neither clause: the limb count is self-evident and the tail cannot overlap
+anything ambiguously.
+
+### Matching an existing set — override the COLOURS block
+
+The colour list in the template is a *starting* palette. Once a creature's first view exists,
+**every later view must use that creature's measured tones instead**, or the same animal comes
+back in a different colour scheme each time and the three facings will not sit together.
+
+Run `FindPalette.ps1` on the approved reference, then paste its centres into the COLOURS block
+as hex. Alduin's grounded set is `#040405` outline, `#404349` dark, `#6B6D76` light.
+
+**And the pose has to be restated too.** Alduin's grounded north has his **wings fully spread**;
+a south reference with folded wings is a different animal, and nothing downstream can fix it.
 
 ---
 

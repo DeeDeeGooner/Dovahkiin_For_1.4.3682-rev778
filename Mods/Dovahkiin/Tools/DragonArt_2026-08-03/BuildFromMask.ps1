@@ -12,6 +12,19 @@ Add-Type -AssemblyName System.Drawing
 
 $SRC_IMG  = if ($env:DOVAH_REF)  { $env:DOVAH_REF }  else { "C:\Users\User\Downloads\Gemini_Generated_Image_8ykfbv8ykfbv8ykf.png" }
 $TAG      = if ($env:DOVAH_TAG)  { $env:DOVAH_TAG }  else { "gem" }
+# WHICH VIEW THIS REFERENCE IS. Defaults to "east" so every earlier call behaves exactly as
+# before. It decides three things that were previously hardcoded to east:
+#   the output filename, whether a mirrored WEST is emitted, and every caption on the sheet.
+#
+# ONLY EAST MIRRORS. A profile view seen from the other side is the same drawing flipped;
+# a north or south view is a DIFFERENT PROJECTION and has no free partner - mirroring one
+# would just produce the same rear view again under a name claiming it is something else.
+#
+# The captions are parameterised rather than left saying "east" with a note attached: this
+# harness has already shipped a sheet asserting the wrong subject, and the rule that came out
+# of it is RE-RENDER, DO NOT ANNOTATE. A caption is read as fact.
+$VIEW     = if ($env:DOVAH_VIEW) { $env:DOVAH_VIEW } else { "east" }
+$MIRRORS  = ($VIEW -eq "east")
 $SCRATCH  = $PSScriptRoot
 $MASK_SRC = Join-Path $SCRATCH ("{0}_mask.png" -f $TAG)
 $OUT_DIR  = if ($env:DOVAH_DEST) { $env:DOVAH_DEST } else { $SCRATCH }
@@ -47,20 +60,54 @@ function RGB {
 # out light, and the near wing read as though its texture were inverted.
 #
 # A filled hole is background, so it emits ALPHA 0 rather than a colour.
-$SOURCE_COLOURS = @(
+#
+# ---- THESE ARE PER-REFERENCE. DERIVE THEM, DO NOT REUSE THEM. ----
+#
+# The values below were hand-written for the FIRST reference and are kept only as the default.
+# Measured against the 2026-08-03 grounded reference they put 8.4% of the creature - 24,076
+# pixels - within a coin flip of the wrong band, and 92% of those were torn between "body dark"
+# and "body light". That renders as SPECKLE across flat surfaces, and the user reported it
+# immediately as "extra shades on his back".
+#
+# The cause was NOT a missing tone, which was the obvious guess and was wrong. It is that
+# (124,128,140) sits well ABOVE that reference's true light cluster of (110,111,120), so the
+# dark/light boundary landed in a dense part of the distribution instead of in the empty gap
+# between two populations.
+#
+# RUN Tools/FindPalette.ps1 (k-means over the creature's own pixels) FOR EVERY NEW REFERENCE
+# and pass the result in. On the grounded reference a derived k=4 scored 1.7% against 8.4% -
+# five times fewer ambiguous pixels - with no change to any other part of the pipeline.
+#
+# Format: "r,g,b;r,g,b;..."  DOVAH_OUT_ALPHA is a matching ";"-separated list of 0-255.
+# The LAST entry is by convention the background/gap tone and emits alpha 0.
+function Parse-Palette {
+    param([string]$spec)
+    $rows = @()
+    foreach ($chunk in ($spec -split ';')) {
+        $parts = $chunk -split ','
+        $rows += , @( [int]$parts[0], [int]$parts[1], [int]$parts[2] )
+    }
+    return , $rows
+}
+$SOURCE_COLOURS = if ($env:DOVAH_SRC_PALETTE) { Parse-Palette $env:DOVAH_SRC_PALETTE } else { @(
     @(   0,   0,   0 ),   # outline
     @(  64,  64,  76 ),   # body dark
     @( 124, 128, 140 ),   # body light
     @( 255, 255, 255 )    # background / gaps
-)
+) }
 # our palette, cool charcoal so a black creature separates from brown RimWorld soil
-$OUR_COLOURS = @(
+$OUR_COLOURS = if ($env:DOVAH_OUT_PALETTE) { Parse-Palette $env:DOVAH_OUT_PALETTE } else { @(
     @(  10,  10,  13 ),
     @(  52,  54,  64 ),
     @( 104, 108, 122 ),
     @(   0,   0,   0 )
-)
-$OUR_ALPHA = @( 255, 255, 255, 0 )
+) }
+$OUR_ALPHA = if ($env:DOVAH_OUT_ALPHA) { @($env:DOVAH_OUT_ALPHA -split ';' | ForEach-Object { [int]$_ }) } else { @( 255, 255, 255, 0 ) }
+if ($SOURCE_COLOURS.Count -ne $OUR_COLOURS.Count -or $OUR_COLOURS.Count -ne $OUR_ALPHA.Count) {
+    Write-Output ("ABORT: palette lengths disagree - source {0}, out {1}, alpha {2}" -f `
+        $SOURCE_COLOURS.Count, $OUR_COLOURS.Count, $OUR_ALPHA.Count)
+    exit 1
+}
 $LUMA_SMOOTH = 0        # flat art needs no pre-blur; blurring would invent in-between tones
 $K_LINE = RGB 10 9 8
 $K_RIM  = RGB 176 156 120
@@ -347,12 +394,19 @@ $finalGfx.PixelOffsetMode   = [System.Drawing.Drawing2D.PixelOffsetMode]::HighQu
 $finalGfx.Clear([System.Drawing.Color]::Transparent)
 $finalGfx.DrawImage($canvas, (New-Object System.Drawing.Rectangle 0, 0, ([int]$FRAME), ([int]$FRAME)))
 $finalGfx.Dispose(); $canvas.Dispose()
-$final.Save((Join-Path $OUT_DIR ("{0}_east.png" -f $TAG)), [System.Drawing.Imaging.ImageFormat]::Png)
+$final.Save((Join-Path $OUT_DIR ("{0}_{1}.png" -f $TAG, $VIEW)), [System.Drawing.Imaging.ImageFormat]::Png)
+Say ("wrote         : {0}_{1}.png" -f $TAG, $VIEW)
 
-# mirrored copy = the WEST view, free
-$mirrored = New-Object System.Drawing.Bitmap $final
-$mirrored.RotateFlip([System.Drawing.RotateFlipType]::RotateNoneFlipX)
-$mirrored.Save((Join-Path $OUT_DIR ("{0}_west.png" -f $TAG)), [System.Drawing.Imaging.ImageFormat]::Png)
+# mirrored copy = the WEST view, free - EAST ONLY. See $MIRRORS at the top.
+$mirrored = $null
+if ($MIRRORS) {
+    $mirrored = New-Object System.Drawing.Bitmap $final
+    $mirrored.RotateFlip([System.Drawing.RotateFlipType]::RotateNoneFlipX)
+    $mirrored.Save((Join-Path $OUT_DIR ("{0}_west.png" -f $TAG)), [System.Drawing.Imaging.ImageFormat]::Png)
+    Say ("wrote         : {0}_west.png  (mirrored)" -f $TAG)
+} else {
+    Say ("no mirror     : '{0}' is its own projection, west is not derivable from it" -f $VIEW)
+}
 
 # ---------------------------------------------------------------- preview
 $CELL = 384
@@ -366,7 +420,14 @@ $titleFont = New-Object System.Drawing.Font ("Segoe UI", 15, [System.Drawing.Fon
 $labelFont = New-Object System.Drawing.Font ("Segoe UI", 10)
 $textBrush = New-Object System.Drawing.SolidBrush (RGB 235 235 235)
 $dimBrush  = New-Object System.Drawing.SolidBrush (RGB 168 168 168)
-$sheetGfx.DrawString("TRACED FROM YOUR NEW REFERENCE - this is a SIDE view (east/west), not south",
+$viewBlurb = switch ($VIEW) {
+    "east"  { "a SIDE view - west comes free by mirroring it" }
+    "west"  { "a SIDE view" }
+    "north" { "the view from BEHIND - back of the skull, head up. Its own drawing; nothing mirrors to it" }
+    "south" { "the view from the FRONT - face visible, head up. Its own drawing; nothing mirrors to it" }
+    default { "view '$VIEW'" }
+}
+$sheetGfx.DrawString(("TRACED FROM YOUR REFERENCE - {0} - {1}" -f $TAG, $viewBlurb),
     $titleFont, $textBrush, 14, 10)
 function Paint-Ground {
     param([int]$originX, [int]$originY, [int]$sizePx)
@@ -391,13 +452,23 @@ $rw = [int]($refShow.Width * $refFit); $rh = [int]($refShow.Height * $refFit)
 $sheetGfx.DrawImage($refShow, (14 + [int](($CELL - $rw) / 2)), ($rowTop + [int](($CELL - $rh) / 2)), $rw, $rh)
 $refShow.Dispose()
 $cell2X = 14 + $CELL + 16
-$sheetGfx.DrawString("OURS - east - over lit ground", $labelFont, $dimBrush, $cell2X, ($rowTop - 18))
+$sheetGfx.DrawString(("OURS - {0} - over lit ground" -f $VIEW), $labelFont, $dimBrush, $cell2X, ($rowTop - 18))
 Paint-Ground $cell2X $rowTop $CELL
 $sheetGfx.DrawImage($final, $cell2X, $rowTop, $CELL, $CELL)
+# Cell 3 is the mirrored partner when there IS one, and the traced MASK when there is not -
+# an empty third cell would read as something having failed, and the mask is the one artefact
+# worth looking at anyway.
 $cell3X = $cell2X + $CELL + 16
-$sheetGfx.DrawString("west - mirrored, free", $labelFont, $dimBrush, $cell3X, ($rowTop - 18))
-Paint-Ground $cell3X $rowTop $CELL
-$sheetGfx.DrawImage($mirrored, $cell3X, $rowTop, $CELL, $CELL)
+if ($MIRRORS) {
+    $sheetGfx.DrawString("west - mirrored, free", $labelFont, $dimBrush, $cell3X, ($rowTop - 18))
+    Paint-Ground $cell3X $rowTop $CELL
+    $sheetGfx.DrawImage($mirrored, $cell3X, $rowTop, $CELL, $CELL)
+} else {
+    $sheetGfx.DrawString("the traced silhouette (no mirror for this view)", $labelFont, $dimBrush, $cell3X, ($rowTop - 18))
+    $maskShow = [System.Drawing.Bitmap]::FromFile($MASK_SRC)
+    $sheetGfx.DrawImage($maskShow, $cell3X, $rowTop, $CELL, $CELL)
+    $maskShow.Dispose()
+}
 $stripY = $rowTop + $CELL + 30
 $sheetGfx.DrawString("play distance:", $labelFont, $dimBrush, 14, ($stripY - 20))
 $stripX = 14
@@ -409,6 +480,7 @@ foreach ($playSize in @(160, 120, 92, 68, 52)) {
 }
 $sheetGfx.Dispose()
 $sheet.Save((Join-Path $OUT_DIR ("{0}_preview.png" -f $TAG)), [System.Drawing.Imaging.ImageFormat]::Png)
-$sheet.Dispose(); $final.Dispose(); $mirrored.Dispose()
+$sheet.Dispose(); $final.Dispose()
+if ($null -ne $mirrored) { $mirrored.Dispose() }
 Say "DONE"
 Write-Output "DONE"
