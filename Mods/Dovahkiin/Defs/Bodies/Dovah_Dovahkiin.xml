@@ -1,0 +1,225 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    THE DOVAH BODY. SPEC.md 6.6: tail, left wing, right wing, maw, legs, torso.
+
+    Written 2026-08-04 to replace vanilla "Bird", which was a stopgap and was wrong in three
+    ways at once:
+
+      1. Its jaws part is literally called a BEAK, so the combat log reported the dragon's bite
+         as beak damage. The user spotted it in a pawn's wounds. Renaming the TOOL would not
+         have fixed it - wound text comes from the BODY PART, not the tool's label.
+      2. It has no wings, so the wing bash attack had nothing to hang on.
+      3. It has no wings to CRIPPLE, so SPEC.md 6.6's grounding rule - 50% damage to each wing,
+         or 80% to one, forces GROUNDED - could not be implemented at all.
+
+    Vanilla has no wing BodyPartDef, so one is defined below. Everything else reuses vanilla
+    parts, because a part def that duplicates a vanilla one only means two things to keep in
+    step.
+
+    COVERAGE is the chance a random hit lands on that part, among siblings at the same depth.
+    The wings are deliberately GENEROUS (0.11 each): they are what a shooter wants to hit, and
+    the grounding rule is only interesting if wings are actually hittable. The maw is small -
+    it should take real aim to break a dragon's bite.
+  -->
+
+  <BodyPartDef>
+    <defName>Dovahkiin_DovahWing</defName>
+    <label>wing</label>
+    <hitPoints>50</hitPoints>
+    <!-- Wounds here are meant to STICK. A dragon that shrugs off a shredded wing an hour later
+         makes the grounding rule pointless. -->
+    <permanentInjuryChanceFactor>1.0</permanentInjuryChanceFactor>
+    <skinCovered>true</skinCovered>
+    <solid>false</solid>
+    <bleedRate>1.2</bleedRate>
+  </BodyPartDef>
+
+  <BodyPartGroupDef>
+    <defName>Dovahkiin_Maw</defName>
+    <label>maw</label>
+    <listOrder>90</listOrder>
+  </BodyPartGroupDef>
+
+  <BodyPartGroupDef>
+    <defName>Dovahkiin_Wings</defName>
+    <label>wings</label>
+    <listOrder>85</listOrder>
+  </BodyPartGroupDef>
+
+  <BodyPartGroupDef>
+    <defName>Dovahkiin_Tail</defName>
+    <label>tail</label>
+    <listOrder>80</listOrder>
+  </BodyPartGroupDef>
+
+  <BodyDef>
+    <defName>Dovahkiin_Dovah</defName>
+    <label>dovah</label>
+    <corePart>
+      <def>Body</def>
+      <height>Middle</height>
+      <depth>Outside</depth>
+      <parts>
+
+        <!-- THE TAIL. Its own attack tool (a sweep), and half of the blunt-damage rule in
+             SPEC.md 6.6. -->
+        <li>
+          <def>Tail</def>
+          <coverage>0.10</coverage>
+          <groups>
+            <li>Dovahkiin_Tail</li>
+          </groups>
+        </li>
+
+        <!-- THE WINGS. Damage here grounds him - SPEC.md 6.6 - so they must be worth aiming
+             at. Left and right are separate parts precisely because the rule distinguishes
+             "50% to each" from "80% to one". -->
+        <li>
+          <def>Dovahkiin_DovahWing</def>
+          <customLabel>left wing</customLabel>
+          <coverage>0.11</coverage>
+          <groups>
+            <li>Dovahkiin_Wings</li>
+          </groups>
+        </li>
+        <li>
+          <def>Dovahkiin_DovahWing</def>
+          <customLabel>right wing</customLabel>
+          <coverage>0.11</coverage>
+          <groups>
+            <li>Dovahkiin_Wings</li>
+          </groups>
+        </li>
+
+        <li>
+          <def>Spine</def>
+          <coverage>0.05</coverage>
+          <depth>Inside</depth>
+        </li>
+        <li>
+          <def>Heart</def>
+          <coverage>0.03</coverage>
+          <depth>Inside</depth>
+        </li>
+        <li>
+          <def>Lung</def>
+          <customLabel>left lung</customLabel>
+          <coverage>0.04</coverage>
+          <depth>Inside</depth>
+        </li>
+        <li>
+          <def>Lung</def>
+          <customLabel>right lung</customLabel>
+          <coverage>0.04</coverage>
+          <depth>Inside</depth>
+        </li>
+        <li>
+          <def>Stomach</def>
+          <coverage>0.04</coverage>
+          <depth>Inside</depth>
+        </li>
+        <li>
+          <def>Liver</def>
+          <coverage>0.05</coverage>
+          <depth>Inside</depth>
+        </li>
+
+        <li>
+          <def>Neck</def>
+          <coverage>0.14</coverage>
+          <height>Top</height>
+          <parts>
+            <li>
+              <def>Head</def>
+              <coverage>0.70</coverage>
+              <groups>
+                <li>HeadAttackTool</li>
+              </groups>
+              <parts>
+                <li>
+                  <def>Skull</def>
+                  <coverage>0.30</coverage>
+                  <depth>Inside</depth>
+                  <parts>
+                    <li>
+                      <def>Brain</def>
+                      <coverage>0.60</coverage>
+                      <depth>Inside</depth>
+                    </li>
+                  </parts>
+                </li>
+                <li>
+                  <def>Eye</def>
+                  <customLabel>left eye</customLabel>
+                  <coverage>0.10</coverage>
+                </li>
+                <li>
+                  <def>Eye</def>
+                  <customLabel>right eye</customLabel>
+                  <coverage>0.10</coverage>
+                </li>
+                <!-- THE MAW. This is the fix for the user's report that wounds were being
+                     credited to a BEAK: the wound text comes from the body part, so the part
+                     itself has to be a maw. AnimalJaw is vanilla's jaw part, relabelled.
+                     Small coverage - breaking a dragon's bite should take aim. -->
+                <li>
+                  <def>AnimalJaw</def>
+                  <customLabel>maw</customLabel>
+                  <coverage>0.22</coverage>
+                  <groups>
+                    <li>Dovahkiin_Maw</li>
+                    <li>Teeth</li>
+                  </groups>
+                </li>
+              </parts>
+            </li>
+          </parts>
+        </li>
+
+        <!-- THE LEGS. Wounds here cut his move speed - SPEC.md 6.6. -->
+        <li>
+          <def>Leg</def>
+          <customLabel>left leg</customLabel>
+          <coverage>0.10</coverage>
+          <height>Bottom</height>
+          <groups>
+            <li>Legs</li>
+          </groups>
+          <parts>
+            <li>
+              <def>Foot</def>
+              <customLabel>left foot</customLabel>
+              <coverage>0.4</coverage>
+              <groups>
+                <li>Feet</li>
+              </groups>
+            </li>
+          </parts>
+        </li>
+        <li>
+          <def>Leg</def>
+          <customLabel>right leg</customLabel>
+          <coverage>0.10</coverage>
+          <height>Bottom</height>
+          <groups>
+            <li>Legs</li>
+          </groups>
+          <parts>
+            <li>
+              <def>Foot</def>
+              <customLabel>right foot</customLabel>
+              <coverage>0.4</coverage>
+              <groups>
+                <li>Feet</li>
+              </groups>
+            </li>
+          </parts>
+        </li>
+
+      </parts>
+    </corePart>
+  </BodyDef>
+
+</Defs>

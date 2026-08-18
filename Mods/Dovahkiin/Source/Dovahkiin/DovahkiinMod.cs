@@ -37,6 +37,20 @@ namespace Dovahkiin
         {
             HarmonyInstance = new Harmony("erzou.dovahkiin");
             HarmonyInstance.PatchAll(Assembly.GetExecutingAssembly());
+
+            // NOTHING EXTERNAL MOVES A DOVAH IN FLIGHT - the half that cannot be an attribute.
+            //
+            // Every other patch in this mod is found by PatchAll because it names a type this
+            // assembly can see. This one patches ANOTHER MOD's classes, which may not be
+            // installed and may not be named at compile time (CLAUDE.md: reflection + null-guard
+            // only), so it has to be applied by hand.
+            //
+            // The count is logged deliberately. A reflection sweep that finds nothing looks
+            // exactly like a sweep that worked, and this is the only place that difference can be
+            // seen. 0 with RimWorld of Magic loaded means this protection is NOT in force.
+            int carriersBlocked = DovahCargoRefusal.Apply(HarmonyInstance);
+            Log.Message("[Dovahkiin] Airborne-cargo refusal applied to " + carriersBlocked
+                + " third-party launcher(s); 0 is expected only with no such mod installed.");
         }
 
         public override void DefsLoaded()
@@ -48,11 +62,25 @@ namespace Dovahkiin
                 false);
 
             // Phase 0 proof: the custom Def class loaded and bound to its XML.
-            // If this logs a warning, the assembly loaded but XML/C# linkage is broken.
             DovahkiinTuningDef tuning = DovahkiinTuningDef.Current;
             if (tuning == null)
             {
-                Logger.Warning("Tuning def 'Dovahkiin_Tuning' not found. XML did not bind to DovahkiinTuningDef.");
+                // ⚠⚠ AN ERROR, NOT A WARNING - RAISED 2026-08-13 AFTER THIS COST A PLAYTEST.
+                //
+                // A missing tuning def does not disable a feature; it silently swaps EVERY balance
+                // number in the mod for its C# fallback. The user reported "his flightspeed is very
+                // wrong" and "the cone's size was reduced" as two separate defects, and both were
+                // this one condition - the file had failed to PARSE, so nothing in it was in force.
+                //
+                // It DID log, as a warning, and it was missed for a full round because the standing
+                // log check greps for `Exception` and `Config error`. A yellow line among hundreds
+                // is not a signal when the consequence is "every number in the mod is different".
+                Logger.Error(
+                    "TUNING DEF 'Dovahkiin_Tuning' NOT FOUND - every balance number in the mod is "
+                    + "now running on its C# fallback instead of DovahkiinTuningDef.xml. This is "
+                    + "almost always a def file that failed to PARSE. Check "
+                    + "Defs/MiscDefs/DovahkiinTuningDef.xml - and note that a '--' ANYWHERE inside "
+                    + "an XML comment makes RimWorld discard the WHOLE FILE.");
             }
             else
             {

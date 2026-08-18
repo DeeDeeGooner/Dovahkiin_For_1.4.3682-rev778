@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    The marker that says a dragon is off the ground. SPEC.md 6.5.
+
+    It carries NO statFactors on purpose. Its SEVERITY is the speed multiplier, and
+    StatPart_DragonAirborne reads it back - so each speed exists exactly once, in
+    DovahkiinTuningDef.xml, rather than once there and once as a stage threshold here.
+    See the header of StatPart_DragonAirborne.cs for why that matters.
+
+    Severity is set by Comp_AlduinFlight to the tuned factor (1.20 soaring, 1.80 flying) and
+    the hediff is removed outright when he lands, so there is no "grounded" severity to
+    reason about.
+  -->
+  <HediffDef>
+    <defName>Dovahkiin_DragonAirborne</defName>
+    <label>airborne</label>
+    <description>This creature is off the ground.</description>
+    <hediffClass>HediffWithComps</hediffClass>
+    <isBad>false</isBad>
+    <!-- 'scenarioCanAdd', NOT 'scenarioCanAddHediff' - the latter is not a field and would be
+         dropped silently with the def still loading. -->
+    <scenarioCanAdd>false</scenarioCanAdd>
+    <everCurableByItem>false</everCurableByItem>
+    <tendable>false</tendable>
+    <!-- Comfortably above the highest speed factor we would ever tune to. -->
+    <maxSeverity>10</maxSeverity>
+    <stages>
+      <li>
+        <label>airborne</label>
+      </li>
+    </stages>
+  </HediffDef>
+
+</Defs>

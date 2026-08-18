@@ -1,0 +1,248 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    ALDUIN - THE TEST DRAGON.
+
+    This is deliberately NOT the boss. CLAUDE.md invariant 2 says at most one BOSS Alduin per
+    save, owned by GameComponent_DragonbornRegistry. This def is a third, dev-only creature
+    that the registry never sees: it can never be the boss, never drops a soul, and never sets
+    SlainForever. It exists so the twelve sprites and the three-state graphic switch can be
+    judged in the running game before any gameplay is built on them.
+
+    DOVAH ARE TIMELESS - the user's design, 2026-08-04. They do not age and they do not breed.
+    That is expressed here, and it is not merely flavour:
+
+      ONE life stage.  Verse.Pawn_AgeTracker.RecalculateLifeStageIndex only fires
+      SetAllGraphicsDirty() when the life stage index actually CHANGES - and that call is the
+      ONLY thing in the whole assembly that can undo our runtime sprite swap for an animal
+      (verified by scanning all 12,819 types for callers). With a single stage the index is
+      always 0, so it fires at most once, at spawn. The lore requirement and the graphics
+      mechanism protect each other.
+
+      NO hediffGiverSets.  AnimalThingBase inherits OrganicStandard, which is what applies
+      age-related decline - cataracts, bad back, frailty. Cleared with Inherit="False".
+
+      fixedGender Male on the PawnKindDef.  RimWorld.JobGiver_Mate opens with
+      "if (pawn.gender != Gender.Male || pawn.Sterile()) return null", and its target test
+      PawnUtility.FertileMateTarget requires a FEMALE of the same def. Every Alduin is male,
+      so a mate target can never exist and the job can never be issued. Chosen over
+      hasGenders=false, which also works but makes RimWorld call him "it" - dragons are "he"
+      throughout Skyrim.
+
+    THE BODY IS OURS - Dovahkiin_Dovah, in Defs/Bodies/Dovah_Dovahkiin.xml. It replaced vanilla
+    "Bird" on 2026-08-04 because Bird was wrong three ways at once: its jaws part is literally a
+    BEAK (so the combat log credited his bite to a beak - the user caught it in a pawn's
+    wounds), it has no wings to bash with, and no wings to CRIPPLE, so SPEC.md 6.6's grounding
+    rule could not exist.
+  -->
+
+  <ThingDef ParentName="AnimalThingBase">
+    <defName>Dovahkiin_Alduin_Test</defName>
+    <label>Alduin</label>
+    <description>The World-Eater. First-born of Akatosh, and the only dov who ever claimed to be a god. He does not age, he was not born, and he does not breed - he simply is, and has been since before the first men drew breath.\n\nThis one is a test specimen and is not the true Alduin.</description>
+    <statBases>
+      <MoveSpeed>4.6</MoveSpeed>
+      <MarketValue>10000</MarketValue>
+      <ComfyTemperatureMin>-100</ComfyTemperatureMin>
+      <ComfyTemperatureMax>100</ComfyTemperatureMax>
+      <ArmorRating_Sharp>0.70</ArmorRating_Sharp>
+      <ArmorRating_Blunt>0.50</ArmorRating_Blunt>
+      <ArmorRating_Heat>0.90</ArmorRating_Heat>
+      <FilthRate>10</FilthRate>
+    </statBases>
+    <uiIconScale>1.9</uiIconScale>
+    <!--
+      ⚠ EVERY linkedBodyPartsGroup MUST EXIST ON THE BODY NAMED IN <race><body>.
+
+      The first version of this def used Teeth, FrontLeftLeg and FrontRightLeg - the groups a
+      QUADRUPED has - against vanilla "Bird", which has only Beak, Feet and HeadAttackTool.
+      RimWorld logged one config error per tool AT LOAD and the mod carried on, so the only
+      symptom in play was a dragon who could barely fight: three of his four tools were inert
+      and the sole survivor was the tail, at chanceFactor 0.4.
+
+      That is the notebook's standing lesson, hit again: a clean build and a "does every def
+      parse" check BOTH pass this. Parsing proves the XML is well-formed, not that the names in
+      it RESOLVE. RimWorld's own config check at load is what catches it - READ THE LOG.
+
+      Now checked against our own Dovahkiin_Dovah body instead.
+    -->
+    <!--
+      HIS MELEE ROLLS. The user, 2026-08-04: his attacks should not all be bites.
+      Weighted by chanceFactor, most likely first:
+
+        MAW        pierce   most likely   - the signature attack
+        WING BASH  blunt    middling      - no stun
+        TAIL SWEEP blunt    RAREST        - stuns briefly
+
+      The maw is linked to Dovahkiin_Maw on our own body, NOT to vanilla Bird's Beak group.
+      That is what fixes the user's report that wounds were credited to a "beak": wound text
+      comes from the BODY PART, so relabelling the tool would have changed nothing.
+
+      Every linkedBodyPartsGroup here must exist on Dovahkiin_Dovah - RimWorld logs a config
+      error at load and carries on, leaving the tool silently dead. That already happened once
+      with Teeth/FrontLeftLeg/FrontRightLeg against Bird.
+    -->
+    <tools>
+      <li>
+        <label>maw</label>
+        <capacities>
+          <li>Bite</li>
+        </capacities>
+        <!--
+          ⚠ THE armorPenetration LINE BELOW IS LOAD-BEARING. DO NOT DELETE IT TO "SIMPLIFY".
+
+          Verse.Tool.armorPenetration defaults to -1, and VerbProperties.AdjustedArmorPenetration
+          then derives AP as damage x 0.015 (decompiled, not assumed). So a tool left at the
+          default has its POWER silently acting as its PENETRATION, and the two cannot be tuned
+          apart. At power 45 that is AP 0.675 against Dragon Aspect's +0.60 Sharp, i.e. her
+          signature defence cancelled outright: effective armour zero, every bite at full damage.
+          That is what the user reported on 2026-08-05, as a naked but Aspected Dovahkiin being
+          one shot roughly 70% of the time.
+
+          Cutting power to 38.25 was tried first and REVERTED the same day, because it cuts the
+          penetration with it (AP 0.574, still leaving 0.026) and so cannot fix the cause.
+
+          Verse.ArmorUtility.ApplyArmor, read from the decompiler:
+            effective = max(armourRating - armorPenetration, 0)
+            roll < effective/2   -> damage 0, deflected
+            roll < effective     -> damage halved AND Sharp converted to Blunt
+
+          At AP 0.30 that gives, per bite:
+
+            Dragon Aspect 3 words (+0.60)   effective 0.30   15% deflect + 15% halved
+            Dragon Aspect 2 words (+0.40)   effective 0.10    5% deflect +  5% halved
+            Dragon Aspect 1 word  (+0.10)   effective 0       unchanged
+            naked, no Aspect      ( 0.00)   effective 0       unchanged, still bitten in half
+
+          So the shout now matters and an unprotected pawn is no safer than before, which is the
+          intended shape: armour is the answer to a dragon, not hit points.
+
+          KNOWN AND ACCEPTED CONSEQUENCE: this helps EVERY armoured pawn, not just the Dovahkiin.
+          A colonist in good plate (~0.75 Sharp) reaches effective 0.45, so a dragon is markedly
+          less dangerous to a well equipped colony than it was. Flagged to the user 2026-08-05
+          and kept deliberately.
+        -->
+        <power>38.475</power>
+        <armorPenetration>0.27075</armorPenetration>
+        <cooldownTime>2.4</cooldownTime>
+        <linkedBodyPartsGroup>Dovahkiin_Maw</linkedBodyPartsGroup>
+        <chanceFactor>1.4</chanceFactor>
+      </li>
+      <li>
+        <label>wing bash</label>
+        <capacities>
+          <li>Blunt</li>
+        </capacities>
+        <power>28.5</power>
+        <!-- EXPLICIT, and it must stay so. Without it Verse.VerbProperties.AdjustedArmorPenetration
+             derives AP as power x 0.015 = 0.4275, which pierced Dragon Aspect HARDER than the maw
+             (0.285) - the signature bite being the least dangerous attack he owns. -->
+        <armorPenetration>0.18</armorPenetration>
+        <cooldownTime>2.2</cooldownTime>
+        <linkedBodyPartsGroup>Dovahkiin_Wings</linkedBodyPartsGroup>
+        <chanceFactor>0.8</chanceFactor>
+      </li>
+      <li>
+        <label>tail sweep</label>
+        <capacities>
+          <li>Blunt</li>
+        </capacities>
+        <power>32.3</power>
+        <!-- EXPLICIT. Derived would be 0.4845 - see the wing bash note above. -->
+        <armorPenetration>0.22</armorPenetration>
+        <cooldownTime>2.8</cooldownTime>
+        <linkedBodyPartsGroup>Dovahkiin_Tail</linkedBodyPartsGroup>
+        <!-- Rarest of the three, and the only one that stuns. Higher power than the wing bash
+             to make it worth landing; the brief stun is applied in code, since a vanilla tool
+             has no stun field. -->
+        <chanceFactor>0.35</chanceFactor>
+      </li>
+      <!-- NO CLAW ATTACK. Removed 2026-08-04 at the user's instruction: "dovahs have no claw
+           attacks". His feet carry him; they are not a weapon. -->
+    </tools>
+    <race>
+      <!-- OUR OWN BODY, 2026-08-04. Vanilla "Bird" was a stopgap and was wrong three ways: its
+           jaws part is called a BEAK (so wounds read as beak damage - the user caught it), it
+           has no wings to bash with, and it has no wings to CRIPPLE, so SPEC.md 6.6's grounding
+           rule could not exist. See Defs/Bodies/Dovah_Dovahkiin.xml. -->
+      <body>Dovahkiin_Dovah</body>
+      <baseBodySize>4.6</baseBodySize>
+      <baseHungerRate>0</baseHungerRate>
+      <baseHealthScale>42.0</baseHealthScale>
+      <foodType>CarnivoreAnimal</foodType>
+      <trainability>None</trainability>
+      <wildness>1.0</wildness>
+      <manhunterOnDamageChance>1.0</manhunterOnDamageChance>
+      <herdAnimal>false</herdAnimal>
+      <packAnimal>false</packAnimal>
+      <predator>true</predator>
+      <maxPreyBodySize>3.0</maxPreyBodySize>
+      <canBePredatorPrey>false</canBePredatorPrey>
+      <nameOnTameChance>0</nameOnTameChance>
+
+      <!-- TIMELESS. See the header. -->
+      <lifeExpectancy>1000000</lifeExpectancy>
+      <hediffGiverSets Inherit="False" />
+      <lifeStageAges>
+        <li>
+          <def>AnimalAdult</def>
+          <minAge>0</minAge>
+        </li>
+      </lifeStageAges>
+
+      <soundMeleeHitPawn>Pawn_Melee_BigBash_HitPawn</soundMeleeHitPawn>
+      <soundMeleeHitBuilding>Pawn_Melee_BigBash_HitBuilding</soundMeleeHitBuilding>
+      <soundMeleeMiss>Pawn_Melee_BigBash_Miss</soundMeleeMiss>
+    </race>
+    <!--
+      Keeps a FLYING dragon's sprite pointed where he is going. Flight is the only EIGHT-way
+      state, so it is the only one that needs maintaining; grounded and soar are four-way and
+      the engine's own Rot4 handles them.
+      ONE <comps> block only - a second one parses as valid XML and RimWorld silently keeps one
+      and drops the other.
+    -->
+    <comps>
+      <li Class="Dovahkiin.CompProperties_AlduinFlight" />
+    </comps>
+  </ThingDef>
+
+  <PawnKindDef ParentName="AnimalKindBase">
+    <defName>Dovahkiin_Alduin_Test</defName>
+    <label>Alduin</label>
+    <race>Dovahkiin_Alduin_Test</race>
+    <combatPower>2000</combatPower>
+    <canArriveManhunter>false</canArriveManhunter>
+    <ecoSystemWeight>0</ecoSystemWeight>
+    <!-- see the header: this is what makes breeding structurally impossible -->
+    <fixedGender>Male</fixedGender>
+    <lifeStages>
+      <li>
+        <bodyGraphicData>
+          <!--
+            GROUNDED is the DEFAULT and must stay so. Thing_AlduinGraphics swaps
+            PawnGraphicSet.nakedGraphic to the soar and flight sets at runtime; whatever is
+            named here is what he reverts to if anything ever re-resolves him.
+            drawSize is an ABSOLUTE value and MUST MATCH dragonDrawSizeGrounded in
+            Defs/MiscDefs/DovahkiinTuningDef.xml. Change BOTH or neither, or he resizes the
+            first time he takes off.
+            ⚠ DO NOT SCALE IT. The user asks for a size change in so many words. This line
+               still read "4.6" long after the value had moved, and a "+10%" recorded
+               elsewhere as an instruction got applied twice. Full account in the tuning def.
+               5.566 IS SANCTIONED: the user chose to keep it on 2026-08-18. Do not revert it.
+            Originally 4.6, measured against Dragon's Descent, whose adults draw at 4.2 and
+            whose ancient draws at 4.6, against a colonist's 1.5.
+          -->
+          <texPath>Things/Pawn/Animal/Alduin/AlduinGround</texPath>
+          <drawSize>5.566</drawSize>
+          <shadowData>
+            <volume>(0.9, 0.8, 0.5)</volume>
+            <offset>(0,0,-0.30)</offset>
+          </shadowData>
+        </bodyGraphicData>
+      </li>
+    </lifeStages>
+  </PawnKindDef>
+
+</Defs>
+

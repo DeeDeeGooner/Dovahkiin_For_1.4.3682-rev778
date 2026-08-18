@@ -1,0 +1,22 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Adds StatPart_DragonAirborne to Core's MoveSpeed stat, so an airborne dragon moves at the
+  speed SPEC.md 6.5 gives it (soar x1.20 of grounded, flight x1.80).
+
+  PatchOperationAdd, NOT a replacement: CLAUDE.md forbids overwriting vanilla or third-party
+  defs. This appends one entry to MoveSpeed's existing <parts> list, leaving vanilla's
+  StatPart_Glow untouched, so any other mod adding its own part is unaffected too.
+
+  The part itself early-outs for anything without the Dovahkiin_DragonAirborne hediff, which is
+  every pawn in the game except a dragon that is currently off the ground.
+-->
+<Patch>
+
+  <Operation Class="PatchOperationAdd">
+    <xpath>/Defs/StatDef[defName="MoveSpeed"]/parts</xpath>
+    <value>
+      <li Class="Dovahkiin.StatPart_DragonAirborne" />
+    </value>
+  </Operation>
+
+</Patch>

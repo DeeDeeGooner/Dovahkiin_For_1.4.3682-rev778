@@ -1,5 +1,3322 @@
 # CHANGELOG
 
+## The pull was a DESPAWN, the roof rule, and a diagonal the dead zone rounded away (2026-08-18)
+
+Four reports off one playtest. The log answered the first and named the third before any theory
+was formed, which is the only reason this took one round.
+
+### The skeletons were not roping him. They were taking him off the map.
+
+*"He still gets pulled by skeletons. Dovahs in flight are strictly not MOVABLE."*
+
+`Patch_DovahCannotBeRoped` already refuses vanilla roping and was a correct fix for a real cause.
+This is a **second, unrelated mechanism** — the same shape of trap this project keeps hitting.
+Two adjacent lines in the log, present in the previous log too, are the whole diagnosis:
+
+```
+Exception ticking TM_GiantSkeletonR1169434 ... at Verse.AI.JobDriver.Notify_PatherArrived
+[Dovahkiin] HOVER-DIAG ... state=Flight | job=IdleWhileDespawned ... dest=(0, 0, 0)
+```
+
+`IdleWhileDespawned` is vanilla's Despawned think tree taking its **second** branch — so he was
+neither spawned nor held by anything spawned. Decompiling `TorannMagic.FlyingObject_Spinning`
+gives the reason exactly:
+
+```csharp
+if (flyingThing != null && flyingThing.Spawned) flyingThing.DeSpawn(DestroyMode.Vanish);
+```
+
+The cargo is despawned into a **plain field, not a ThingOwner**, so `ParentHolder` is null; the
+projectile flies and `GenSpawn.Spawn`s him on impact.
+
+> **This is why none of the five existing airborne patches touched it.** Stun, rope, pawn
+> collision, foreign stances and terrain cost every one of them assume he is still spawned and
+> still using the pather. This mechanism bypasses the pather entirely, so there was no stun to
+> ignore and no path to defend.
+
+`Patch_DovahNotMovable.cs` walks `Projectile` subclasses once at startup and prefixes every
+`Launch` taking a `Thing flyingThing`, refusing an airborne dovah as cargo. **By reflection, not
+by type** — RWoM ships 26 `FlyingObject_*` classes with no shared base, and CLAUDE.md forbids
+referencing their assembly. The patched count is logged, because a reflection sweep that finds
+nothing looks identical to one that works.
+
+**Rejected: patching `Thing.DeSpawn`.** It is the true chokepoint, and that is the problem — an
+airborne dragon is legitimately despawned when he dies and when he leaves the map, so a blanket
+refusal would leak a dragon that should be gone. Refusing the launch cannot.
+
+**The skeleton's own NRE is a consequence, not ours:** its job driver arrives at a target that has
+vanished. It appears 4x in the previous log and 2x in this one, always beside a despawn line, and
+no Dovahkiin frame is in its stack. Blocking the launch should remove it.
+
+### A dovah never lands or walks under a roof — SPEC.md §6.5a-2
+
+*"I hereby declare that dovah's cannot land nor walk inside roofed area, only fly over it."*
+
+The pounce was the seam: it teleports him to whichever cell is beside the target, asking only
+whether it is standable. `BestCellBeside` now takes `requireUnroofed`, melee range no longer
+grounds him when every cell beside the target is roofed, grounded patterns leave the roll against
+an indoor target, and `KeepDovahOffRoofedGround` lifts him into a soar wherever he is found under
+one — in `CompTick`'s unconditional block, because it is phrased "he must never X".
+
+> **FORCE OUTRANKS THE ROOF, AND THAT PRECEDENCE IS THE DESIGN.** Downed, badly hurt or holding
+> somebody still ground him anywhere. Without that clause the roof rule and the melee-range rule
+> become two authors of one decision and oscillate every tick — the exact failure the deleted
+> dwell timer produced five times. It also protects the half-health rule, which is what makes a
+> dragon killable at all.
+
+### The diagonal sprite was integer division
+
+*"He oddly flies a lot in diagonal sprite (while going east/west) when flying over roofed areas."*
+
+The octant dead zone is `(chord * 5) / 12` in **integer** arithmetic:
+
+| chord | dead zone |
+|---|---|
+| 1–2 cells | **0** |
+| 3–4 cells | 1 |
+| 5–7 cells | 2 |
+
+At one or two cells there is **no dead zone at all**, so a single Bresenham staircase step on a
+due-east run returns NE at full confidence. That is the very defect
+`dragonFacingLookaheadCells` was raised to 6 to cure on 2026-08-12 — it survived because
+`lookahead = Min(want, NodesLeftCount - 1)` **collapses in the tail of every leg**. The old
+degenerate branch made it worse by falling back to `pather.nextCell`, one cell, with no dead zone
+applied at all.
+
+`HeadingOctant` now returns `AlduinOctant?` and declines below `dragonFacingMinChordCells` (3, the
+first chord whose dead zone is not zero); declining keeps the last real facing, which beats a
+fresh wrong one.
+
+> **AND THE TRIGGER WAS NOT THE MEASUREMENT.** The refresh was throttled on `pather.nextCell`
+> changing while the octant is measured six cells out, so the sprite could be held stale while the
+> thing it depends on moved. The throttle is gone; `RefreshFlightFacing` already reference-compares
+> and returns false having touched nothing.
+
+**Why "over roofed areas" when nothing reads the roof grid for facing.** `Roofed()` appears only
+in `Thing_StormCall` — so the roof cannot be misfiring. Roofed areas are **buildings**: cluttered
+geometry gives short circling legs, so he spends most of his flight in the collapsed-lookahead
+tail. **The report named a place; the cause was the geometry of that place.**
+
+### And the sweep caught a latent one of ours
+
+`dragonLandingDustPuffs` had an inline fallback of **74** against a field default of **30**. Fixed.
+It is the same class the 2026-08-13 sweep found sixteen of, and the number is not a coincidence:
+this notebook records "74 dust puffs" as the visible half of a stun-spam. A def-load failure would
+have thrown 2.5x the intended dust and looked like a new bug.
+
+Build clean at 0 warnings, every def parses, no comment contains a double dash, and the
+fallback-vs-default sweep is clean.
+
+
+## The +10% that was applied twice, because the comment stated an operation (2026-08-18)
+
+*"Make sure that that +10% in size doesn't repeat every time we change things, it is supposed to
+be done once."*
+
+`dragonDrawSizeGrounded` stood at **5.566** and `dragonDrawSizeAirborne` at **6.776**. The user
+asked for a single +10% on 2026-08-12, which takes 4.6/5.6 to 5.06/6.16. The arithmetic names the
+fault outright: 5.06 x 1.10 = 5.566 and 6.16 x 1.10 = 6.776. **The raise had been applied twice.**
+
+### The cause was the record, not the code
+
+Ruled out first: there is no runtime multiplier. `AlduinGraphicsUtility` reads both fields straight
+from the def, and every `1.1f` in the source belongs to the Valor portal or a glow scale. So the
+doubling was editorial, and every place that recorded the change had described the **operation**:
+
+| file | what the comment said | what the value was |
+|---|---|---|
+| `Defs/MiscDefs/DovahkiinTuningDef.xml` | "HOW BIG A DOVAH DRAWS. **Raised 10%** on 2026-08-12 (4.6 -> 5.06, 5.6 -> 6.16)" | 5.566 / 6.776 |
+| `Source/Dovahkiin/DovahkiinTuningDef.cs` | "**Raised 10%** at the user's request 2026-08-12" | 5.566f / 6.776f |
+| `Defs/ThingDefs_Races/Alduin_Dovahkiin.xml` | "drawSize **4.6**, measured against Dragon's Descent" | 5.566 |
+
+> **"Raised 10%" is indistinguishable from "raise 10%".** A delta can be applied again; an absolute
+> cannot. The next session could not tell whether the number in front of it was before or after.
+> And the ThingDef's own comment still named 4.6 beside a value of 5.566, so nothing in the file
+> contradicted the mistake either.
+
+### Why comments, and why nothing was reverted
+
+All three comments now state **absolute** values, carry an explicit *do not scale this* warning
+naming the user's standing instruction, and put the old figures behind a *reference only, never to
+be re-applied* label.
+
+**The numbers themselves were deliberately left alone**, because reverting 5.566/6.776 to
+5.06/6.16 is itself a change to the dovah's visual size, and the same instruction that prompted
+this work reserves that call for the user. **Put to them and answered the same day: they chose to
+KEEP 5.566 / 6.776.**
+
+> **A warning that names a value as a mistake must also say whether the mistake was kept.** The
+> do-not-scale note added above would otherwise have invited the next session to "correct" the
+> size back down to 5.06 / 6.16 — the same failure one turn later, in the opposite direction. All
+> three comments now state that 5.566 / 6.776 is sanctioned.
+
+Rejected: **a build-time assert that `<drawSize>` equals `dragonDrawSizeGrounded`.** It would have
+caught nothing here, because both were moved together and agree; the failure was upstream of the
+value, in how the change was written down. An assert on the wrong invariant is worse than none, as
+it reads as coverage.
+
+### The two other knobs recorded the same way were checked, not assumed
+
+`dragonFlightSpeedFactor` (3.60 -5% -> 3.42) and `dragonBreathDamage` (90.576 -5% -> 86.0472) are
+recorded in exactly the same delta shape on the same notebook line. **Both are correct on disk.**
+Only the draw size drifted.
+
+Every def parses, no comment contains a double dash, build clean at 0 warnings. No behaviour
+changed and no value moved.
+
+## The inviolable flight rule, breath line-of-sight, and 42 red errors of my own (2026-08-13)
+
+### ⚠ 42 red errors, and they were the fly-over working
+
+```
+Dovahkiin_Alduin_Test entering (129, 0, 144) which is unwalkable.       ×42
+Dovahkiin_Alduin_Test on unwalkable cell. Teleporting to (128, 0, 143)  ×3
+```
+
+**The flying worked; the engine disagreed that it should.** And the second line is not cosmetic —
+`PatherTick` calls `TryRecoverFromUnwalkablePosition`, which **teleports him off the wall
+mid-crossing**, so the feature was being undone by RimWorld's own repair routine.
+
+Fixed at `GenGrid.WalkableBy(IntVec3, Map, Pawn)` — the shared predicate behind both, and **it takes
+the pawn**, which almost nothing else in the pathing stack does. That is why this seam and not
+another.
+
+> **A feature that provokes the engine's own error checks is not finished.** Four patches made him
+> cross walls and a fifth was needed to make the engine *accept* that he had.
+
+### THE INVIOLABLE RULE: nothing external stops or moves a dovah in flight
+
+The user's words: *"they aren't and NEVER ARE stoppable or movable by an external factor during
+their flight course."* Two reports, two causes, both fixed:
+
+- *"got cornered by a lot of pawns and skeletons and couldn't move at all despite being in flight"*
+  — `PawnsCanShareCellBecauseOfBodySize` returns false at `BodySize >= 1.5` and his is **4.6**, so he
+  collides with *everything*; a ring of bodies walled him in thirty feet up.
+  **`PawnUtility.ShouldCollideWithPawns` → false while airborne.**
+- *"got stuck midflight because of incoming attacks (blocked for a brief moment)"* — the mechanism is
+  the **stance**, not the damage: `PatherTick` opens `if (stances.FullBodyBusy) return;` and being
+  struck sets a busy stance. **`KeepFlightUninterruptible` clears any foreign busy stance while
+  airborne** — gated so our own post-breath hold and the grab still pin him.
+
+That skirmish cost him **twenty seconds locked in circling**, because every blow stole another beat.
+
+### The breath no longer goes through walls
+
+*"obstacles like remparts and walls blocks the breathing… trees for example only allows one or two
+cells behind them be safe."*
+
+The cone was pure geometry — a wedge of cells that never asked whether he could **see** any of them.
+Now filtered by **`GenSight.LineOfSight(origin, c, map, skipFirstCell: true)`**.
+
+> **The user described exactly what per-cell line-of-sight already does, so no new maths was
+> written.** A wall blocks completely; a tree shadows only the cell or two directly behind it,
+> because the line to cells *beside* it is still clear. Hand-rolling "how many cells does a tree
+> shadow" would have been inventing an approximation of something vanilla computes exactly.
+
+### Health, raised again at the top only
+
+*"another health scale up: +50% for Alduin down to 0% for dragons."* The ladder is now
+**7.0 → 42.0**; Alduin is **three times** his original 14.0, and the starter dragon has still never
+moved from 7.0. **Every raise has been at the top**, which is the shape that keeps a colony-start
+dragon survivable while making the World-Eater a wall.
+
+## A dovah flies OVER walls, roofs and gates — SPEC.md §6.5, finally built (2026-08-13)
+
+*"He spawned inside the perimeters of the castle remparts and was stuck in there… He had to wait
+for the gates to be opened by a pawn before being able to exit."*
+
+### Why the two earlier patches were not enough
+
+`Patch_AirborneIgnoresTerrain` made crossing a cell **free**, and `Patch_AirborneIgnoresDoors`
+stopped him **queueing** at doors. Neither makes a wall **passable** — a wall is not a cost, it is a
+cell the pathfinder will not enter and the reachability system will not route through.
+
+**Four things must agree before a dragon can cross a wall, and missing any one looks like the whole
+feature is broken:**
+
+| # | seam | what happens without it |
+|---|---|---|
+| 1 | `Reachability.CanReach` | `JobGiver_GotoTravelDestination` opens with a `CanReach` check and returns **null** — no job is ever issued |
+| 2 | `PathFinder.FindPath` | `StartPath` finds nothing and calls `PatherFailed` on the spot |
+| 3 | `Pawn_PathFollower.BuildingBlockingNextPathCell` | see below — **he demolishes the wall** |
+| 4 | terrain cost | already done |
+
+**⚠ Seam 3 would have been a disaster to miss.** `TryEnterNextPathCell` opens with:
+
+```csharp
+if ((pawn.CurJob != null && pawn.CurJob.canBashDoors) || pawn.HostileTo(building))
+    MakeBashBlockerJob(building);   // <-- he ATTACKS it
+else
+    PatherFailed();
+```
+
+**`pawn.HostileTo(building)` is TRUE for a dov-faction dragon against any colony structure.** So a
+dragon handed a path through a wall would not have stopped at it and would not have flown over it —
+**he would have stopped and knocked it down**, which is far worse and far more confusing than being
+stuck inside the castle.
+
+### How it works
+
+An airborne dragon gets a **hand-built straight-line path** (Bresenham) instead of A*. That is
+*cheaper* than the search it replaces, and everything downstream — per-cell cost, the tweener,
+arrival detection — keeps working because it is an ordinary `PawnPath`.
+
+**⚠ Node order is reversed and it is not optional.** `PawnPath.SetupFound` sets
+`curNodeIndex = nodes.Count - 1` and `Peek(n)` reads `nodes[curNodeIndex - n]`, walking **downward**
+— so the destination is added first and the start last. Build it forwards and he flies the route
+backwards.
+
+**The drawing needs nothing.** `PawnTweener` is a spring: `tweenedPos += (root - tweenedPos) * 0.09`
+per tick, so stepping him cell to cell is smoothed by the engine for free.
+
+### The mountain exception is intact
+
+`SPEC.md §6.5`: *"natural mountain rock is impassable in every state — which is what makes a mountain
+base genuinely dragon-proof and is the player's architectural answer."* The straight line aborts if
+**any** cell on it is natural rock (`def.building.isNaturalRock`, which distinguishes a mountain from
+a granite wall somebody quarried), and he falls back to ordinary pathing. A dragon that could cross
+solid rock would delete the player's only architectural answer to one.
+
+### A master switch, because this is the largest behavioural change yet
+
+**`dragonFliesOverObstacles`** (default true) stands all four patches down without a rebuild.
+
+**⚠ These are the first patches this mod has put on the pathfinding and reachability systems** — hot,
+shared, and used by every pawn on the map. Every one opens with the same cached **ThingDef reference
+compare**, so a non-dragon leaves on the first line. **If any pathing oddity ever appears in a save
+with this mod, turn this off first** — it is the fastest way to prove whether the dragon is
+responsible before reading a line of code.
+
+All four injected members verified against the real assembly before building: `Reachability.map`,
+`PathFinder.map`, `Pawn_PathFollower.pawn`, and `Map.pawnPathPool`. **A wrong `___field` name throws
+at `PatchAll` and takes the whole mod down**, so none of them were assumed.
+
+## The lasso, the landing gate, and doubling Alduin's health (2026-08-13)
+
+The user loaded an **old endgame save** and four things came out of it. The dust mystery turned out
+to be the visible half of a much worse bug.
+
+### The "huge pile of dust" was a stun-spam, and roping was the trigger
+
+The user's own diagnosis settled it: *"he wasn't dead, he was just lasso'ed around by those giant
+skeletons (which caused those disc shaped puffs whenever the dragon was pulled and arrived at the
+destination of the pull)."*
+
+**`DoLandingImpact` fired on EVERY airborne→grounded transition, with no gate at all.** So each yank
+of a rope produced a *complete landing*: 74 dust puffs **and a two-second stun over 4.4 cells**, on
+everything nearby including the colony's own pawns. The opaque discs were the half you could see.
+
+Three changes, in order of importance:
+
+1. **The impact is now gated on `divePending`** — a flag set by `BeginExecute` immediately before it
+   grounds him for a dive, and consumed by `EnterState`. **An impact is something he DOES, not
+   something that happens to him.** Most groundings are facts reacting to circumstance — too hurt to
+   fly, standing in melee, being dragged — and none of those are a pounce.
+2. **A dovah can no longer be roped or lassoed at all**, at the user's instruction. Prefixed on
+   `Pawn_RopeTracker.CreateRope` — the single chokepoint, since **both** `RopePawn` (roped by a
+   pawn) and `RopeToSpot` (tied to a hitching post) route through it. Patching only the public
+   `RopePawn` would have left the hitching post open.
+3. **Dust: 74 → 30 puffs, size 1.8–3.2 → 1.2–2.2.** Even one legitimate landing was producing a
+   solid opaque plate ~13 cells across that hid the dragon completely — which is why he looked
+   unselectable. **The error was scaling the count by AREA when the radius grew**, i.e. holding
+   *density* constant; they already overlapped at the old radius, so constant density meant constant
+   opacity over a far bigger circle. What wants holding steady is how the burst READS.
+
+> **Two rules out of this.** *A visual that hides the thing it decorates is a bug, not a polish
+> item* — the player could not click their own attacker. And *when a user reports one odd visual,
+> ask what mechanically produced it*: "the dust is too big" was true and would have fixed nothing.
+
+### Alduin's health doubled — armour untouched, deliberately
+
+He died fast on an endgame save to a fraction of the colony: some summoned skeletons, two pawns and
+one magic ultimate — while already carrying the Alduin row's armour and health. So the ceiling was
+too low, not misassigned.
+
+The user's instruction: *"increase the whole dragon tier's health (do not touch armor) by 0% for
+dragons up to 100% for Alduin."* The ladder goes **7.0 → 28.0**; the starter dragon is unchanged and
+Alduin's `baseHealthScale` **doubles**. The test Alduin is now 28.0.
+
+**⚠ Armour was left alone on purpose and must stay that way.** Armour is a *probability* of
+deflection, so raising it makes a boss fight swingy and luck-driven; health makes him take longer to
+kill in a way a player can feel and plan for. It also restores the shape §6.5 always assumed — *"their
+strength is a huge HP pool"*, with no unusual regeneration.
+
+### The RimWorld of Magic exceptions are not ours, on any save
+
+`TM_Poppi` — a RWoM summon — hits a null map inside `JobGiver_Wander.GetExactWanderDest`, then
+RimWorld's own fallback fires (*"the behavior tree should never get here"*) and that Wait job's
+driver throws too. **Not one Dovahkiin frame in the stack, and no path from our code into it.** It
+is a despawned summon whose think tree is still running; it would do the same with this mod absent.
+Recorded so a future session does not spend a round chasing it.
+
+## Pattern 1 confirmed fixed, and the three-shot was penetration, not damage (2026-08-13)
+
+**Pattern 1 is proven.** `BRAWL-DIAG` this run: **17 `AttackMelee` against 7 `Goto`.** The failing
+brawl two rounds ago was 8 `Goto` and zero attacks.
+
+### Polish applied
+
+- `dragonPatternBrawlTicks` 480 → **600** (+2 seconds of ground fighting).
+- Melee **−5%**: maw 45 → **42.75**, wing bash 30 → **28.5**, tail sweep 34 → **32.3**.
+- Maw armour penetration **−5%**: 0.30 → **0.285**. (The other two fell 5% automatically, being
+  derived from power — which is the whole problem below.)
+
+### ⚠ The three-shot was NOT the damage number, and the notebook called this in advance
+
+`Verse.Tool.armorPenetration` defaults to −1 and is then derived as **`damage × 0.015`**. The maw
+was given an explicit AP on 2026-08-05; the other two tools were left derived, with this note:
+*"Wing bash and tail sweep are still on the derived default — **revisit if the same complaint
+arrives about them**."* It arrived.
+
+Measured against Dragon Aspect at three words (+0.60 Sharp):
+
+| tool | AP before | her armour worked on | AP now | works on |
+|---|---|---|---|---|
+| maw | 0.30 explicit | 30% of hits | 0.285 | 31.5% |
+| wing bash | **0.45 derived** | **15%** | **0.18** | **42%** |
+| tail sweep | **0.51 derived** | **9%** | **0.22** | **38%** |
+
+**His signature bite was the least dangerous attack he owned**, and a fully Aspected Dragonborn was
+effectively unarmoured against the two sweeps. That is what three-shot her — and a 5% damage cut
+could never have touched it, for exactly the reason the −15% was tried and reverted in August:
+**damage and penetration were the same number.**
+
+Both sweeps now carry explicit AP. Her armour goes from working on 9–15% of those hits to **38–42%**
+— a far larger nerf than the 5% asked for, and the one that addresses the actual complaint.
+
+### The maw, cut three times — and the third cut was the one that mattered
+
+Measured off the def, the maw was **58% of every swing he threw** (chanceFactor 1.6 against the
+wing's 0.8 and the tail's 0.35) as well as his hardest attack. **The user's instinct that "the maw
+is what kept one shoting them" was arithmetically correct**, and neither of the first two cuts
+touched the real cause:
+
+| | original | after AP cuts | **final** |
+|---|---|---|---|
+| power | 45 | 42.75 | **38.475** |
+| armour pen | 0.30 | 0.27075 | 0.27075 |
+| `chanceFactor` | 1.6 | 1.6 | **1.4** |
+| share of swings | 58% | 58% | **55%** |
+
+**⚠ The bite-heaviness was kept ON PURPOSE**, and that is the user's call, not an oversight:
+*"dragons in skrim always bites more than often (they even tend to turn around to bite you so I'd
+rather not change that tendency)."* 1.4 leaves him clearly a biting creature — **do not "balance"
+this to parity with the sweeps later.**
+
+**Net effect on his overall damage output:**
+
+| target | before today | now |
+|---|---|---|
+| naked pawn | 16.40 | **14.42** (−12.1%) |
+| Dragon Aspect, 1 word | 16.40 | 14.42 (−12.1%) |
+| Dragon Aspect, 2 words | 15.58 | 12.70 (−18.5%) |
+| **Dragon Aspect, 3 words** | 13.40 | **10.54 (−21.4%)** |
+| good plate | 12.71 | 10.38 (−18.3%) |
+
+**And a correction worth recording:** an earlier figure given to the user (−16%) assumed the tail
+sweep's `chanceFactor` was 1.0. It is **0.35** — read off the def afterwards. The real weights make
+the maw a much larger share of his output than stated, which is why the mix mattered more than the
+penetration did. **Read the weights before quoting a weighted average.**
+
+### The dragon tier ladder — recorded in `SPEC.md §6.1b`
+
+**⚠ Checked on disk first: Dragon's Descent names its dragons by COLOUR** (`Black_Dragon`,
+`Gold_Dragon`, `Jade_Dragon`, `True_Dragon`…) and has no Blood/Frost/Elder/Revered/Legendary ladder.
+The user's tiers are **Skyrim's own**, so this is the mod's own progression borrowing nothing.
+
+Eight tiers from **Dragon** (0.00 Sharp, 7.0 health scale, 0.50× damage) to **Alduin** (0.70 Sharp,
+14.0, 1.00×), with armour, health and damage all scaling together. None exist yet except the test
+Alduin; the table is what each is built to.
+
+**The damage span was put to the user rather than coin-flipped**, because their brief had it running
+to **+50%** while also asking for a nerf — which would have put Alduin at 1.5× the creature that had
+just three-shot her. Their correction, verbatim:
+
+> *"Apply the -5% of damage and AP first (Final value), and then -50% of 'Final value' for dragon up
+> to +10% of 'final value' for Alduin, **ARMOR PEN DOESNT CHANGE and is constant (final value), only
+> the DAMAGE changes**."*
+
+So the ladder runs **0.50 → 1.10** on `<power>` only, and **armour penetration is identical on every
+tier** — a starter dragon pierces exactly as well as Alduin, it simply hits far softer.
+
+**⚠ That rule is only expressible because every tool now has an explicit `armorPenetration`.** With
+AP derived from power, scaling damage down a tier would have dragged penetration down with it and
+"constant AP" would have been impossible to write. The §6.1c fix and this ladder are the same
+decision seen from two directions.
+
+Resulting maw across the ladder: **21.4 → 47.0**, AP 0.285 throughout. Alduin's 47.0 is **+4.5% raw
+damage over the original pre-cut 45** — and still a large net nerf against an Aspected Dovahkiin,
+because her armour now works on 42% of wing-bash hits instead of 15%.
+
+**⚠ The test Alduin stays at 1.00 (the FINAL reference), not 1.10** — it is what every number in the
+table is measured against and what today's playtests ran on. The real boss is 10% above the creature
+currently being tested; one line to change if the user wants to feel it.
+
+**Heat armour was corrected by the user the same day**: *"No heat and cold armor shouldnt be
+changed, instead it should be the same as Alduin TEST for dragon up to +50% of it for Alduin."* So
+it does not scale from zero at all — **every** dragon starts at the test Alduin's **0.90** and the
+ladder runs to **1.35**. Only Sharp and Blunt climb from 0.00: a starter dragon is soft to a spear
+and a club, and never to fire. My earlier 0.30 floor was a guess in the right direction and the
+wrong shape; it is marked in the spec as not to be reinstated.
+
+**⚠ Heat at or above 1.00 means fire can never do full damage.** At Alduin's 1.35 against a zero-AP
+flame that is ~67% deflected, ~33% halved, **0% full** — near-immunity. Correct for the World-Eater,
+and recorded so nobody builds a fire counter to him and wonders why it does nothing.
+
+### ⚠ "Cold armour" does not exist in 1.4 — verified, and not faked
+
+Checked against `Assembly-CSharp` and `Data\Core\Defs`: the only armour ratings in the game are
+**Sharp, Blunt and Heat.** There is no `ArmorRating_Cold`. `Insulation_Cold` exists but is
+temperature comfort and does **nothing** against frost damage.
+
+**This is the same wall `SPEC.md §15.7` already hit for the vampires** — *"frost resistance has NO
+vanilla stat"* — and the answer is the same: it has to be built (a `StatPart` or hediff reducing our
+own Frost Breath damage), not configured. **Left unbuilt and unpromised rather than quietly
+substituting `Insulation_Cold`**, which would look like the feature existed while doing nothing in
+a fight.
+
+## Pattern 1 solved by instrumenting: a Goto to a cell he can never enter (2026-08-13)
+
+**Three fixes had already found three real, different causes, and the symptom survived all of
+them.** `CLAUDE.md`: *"if a fix does not work twice, stop and question the diagnosis rather than
+trying a third variation. Instrument on the SECOND failure at the latest."* This was the fourth, so
+`BRAWL-DIAG` went in instead of a fourth guess — and it settled the question in a single playtest,
+exactly as `HOVER-DIAG` did for "motionless in flight".
+
+**Why four clean logs had said nothing:** `HOVER-DIAG` only samples a pawn stationary **in flight**.
+Every report here was a dragon standing on the **ground**. The instrument was pointed at the wrong
+situation for four rounds.
+
+### The two brawls, side by side
+
+The user produced the ideal test — *"he fought with the colonist but didnt with the animal-bug"* —
+so one log held a working case and a failing one.
+
+```
+COLONIST   job=Goto jobTargetA=(129,0,120)  ->  job=AttackMelee  Stance_Cooldown     ✔
+BUG        job=Goto jobTargetA=(133,0,108)  ->  UNCHANGED for 8 seconds              ✘
+           while target dist drifts 1.4 -> 2.2 -> 3.0 -> 4.0 -> 5.0 -> 6.1
+```
+
+Everything else was healthy and identical in both: `duty=AssaultThing` focused on the right thing,
+`target … engageable=True downed=False dead=False`, `nearestHostile` = that same creature (so the
+previous round's aggression fix **was** working), `stunned=False`, `fullBodyBusy=False`,
+`Stance_Mobile`.
+
+### The cause, and it was mine
+
+`AirborneReplacementJob` did `flyTo = target.Position` — **the target's own cell**.
+
+**A dovah can never enter a living pawn's cell.** `PawnUtility.PawnsCanShareCellBecauseOfBodySize`
+returns false outright when either pawn is `BodySize >= 1.5`; Alduin's is **4.6**. So that was a
+Goto to a destination he could not reach *while the target stood on it* — **a job that can never
+complete.** A job that never completes is never re-decided, so the `AssaultThing` duty never got to
+produce an `AttackMelee`, and he stood beside his target doing nothing.
+
+**And the intermittency has a mechanism, which is why it looked random:** if the target *moves*, the
+cell frees, he arrives, the job ends and the fight starts normally. That is why colonists usually
+worked and a stunned creature usually did not — **so widening and lengthening the landing stun
+earlier the same day made this fire MORE often, not less.** A "fix" and a latent bug were pulling in
+opposite directions across two rounds.
+
+Fixed with `BestCellBeside` — the same helper the landing pounce already uses, and the same rule the
+grab learned in three painful rounds: **never park on a living pawn's cell; go beside it.**
+
+> **The transferable part: a job with an unreachable destination is not an error, it is a HANG.**
+> Nothing logs, nothing throws, the pawn looks calm. And because the think tree only re-decides when
+> the current job *ends*, one unreachable Goto silences every duty behind it indefinitely.
+
+### And a design rule recorded while it was in view
+
+The user, same message: *"make sure every creature (apart from the draugrs and dragon priests this
+mod is about to add) are all not exceptions to dovah aggression."*
+
+Written into **`SPEC.md §6.1a`**: no creature is exempt — not wild animals, insects, other mods'
+fauna, tamed animals or mechanoids — and the exemption list is **closed** at draugr and dragon
+priests, neither of which exists yet. Verified today that **no species filter exists anywhere in the
+dragon's targeting path**, and the spec now says to keep it that way: when those creatures arrive,
+one shared marker tested in `IsEngageable`, never a blocklist scattered through the targeting code.
+
+## The landing is now an act of aggression — the user's fix, not a patch (2026-08-13)
+
+*"To avoid script mangling fixes I think we should…"* — and the diagnosis went to the cause:
+*"he landed on one of those flying around bugs but the bug just resumed it's way and the dovah just
+stood there doing nothing since his target was out of reach."*
+
+### This is the project's oldest gotcha, arriving from a new direction
+
+**A WILD ANIMAL IS HOSTILE TO NOBODY.** `GenHostility.HostileTo` is true only for faction hostility,
+a manhunter mental state, a predator hunting, a prison break or a slave rebellion — and a wild
+insect that has just been flattened by a dragon is none of them. So the moment it wandered off:
+
+- `CurrentTargetOf` went null — it was only ever a target via `mindState.enemyTarget`
+- the brawl retarget could not find it either, **because that scan filters on `HostileTo`**
+- so the brawl had nothing to attack, and he stood in his own crater
+
+**Making the stun aggressive fixes both halves with one change**, which is why it beats another
+special case: a manhunting animal is `ForceHostileTo` everything, so it both fights back *and*
+becomes a legal target again.
+
+**⚠ Vanilla's own aggro path could never have done this for us.** `Pawn_MindState.Notify_DamageTaken`
+only starts manhunter when the instigator's faction is `humanlikeFaction`, or the instigator's race
+intelligence is ≥ 1. **Our dragon is an animal in a hidden faction and fails both tests** — which is
+exactly why being hit by him has never provoked anything. `MentalStateHandler.TryStartMentalState`
+is public and `MentalStateDefOf.Manhunter` exists in 1.4 (both verified), so the state is started
+directly.
+
+**Animals only, and never on a dragon.** A humanlike is already hostile through the dov faction;
+and starting a mental state on a dovah is the mistake that cost four rounds on 2026-08-06, since a
+mental state outranks his own `LordDuty` and switches the whole pattern system off. Both excluded
+explicitly rather than by luck.
+
+### The landing itself
+
+| | was | now |
+|---|---|---|
+| `dragonLandingStunRadius` | 2.4 | **4.4** |
+| `dragonLandingStunTicks` | 60 (1s) | **120 (2s)** |
+| `dragonLandingDustPuffs` | 22 | **74** |
+
+**⚠ 4.4 now EXCEEDS `dragonLandToBiteDistance` (4) — and that closes a hole this changelog has
+carried since 2026-08-05.** He lands when the target is within 4 but the blast only reached 2.4, so
+*a target at the distance that caused the landing was outside the blast it produced*. It now cannot
+be.
+
+**The dust spread is DERIVED from the stun radius**, not a hardcoded ±1.1. That constant is why the
+user had to ask for the dust to be adjusted in the same sentence as the radius — **the signature of
+two numbers that should have been one.** The puff count is scaled by area (×3.36) so density is
+unchanged, and the scatter uses `sqrt` on the radius so it does not pile up in the middle.
+
+### And the fallback sweep earned its keep
+
+Re-running the check added this morning found **five** inline fallbacks left disagreeing with the
+defaults changed today (circling step, max turn, and all three landing numbers). Synced; the sweep
+now reports zero. **A check written after a failure is only worth having if it is re-run after every
+change of the kind that caused it.**
+
+## The wind-up broke the breath's facing, and the "twice in a row" was not a bug (2026-08-13)
+
+Log clean: no errors, **zero `SetPass`** (the spectral pre-warm held), tuning def loaded.
+
+### The facing bug is mine, and the wind-up caused it
+
+*"He was facing east yet fired his ground-breathing south-west."*
+
+`BreatheAt` is what **aims** him — it sets `pawn.Rotation` from the target cell — and the facing
+freeze (`SetFrozenFacing`, a `Graphic_Single` that makes `Rot4` irrelevant) was taken in
+`BeginExecute`. Before yesterday those were the same instant, so the freeze captured the aimed
+facing. **The four-second wind-up put four seconds between them**, so the sprite locked to whatever
+direction he happened to *land* facing while the cone fired at the target.
+
+Moved to `UpdatePendingBreath`, immediately after `BreatheAt`, held for the rest of the phase.
+
+> **A freeze must be taken AFTER the thing that decides what is being frozen.** The ordering was
+> correct only because two operations were adjacent; inserting a delay between them broke a
+> dependency nothing named. **When you put a delay between two lines, ask what the second one was
+> reading from the first.**
+
+Leaving him unfrozen *through* the wind-up is also better than freezing early: he turns to face his
+target as he settles, which is what drawing breath should look like.
+
+### "Pattern 1 twice in a row" — structurally impossible, so the breath was missed
+
+Checked, and no bug. `SelectNext` excludes the previous pattern **and** excludes every breath
+pattern after any breath. `DiveAndBrawl` is the only non-breath selectable, so the order is
+**forced**: brawl → breath → brawl → breath. Two brawls cannot be adjacent.
+
+So a brawl that *looked* consecutive means the breath between them was not seen — and a jet firing
+south-west from a dragon facing east is an easy thing to miss. The facing fix is very likely the
+whole of it.
+
+**On the interruption theory:** `Thing_DragonBreath.Spawn` returns null only if the dragon is
+despawned or the def is missing — there is no combat refusal path — and the armed breath fires from
+the unconditional block, so no duty, stance or fact can suppress it. **A stun does not interrupt it.
+Being *downed* does**, which is the one real interruption and is intended.
+
+### Size, +10% again
+
+Grounded 5.06 → **5.566**, airborne 6.16 → **6.776**. All three places moved together and the
+ThingDef's `<drawSize>` was re-verified as matching `dragonDrawSizeGrounded` — a mismatch there
+shows as the dragon resizing on his first take-off.
+
+## A square circuit, and four seconds of drawing breath (2026-08-13)
+
+*"much better than before"* — the spectral pre-warm and the brawl retarget both held. Two polish
+items.
+
+### The circuit is now a square
+
+*"make it a bit more square shape than hexagonal, maybe that would reduce the driftiness."*
+
+| | step | sides | leg |
+|---|---|---|---|
+| was | 72° | 5 | 23.5 cells |
+| **now** | **90°** | **4** | **28.3 cells** |
+
+**⚠ `dragonMaxTurnDegrees` was raised 90 → 110 at the same time, and it had to be.** The warning
+recorded when the step knob was written: a 90° step against a 90° limit sits exactly on the
+boundary, so a rounding error either way sends every candidate through the unlimited fallback pass
+and the shape goes ragged with nothing obvious to point at. The note said "raise them together";
+this is that.
+
+The user's reasoning was right: longer legs mean fewer turns per unit time, so less of the circuit
+is spent turning. That is where the drift reads from.
+
+### The breath patterns now wind up for four seconds
+
+*"flight circling → Land → wait 4s → Launch breathing → Xs of pause, the same amount actually set
+and used currently → flight circling."*
+
+`BeginExecute` no longer fires the breath. It **enters the breathing state** — grounded for a perch,
+soar for a hover — arms `pendingBreathTick`, and the existing hold-still stun covers the whole
+phase. `UpdatePendingBreath` fires the jet when the wind-up expires.
+
+Three things that make it behave rather than merely wait:
+
+- **The state is entered at the START of the wind-up, not with the breath.** `BreatheAt` sets the
+  state itself, so leaving that to the fire would have him spend the pause still *flying* and then
+  snap to the ground as the jet starts — the opposite of "land, wait, breathe".
+- **The wind-up is counted inside `ExecuteTicksOf`**, so the phase timer and the hold-still stun
+  cannot disagree. Adding it at the call site instead would have left them four seconds apart, and
+  two-numbers-that-must-agree is this project's most repeated failure.
+- **It fires from the unconditional block in `CompTick`, not from `RunPattern`.** A hover breath
+  happens in soar and a perch breath on the ground with a colonist usually adjacent — both
+  situations where a FACT can decide the state and skip the pattern executor. An armed breath that
+  never fired would read as "lands, pauses, leaves without attacking", which is a defect this
+  session has already produced twice from exactly that shape.
+
+**`pendingBreathTick` and its shape are saved.** A reload during the pause would otherwise lose the
+jet — *a pending action that lives only in memory is a pending action a save can delete.*
+
+The breath Execute phase is now 240 + 263 + 240 = **743 ticks (12.4s)**. He also re-reads his target
+when the jet fires rather than using the one he landed for: four seconds is long enough to walk out
+of a cone.
+
+## The spectral render spam solved: a material built INSIDE the draw that used it (2026-08-13)
+
+*"Logs poped again check it out."* This run was small enough to read whole — **six lines, three
+matched pairs**, all at the instant the spectral summon first drew:
+
+```
+SetPass(0) call failed on material Custom/CutoutRecolor_Naked_Male_east    with shader Custom/Invisible
+SetPass(0) call failed on material Custom/CutoutRecolor_Male_Average_Wide_east with shader Custom/Invisible
+SetPass(0) call failed on material Custom/Transparent_Troubadour_east      with shader Custom/Invisible
+DrawMesh requires a successful material.SetPass before!   (×3)
+```
+
+**Body, head and hair — exactly what `SpectralPawnUtility.MakeSpectral` wraps.** So it *was* ours,
+after two earlier rounds where the evidence pointed away from us. What had misled me: the earlier
+logs showed `TVP_Regalia` and `TVP_Long`, which I read as apparel — **they are hairstyles** from The
+Vanity Project, and hair *is* on the wrapped list. `Troubadour` made the pattern obvious.
+
+### One failure per material, then never again — the shape of a cache miss
+
+`Verse.InvisibilityMatPool.GetInvisibleMat`, decompiled:
+
+```csharp
+if (!materials.TryGetValue(baseMat, out var value)) {
+    value = MaterialAllocator.Create(baseMat);          // a NEW Unity Material...
+    value.shader = ShaderDatabase.Invisible;            // ...whose shader is assigned here...
+    value.SetTexture(NoiseTex, TexGame.InvisDistortion);
+    materials.Add(baseMat, value);
+}
+```
+
+`Graphic_Spectral` called that from `MatAt`/`MatSingle` — **i.e. from inside the render**. So the
+first draw of each material *allocated the material and set its shader*, and Unity was then asked to
+`SetPass` it in the same frame. It refuses.
+
+**And it is not cosmetic: a failed `SetPass` means the draw is SKIPPED** — the pawn is *absent* for
+that frame, not shimmering.
+
+The count matches exactly: 3 wrapped graphics → 3 materials → 3 failures. The earlier run's 87 was
+the same thing across more pawns and more rotations.
+
+**Fixed by ORDER, not machinery.** `Graphic_Spectral.Prewarm()` touches all four rotations plus
+`MatSingle` at **wrap time** — the one moment we are guaranteed not to be mid-draw — so the pool is
+warm before anything renders and costs nothing per frame. Wrapped in try/catch because `MatSingle`
+legitimately throws on multi-directional graphics, and a pre-warm must never break what it
+optimises.
+
+> **The comment on that method said the call was "safe to reach from a draw path" because the pool
+> caches.** True of every call but the first, and the first is the whole bug. **A cache does not
+> make a lazy allocation safe — it makes it *rare*, which is worse, because it moves the cost to a
+> moment nobody is testing.**
+>
+> And on the diagnosis: this was dismissed as "not ours" twice, on reasoning that was sound each
+> time but rested on one guessed fact — that `TVP_Regalia` was apparel. **A name that merely looks
+> like it belongs to another mod is not evidence of ownership.** The quiet run, with only three
+> lines in it, is what made the pattern legible; the noisy ones hid it.
+
+## The brawl froze over DOWNED victims — and why it was intermittent (2026-08-13)
+
+*"pattern 1 still seems buged sometimes (caught him frozen, not attacking on some of his pattern 1
+session)."* Log clean of anything of ours: tuning def loaded, no config errors, no job-thrash.
+`HOVER-DIAG` only samples a stationary pawn **in flight**, so a grounded stall is invisible to it —
+this came out of the code, guided by the word **"sometimes"**.
+
+### The branch was written as intended behaviour
+
+```csharp
+else
+{
+    // Brawling over a body. Nothing to assault, so hold the spot until the
+    // phase times out and Leave takes him back into the air.
+    SetDuty(Defend, pawn.Position, 0f);
+}
+```
+
+Eight seconds of standing still, by design — reached whenever `CurrentTargetOf` returns null
+mid-brawl.
+
+**And `IsEngageable` rejects DOWNED pawns as well as dead ones.** That exclusion is deliberate and
+correct (since 2026-08-05, a downed target used to hold him hovering). But it means the brawl loses
+its target the instant he **knocks somebody down instead of killing them** — so:
+
+- kill the victim outright → he keeps fighting, brawl looks fine
+- **down** the victim → target goes null → he stands over the body for the rest of the phase
+
+**That is the whole of "sometimes".** Not a race, not a timing window: two different outcomes of the
+same swing, one of which had no behaviour written for it.
+
+### The intent was recorded and only half-implemented
+
+The note added when downed pawns were excluded says: *"he now LEAVES DOWNED PAWNS and looks for the
+next threat."* The leaving was implemented. **The looking never was.**
+
+He now retargets the nearest hostile within `dragonBrawlRetargetRadius` (**12**), reusing the same
+cached map-pawn scan the brawl gaze already runs. Bounded on purpose — an unbounded scan would send
+a *grounded* dragon jogging across the map at 1.00× speed, which is the "chases people on foot"
+failure this project fixed once already. 0 restores the old stand-still.
+
+> **A comment describing a stand-still as intentional is not evidence that anyone chose it.** This
+> one read as a considered decision; it was the unhandled half of a rule whose other half was
+> written down as done. **When a defect is intermittent, look for two outcomes of one action before
+> looking for a race** — "sometimes" much more often means *two paths* than *bad timing*.
+
+### Still open, and not the dragon: the spectral render spam
+
+*"the logs were popping up again."* Same `SetPass` / `Custom/Invisible` failures as the earlier
+entry — 87 `DrawMesh requires a successful material.SetPass before!` plus ~50 `SetPass` failures on
+`Naked_Female`, `Female_Narrow_Normal` and `TVP_Long`. Unchanged, untouched, and still the
+invisibility path rather than anything in the dragon work. It needs its own round on a save with a
+summon standing there.
+
+## Dive-and-brawl had no driver: a FACT was vetoing the pattern that needed it (2026-08-13)
+
+*"pattern 1 seems broken: he lands, stay there doing nothing, flies away."* Log clean — tuning def
+loaded, no errors, nothing repeated. The `HOVER-DIAG` line only samples a stationary pawn **in
+flight**, so a grounded stall never appears in it; this one had to come out of the code.
+
+### The melee-grounding fact silenced the whole brawl
+
+`ApplyStateFacts` opens with:
+
+```csharp
+if (MustBeGrounded(pawn)) { …force Grounded…; return true; }
+```
+
+and `CompTick` runs `RunPattern` **only when that returns false**. `MustBeGrounded`'s second clause
+is *"standing in melee range"* — which is true for the **entire** dive-and-brawl Execute phase,
+because standing in melee range is what a brawl *is*.
+
+So for the whole brawl, `RunPattern` never ran. And `RunPattern` is the only thing that:
+
+- **re-asserts the `AssaultThing` duty** — so nothing was telling him to fight, and
+- **checks `now >= phaseUntilTick`** — so the phase could not end on time.
+
+The landing pounce teleports him (`Notify_Teleported`), which disrupts whatever job he had; with no
+duty re-asserted afterwards there was nothing driving him at all. The phase then ended only when
+the target died or stepped out of melee range — which is why he *eventually* flew away.
+
+**Lands → nothing → leaves, exactly as reported, and all three parts are that one `return true`.**
+
+**Fixed: the fact still forces the STATE, but no longer vetoes the DECISION.** Only the two genuine
+"he physically cannot" cases still stop the executor — `pawn.Downed` and `IsHeldGrounded` (something
+in his jaws). The melee clause falls through, so the pattern keeps its duty and its timer.
+
+Safe by the phase logic already in place: `PatternWantsAirborne` is true for Approach and Leave, so
+the melee clause cannot slam him back down the moment `BeginLeave` puts him in the air; and during
+Execute-brawl the pattern wants him grounded anyway, so forcing the state changes nothing.
+
+> **This is the same sort that `CompTick` needed on 2026-08-13 and it was only half-applied.**
+> *"He must never X"* runs regardless; *"he should now do Y"* is the pattern's business. **A fact
+> that forces a state is the first kind — and this one had been quietly doing both**, using its
+> veto to suppress the executor for a phase whose whole content lives in that executor.
+>
+> The tell was in the wording of the report all along: *"stays there doing nothing"* is not a
+> creature choosing badly, it is a creature with **nobody issuing orders**.
+
+## I broke the tuning def with a `--` in a comment, and every number in the mod changed (2026-08-13)
+
+*"his flightspeed is very wrong"* and *"the cone's size was reduced, it is supposed to be
+constant"* — reported as two defects. **They were one, and it was self-inflicted.**
+
+```
+[Dovahkiin][warn] Tuning def 'Dovahkiin_Tuning' not found. XML did not bind to DovahkiinTuningDef.
+```
+
+`DovahkiinTuningDef.xml` **failed to parse**, so RimWorld discarded the whole file and every
+balance number in the mod fell back to its C# default. The cause, on the comment I added in the
+previous entry:
+
+```xml
+step 72, radius 20  ->  5 sides, leg 23.5 cells   <-- CURRENT
+```
+
+**`<--` contains a double dash, and an XML comment may not.** This is entry one of the notebook's
+own def gotchas, in these words: *"An XML comment may not contain a double dash. RimWorld then
+discards the whole file, not just that def. **Writing an arrow in a comment is enough to do it.**
+Parse every def file with `[xml](Get-Content -Raw)` before shipping — it catches this in a
+second."* I wrote an arrow in a comment, and did not re-run the parse check after that edit —
+having run it after every other def edit this session.
+
+**Both symptoms follow directly:** flight speed reverted from 3.42 to the C# default, and the
+cone's `dragonBreathConeMinRange` reverted from 24 (constant-length jet) to an inline fallback of
+8, which clamps the cone to the target's distance — *"the size was reduced."*
+
+### The second bug hiding underneath: 16 fallbacks that disagreed with their own defaults
+
+`Comp_AlduinFlight.cs` read `t != null ? t.dragonBreathConeMinRange : 8f` while the field's default
+is `24f`. **Two different fallback values for one number**, and the disagreement is invisible until
+the def fails to load — which had never happened before today.
+
+A sweep comparing every `t.Field : literal` against the field's declared default found **16 of
+them** across four files, including the `ancientDragonbornLifetimeTicks` 3750-vs-15000 pair the
+notebook has listed as a known latent gap since 2026-07-31. All 16 synced; the sweep now reports
+zero.
+
+> **A fallback that disagrees with its own default is a second set of balance numbers waiting for
+> a bad day.** They cost nothing while the def loads, and they are what the mod actually *is* the
+> moment it does not.
+
+### And the failure is now loud
+
+The condition **did** log — as a `Warning`, and it was missed for a full round because the standing
+log check greps for `Exception` and `Config error`. It is now `Log.Error` with the cause named:
+*"every balance number in the mod is now running on its C# fallback… a '--' ANYWHERE inside an XML
+comment makes RimWorld discard the WHOLE FILE."*
+
+A yellow line among hundreds is not a signal when the consequence is *every number in the mod is
+different*.
+
+**Re-verified after the fix:** all def files parse, no comment in any of them contains `--`, the
+tuning def binds, and `dragonFlightSpeedFactor` 3.42 / `dragonCirclingStepDegrees` 72 /
+`dragonCirclingRadius` 20 / `dragonBreathConeMinRange` 24 all read back correctly.
+
+## Longer straight runs, and the log spam is the SPECTRAL path — not the dragon (2026-08-13)
+
+### The spam is a render failure in the invisibility path, and it is not from the dragon work
+
+*"the logs popped up a lot."* **Zero errors of ours, zero config errors, zero job-thrash.** What
+filled the log was 216 lines of:
+
+```
+SetPass(0) call failed on material Custom/CutoutRecolor_Naked_Female_east with shader Custom/Invisible
+SetPass(0) call failed on material Custom/CutoutRecolor_Female_Narrow_Normal_east with shader Custom/Invisible
+SetPass(0) call failed on material Custom/Transparent_TVP_Regalia_east   with shader Custom/Invisible
+DrawMesh requires a successful material.SetPass before!
+```
+
+**Four pieces of evidence that this is not the dragon and not a regression:**
+
+1. **The previous session's log has ZERO of these** — but it also has **no spectral summon at all**.
+   The single line before the first failure is ours: *"Melee Animation detected; the spectral weapon
+   will stand down whenever it is drawing."* The path was newly exercised, not newly broken.
+2. **`Graphic_Spectral` never builds a material.** Every override delegates to
+   `Verse.InvisibilityMatPool.GetInvisibleMat` — vanilla's own function, on vanilla's own shader.
+3. **The failing list includes APPAREL** (`TVP_Regalia`). `SpectralPawnUtility` wraps body, head,
+   hair, beard and fur — *not* apparel. So at least one of these materials is not ours at all.
+4. Nothing changed this session outside `Comp_AlduinFlight`, `AlduinGraphicsUtility`,
+   `Patch_DragonAirborne`, the tuning def and the sound defs. None touch the spectral path.
+
+**⚠ IT IS NOT MERELY NOISE.** A failed `SetPass` means the draw is **skipped** — so whatever pawn
+this is renders as *nothing* rather than as a shimmer for those frames. That is a real visual
+defect and it deserves its own round, on a save where the summon is up.
+
+> **And a note on the search that found it:** four straight rounds of grepping for
+> `Exception|Config error|started 10 jobs` would have reported this log as clean. It was only found
+> by asking *what is actually repeated in here* rather than *are my known errors present*.
+> **Grep for your own failures, then count the whole file.**
+
+### Longer straight runs
+
+*"make the trajectory of flight less octogonal for more 'rectiline' flighttime."*
+
+**Leg length is `2 · radius · sin(step/2)` — both knobs matter, and turning only one barely moves
+it.** So both moved:
+
+| | step | radius | sides | leg |
+|---|---|---|---|---|
+| was | 45° | 14 | 8 | 10.7 cells |
+| **now** | **72°** | **20** | **5** | **23.5 cells** |
+
+That is 2.2× the straight run, and about 2.3 laps per circling phase rather than 3.2. The
+measured table for other settings is in the def comment so the next change does not need
+re-deriving.
+
+**⚠ Recorded at both knobs: raising the step to 90 or beyond requires raising
+`dragonMaxTurnDegrees` with it.** A 90° step against a 90° limit sits exactly on the boundary,
+falls through to the unlimited second pass, and the shape goes ragged again with nothing obvious
+to point at.
+
+## An invariant inside a conditional, and the circuit redrawn from the user's diagram (2026-08-13)
+
+The log's four exceptions are Melee Animation's telemetry failing with no internet
+(`ModRequestAPI` / `AM.Core.UploadMissingModData`) — not ours. No config errors.
+
+### Two defects, one cause: `RunPattern` is conditional and was hosting invariants
+
+`CompTick` skips `RunPattern` entirely when `factDecided` is true — a fact has already settled the
+state (too hurt to fly, something in his jaws, standing in melee, mid-breath). Five things had
+accumulated at the top of that method, and three of them were **invariants**:
+
+| the user's report | what was skipped |
+|---|---|
+| *"sliding east (grounded deplacement east) while facing north after landing"* | `UpdateBrawlGaze` — so its `Graphic_Single` was never released and he stayed frozen facing north |
+| *"froze in place on his second pattern 1 execution right after landing"* | `CancelAirborneMelee` — so a `Wait_Wander` survived. `HOVER-DIAG`: `job=Wait_Wander patherMoving=False curPathNull=True` |
+
+**The galling part is that the reasoning was already written down and applied to the wrong scope.**
+`UpdateBrawlGaze`'s own comment argues it is safe *because* it is "called unconditionally from the
+top of RunPattern… there is no exit path for it to miss." That was true of the method and false of
+its caller. A frozen facing is the documented trap of the `Graphic_Single` mechanism, and it fired
+the moment its owner went quiet.
+
+**`EnsureUnderLord`, `KeepFlightSpeedConstant`, `UpdateBrawlGaze`, `UpdateCirclingSound` and
+`CancelAirborneMelee` now run from `CompTick`, outside the gate.**
+
+> **AN INVARIANT CANNOT LIVE INSIDE A CONDITIONAL.** Anything phrased *"he must never X"* runs
+> unconditionally; anything phrased *"he should now do Y"* belongs in the pattern executor. Sorting
+> every helper into one bucket or the other is the check that was missing.
+
+### The circuit, redrawn from the user's own diagram
+
+They drew it — a ragged red path beside the clean blue loop they wanted. **Two faults, and only one
+of them was the grid.**
+
+1. **THE CENTRE MOVED.** `UpdateCirclingWaypoint` was handed `target.Position` **every tick**, so a
+   target that walked dragged the whole ring behind it. Waypoints computed against a sliding centre
+   do not lie on one circle — and when the centre moved toward him the ring swept over his own
+   position, putting the next waypoint *behind his back*. **That is the inward fold in the red
+   drawing**, the path doubling back through the middle.
+2. **THE STEP AND THE DIRECTION WERE BOTH RANDOM.** `Rand.Range(55f, 95f)` per leg, direction never
+   held. Legs of unequal length that occasionally reverse cannot close into a loop; they wander.
+
+Both are now captured **once per leg** at `BeginLeave`: the centre (`lastTargetPos`, deliberately
+stale — he orbits the *place* the fight is, and re-centres on the next pattern), the rotation
+direction, and the starting angle, which is taken from **where he already is** relative to the
+centre so the first leg continues his approach instead of doubling back.
+
+The step is now the constant `dragonCirclingStepDegrees` = **45°** → a regular octagon, which is
+what the blue drawing is, with legs of `2·14·sin(22.5°)` = **10.7 cells**. All three are saved: a
+reload mid-lap would otherwise re-centre on the dragon and re-roll the direction, which is a visible
+kink halfway round.
+
+> **The user's drawing did in one image what five rounds of description had not.** The inward fold
+> was the whole diagnosis and no wording of "it drifts" would have pointed at a moving centre.
+> `CLAUDE.md` already says to ask for a picture whenever a report is visual; this is the same
+> lesson from the other direction — *they* supplied it, unprompted, and it was worth more than the
+> log that day.
+
+**Worth watching in play:** at flight speed he covers a 10.7-cell leg in about 0.7s, so a 17.45s
+circling phase is roughly **three laps**. If that reads as tight or repetitive, `dragonCirclingRadius`
+(14) is the knob, not the step.
+
+## Take-off and circling audio, and a phase length derived from a clip (2026-08-13)
+
+Three new files from the user. Durations **measured off the files** rather than estimated, by
+parsing the WAV header and counting MPEG frames:
+
+| clip | length | ticks |
+|---|---|---|
+| `DragonTakeOff.wav` | 2.237 s | 135 (rounded up) |
+| `DragonFlightCircling1.mp3` | 15.192 s | 912 |
+| `DragonFlightCircling2.mp3` | 15.192 s | 912 |
+
+**The two circling takes are identical in length** — 633 MPEG frames each — so "the longest between
+1 and 2" is unambiguous. Their hashes differ, so they are genuinely different recordings despite
+matching byte counts.
+
+### Alternating is possible, so both are used
+
+The user's condition: tune to the longer of the two **if** the dragon can alternate between them,
+otherwise use clip 1 alone. He can — it is a saved flag — so both ship.
+
+**⚠ Two separate `SoundDef`s, not two grains in one def.** A single def with both clips as grains
+would let RimWorld choose, and RimWorld chooses **at random** — which is exactly what alternation is
+for. At two clips of similar character and identical length, a coin flip routinely plays one three
+legs running and reads as a single looping sample. The flag is saved, or a reload restarts the
+sequence on the same take for ever.
+
+### The phase length is DERIVED from the audio
+
+*"Dont forget to take in account dragonTakeoff's duration too, the sounds should be, if from ground,
+dragontakeoff THEN dragonflightcircling."*
+
+So a leg from the ground is take-off **then** circling, and it must be long enough for both:
+
+```
+leg = Max(dragonPatternLeaveTicks, dragonTakeOffSoundTicks + dragonCirclingSoundTicks)
+    = Max(900, 135 + 912) = 1047 ticks = 17.45s
+```
+
+**Derived, not configured.** *Two numbers that must agree, held in two places* is this project's
+most repeated failure — it has produced the unloseable landing, the draw sizes, and the
+lifetime-vs-tuning-default mismatch. Swapping a clip now means editing one number; nothing can
+silently truncate the audio, and the user's existing knob still lengthens the leg if they want more
+circling. Lowering it below the audio does nothing, on purpose.
+
+The circling clip is scheduled at `now + takeOffTicks` when the leg starts from the ground, and at
+`now` when he is already airborne (hover breath ends in soar, so there is no take-off to wait for).
+That pending tick is **saved** — a reload during the 2.2-second delay would otherwise drop the clip.
+
+### Take-off, and where the circling sound is anchored
+
+Take-off fires from `EnterState` on **Grounded → Flight or Grounded → Soar**, gated on the *source*
+state exactly as the landing is, so Soar ↔ Flight is silent — he never leaves the ground for it.
+
+**⚠ The circling clip is anchored at the CENTRE OF THE CIRCLE, not at the dragon.** `PlayOneShot`
+pins a sound to a fixed world position for its whole length, and this one runs fifteen seconds —
+long enough for a dragon at 3.42× to end up far from his own noise. Anchoring at the centre works
+*because circling is bounded*: he stays within roughly one `dragonCirclingRadius` of it throughout.
+Anything that ever needs audio to follow him across the map wants a Sustainer maintained per tick,
+which is considerably more machinery; noted rather than built.
+
+`DragonTakeOff` is a **.wav** where the rest are .mp3 — both are in
+`ModContentLoader.AcceptableExtensionsAudio` and `clipPath` carries no extension either way, so
+nothing needed converting.
+
+### Not wired: `DungeonBackgroundNoise.mp3`
+
+Also new (15.408 s), not mentioned in the request, and left alone. Flagged rather than guessed at —
+an ambient bed needs to know *what* it is ambient to, and nothing in the dragon work is a dungeon.
+The folder check now reports it as the one unwired clip, so it cannot be forgotten.
+
+## Doors, handbrake turns, and the last two hardcoded numbers (2026-08-12, round 5)
+
+*"Much better than before"* — the phase order and the wander cancel both held. Log clean again.
+
+### He queued for a door
+
+*"He slows down again to wait for the door in the ruins to open up before over it (through)."*
+
+`Patch_AirborneIgnoresTerrain` made the door's path **cost** free; the wait is a different
+mechanism. `Pawn_PathFollower.TryEnterNextPathCell`:
+
+```csharp
+Building_Door d = NextCellDoorToWaitForOrManuallyOpen();
+if (d != null) {
+    if (!d.Open) d.StartManualOpenBy(pawn);
+    pawn.stances.SetStance(new Stance_Cooldown(d.TicksTillFullyOpened, d, null));
+    return;                    // <-- he does not move this tick
+}
+pawn.Position = nextCell;      // <-- what he does INSTEAD when it returns null
+```
+
+**Returning null does not block him — it walks him straight into the cell**, which is precisely
+right for something flying over the doorway. `Patch_AirborneIgnoresDoors` prefixes that method and
+returns null for an airborne dragon: no wait, no manual open, no `Stance_Cooldown`. `pawn` is
+`protected`, so it arrives through Harmony's `___pawn` injection.
+
+> **A cost and a wait are not the same lever.** The terrain patch was assumed to have covered doors
+> because a door has a path cost; it does, and that was irrelevant.
+
+### Handbrake turns
+
+*"prevent him from making aggressive turns like North -> north-east -> south."*
+
+`circleAngle` always advances the same way round, so the **waypoints** progress smoothly — but the
+**heading** to the next one depends on where he is standing when it is chosen, and from mid-circuit
+that can be most of a reversal.
+
+`FindCircleCell` now judges each candidate on the turn it would demand, against
+`dragonMaxTurnDegrees` (**90**). Two passes, not one relaxing loop: the first tries all eight angles
+**with** the limit, the second drops it — so a cramped map degrades to the old behaviour instead of
+stalling, and the limit can never cost him a waypoint he actually needs. Current heading is measured
+over the remaining path, not off `nextCell`, for the same reason the sprite does it: one cell of a
+staircase is not a heading.
+
+### Tuning, at the user's request
+
+| what | from | to |
+|---|---|---|
+| draw size, grounded | 4.6 | **5.06** (+10%) |
+| draw size, airborne | 5.6 | **6.16** (+10%) |
+| `dragonFlightSpeedFactor` | 3.60 | **3.42** (−5%) |
+| `dragonBreathDamage` (fire and frost share it) | 90.576 | **86.0472** (−5%) |
+
+**⚠ The two draw sizes were C# consts, and the grounded one was ALSO in the ThingDef.** That broke
+`CLAUDE.md`'s "all tuning numbers in the def" rule *and* was another instance of two numbers that
+must agree held in two places — the shape that produced the landing-distance-vs-stun-radius hole.
+Both are now `DovahkiinTuningDef` fields; the consts survive only as a fallback for a missing def
+and deliberately keep the **pre-raise** values, so a def that fails to load shows a visibly wrong
+size rather than a plausible one. Verified after the change that
+`dragonDrawSizeGrounded` and the ThingDef's `<drawSize>` still match.
+
+The shake-profile graphic was switched to read `DrawSizeFor` too, or he would have shrunk mid-shake
+while every other grounded sprite grew.
+
+### The landing sound — recorded on the 6th, and it had been sitting there unused ever since
+
+The user: *"it's in the Sounds folder, it's the dragon's landing one, i dont think it's been
+implemented yet."* They were right.
+
+`Sounds/DragonLanding.mp3` was recorded **2026-08-06 at 16:43** — *twelve hours after* the last
+edit to `Defs/SoundDefs/Sounds_Dovahkiin.xml` (05:06). It never got a `SoundDef`, and no code
+referenced it. The initial search missed it precisely because it was **not** new; it was six days
+old and looked like part of the existing set.
+
+> **⚠ A MEDIA FILE IN THE FOLDER IS NOT A WIRED-UP ASSET, AND NOTHING WILL EVER TELL YOU.**
+> An unreferenced clip produces no warning, no config error, no log line — from RimWorld's point of
+> view there is nothing to report. This is the audio twin of the art rule the project already has
+> (*"installed and inert"*), and it stayed invisible for six days across four playtests.
+> There is now a check that every file in `Sounds/` is referenced by some def, and vice versa.
+
+Wired: `Dovahkiin_DragonLanding`, played from `Comp_AlduinFlight.DoLandingImpact`.
+
+- **Positional, and played AFTER the pounce teleport.** The def is `context MapOnly` with a
+  `distRange`, and the dive can move him several cells — playing it before the teleport would put
+  the impact where he took off from.
+- **`distRange` 0~60 against the breaths' 0~45.** An impact heavy enough to stun everything within
+  2.4 cells should carry past its own fight, and being one short event rather than a sustained roar
+  it does not crowd the mix.
+- **`maxSimultaneous` 1.** A second landing inside a second is the dive re-firing, not two impacts;
+  layering the clip on itself turns a thud into a flam.
+- `GetNamedSilentFail` plus a null check, per the standing rule — a missing SoundDef must be silent,
+  never fatal, so audio can never take the landing effect down with it.
+
+**Build note worth keeping:** `PlayOneShot` is an **extension method on `Verse.Sound.SoundStarter`**,
+not a member of `SoundDef`. Without `using Verse.Sound` the compiler says *"SoundDef does not
+contain a definition for PlayOneShot"*, which reads like the method does not exist.
+
+## The phase order made absolute, and a pause that froze the clock (2026-08-12, round 4)
+
+Log clean again — no errors, no config errors. Three reports, three causes, and **one of them was a
+regression introduced by the previous fix.**
+
+### 1. He never stopped brawling until his target died — MY BUG, from this same session
+
+The previous round added `phaseUntilTick++` while a grab was in progress, on the reasoning that he
+should not be "already overdue" when he lets go.
+
+**With `dovahGrabChance` at 1.0 — which the test script itself told the user to set — every bite
+grabs, so `IsHeldGrounded` is true almost continuously through a brawl. A paused clock then means
+the phase CAN NEVER EXPIRE.** *"him staying too long locked in pattern 1 (he never stopped attacking
+until his target died)."*
+
+**Removed.** The clock runs; only the pattern's *advancement* is skipped during a grab. The reason
+the pause existed at all — stopping him snapping into the next attack — is now handled properly by
+the phase order below, which is where it belonged.
+
+> **A pause added to protect the NEXT thing froze the CURRENT one.** Same family as the dwell timer
+> that caused five defects: a second author of a timing decision. And the test configuration is
+> what exposed it — a knob set to an extreme for testing is a stress test of everything that reads
+> it, not just of the feature it belongs to.
+
+### 2. Still no circling between attacks — the previous fix had a hole
+
+The last round stopped a phase being aborted **mid-way**. It did not cover an Execute that
+**expired** with no target: that still fell through to the idle branch, which sets
+`hasPattern = false`, and the next target then started a fresh attack with no circling at all.
+
+*"he still switched to another pattern directly after killing his target"* and *"he directly
+finished another pawn off with a breath again right after throwing him to the ground"* — **the same
+hole, reported twice.**
+
+**⚠ THE PHASE ORDER IS NOW ABSOLUTE:**
+
+- **Execute always hands off to Leave**, target alive or dead.
+- **A new pattern can only be rolled at the end of a Leave, or from a standing start** (nothing
+  running at all).
+- Approach without a target becomes Leave, not an abort.
+- A pattern in progress **owns him to the end of its Leave**, so the idle branch is reachable only
+  when nothing is running.
+
+There is now **no path from "attack finished" to "attack" that does not pass through a full
+`dragonPatternLeaveTicks`**. The user's rule — *"the flight-circling phase should always be >=15
+seconds"* — is expressed as structure rather than as a check somebody has to remember to make.
+
+> **Two rounds were spent patching the places where the rule leaked instead of making it
+> structural.** The first fix guarded mid-phase loss; the second guarded phase expiry. Both were
+> the same rule stated twice, and a rule stated twice is a rule that will leak a third time.
+
+### 3. The side-stepping is `Wait_Wander`, and the flag trick was never reliable
+
+*"His trajectory still is instable (he side steps a lot)."* `HOVER-DIAG` caught it mid-leg:
+
+```
+PATTERN=DiveAndBrawl/Leave phaseIn=459 state=Flight | job=Wait_Wander
+```
+
+`JobGiver_GotoTravelDestination` opens by **flipping** `mindState.nextMoveOrderIsWait` and returns a
+30–80 tick `Wait_Wander` when it lands true. The 2026-08-06 workaround sets that flag true every
+tick so the giver's own flip lands on travel — **but that only holds if the giver runs exactly once
+per tick, and it does not.** A job ending plus a `CheckForJobOverride` in the same tick flips it
+twice and the wait comes straight back.
+
+**`Wait_Wander` and `GotoWander` are now refused outright while airborne**, alongside the melee and
+extinguish jobs, and replaced with the leg he was already flying.
+
+> **Fighting the flag was arithmetic; cancelling the job is a fact.** The flag trick depended on a
+> call count we do not control. This does not.
+
+**This may also be most of the "wobble"** — a 30–80 tick wander in the middle of a flight leg reads
+exactly like a side-step, and it is a different thing from the grid staircase. Worth re-judging the
+trajectory before committing to the flight-movement subsystem.
+
+## Three of four defects were ONE line: losing the target aborted the phase (2026-08-12)
+
+Third playtest of the day. **Log completely clean** — no errors, no config errors, no Harmony
+failures, so every fault was logic. Nine `HOVER-DIAG` samples, and they named the cause outright:
+
+**SEVEN OF NINE READ `PATTERN=none` WHILE A LIVE TARGET EXISTED.**
+
+`PATTERN=none` means `hasPattern == false`. A pattern had just been wiped and was about to be
+re-rolled — over and over, in the middle of fights.
+
+### The one line
+
+`RunPattern` dropped into its idle branch the instant `CurrentTargetOf` returned null, and that
+branch does `hasPattern = false` **and `EnterState(pawn, Flight)`**. And **a breath kills its own
+target**, so the target going null is the *normal* case after an attack, not an edge one:
+
+| the user's report | what actually happened |
+|---|---|
+| *"already switching to flight state while still in his after-breath pause phase"* | the victim died to the breath → target null → `EnterState(Flight)` fired while the motionless hold still had seconds left |
+| *"same thing… it was after a soar breathing"* | identical, from the soar variant |
+| *"engaging with a new pattern less than 15 seconds after the previous one"* | `hasPattern` was false, so the next target to appear started a pattern immediately instead of finishing the circling leg |
+
+`dragonPatternLeaveTicks` is **900 = exactly the 15 seconds the user expected**, so the number was
+never wrong — the phase was being abandoned before it could run.
+
+**Fixed by making target loss not abort a phase in progress.** Approach is the only phase that
+genuinely needs a live target, and without one it converts to Leave — which then runs its full
+length. Execute has already fired and must run its hold out; Leave is circling, which needs a
+**centre**, not a foe, so `lastTargetPos` carries where he last saw one (saved, or a reload
+mid-leg re-centres the circle on the dragon himself).
+
+> **The shape, and it is one this file keeps recording: a rule written for "there is nothing to do"
+> was firing during "the thing I am doing has finished its target".** Those are not the same state,
+> and conflating them let an idle path pre-empt three different running behaviours. Ask what a
+> guard is actually protecting against before letting it own an early return.
+
+### And the combo that should not exist
+
+*"i caught him bite-shaking a pawn then finishing him with the ground-breath...insane combo? yes...
+should be possible? NO, SHOULDN'T BE POSSIBLE!!!"*
+
+Nothing stopped a pattern advancing while the grab held someone in his jaws, so a breath could be
+rolled and fired mid-shake. `RunPattern` now returns early while `IsHeldGrounded` — which is
+exactly "a grab is in progress", since `Hediff_DovahGrabbed` is the **sole** caller of
+`HoldGroundedUntil` (verified, not assumed).
+
+**The phase clock is PAUSED rather than left running.** Letting it run means that the moment he
+lets go he is already overdue and snaps straight into the next attack — the same "do not leave a
+gap" reasoning as the hand-off rule, seen from the other end.
+
+### NOT FIXED: he flies around walls
+
+*"A major thing that could help is him ignoring obstacles while in flight… he even goes around
+walls."*
+
+**The user is right and SPEC.md §6.5 already requires it** — soar and flight cross roofs, walls and
+obstacles, with natural mountain rock as the single exception. It is a missing feature, not a bug.
+
+It is also **not** reachable from where the movement currently lives. `Patch_AirborneIgnoresTerrain`
+made crossing a cell free; it cannot make a wall passable, because the ROUTE is chosen by
+`Verse.AI.PathFinder` against the map's path grid. Genuinely flying over walls means the dragon
+stops using RimWorld's pather while airborne and is moved along a straight line himself.
+
+**Scoped and put to the user rather than started at the end of a long session** — it is a
+subsystem, it touches saved state, and `CLAUDE.md` says one phase at a time.
+
+## A fire as a combat target, an octant boundary four degrees out, and the brawl gaze (2026-08-12)
+
+Second playtest of the day. **The job-thrash fix held: zero `started 10 jobs` errors, zero config
+errors, zero exceptions of ours** — the log went from hundreds of lines of spam to thirteen
+`HOVER-DIAG` samples. The facing fix landed too (*"the facing is much better"*). Four things left,
+and `HOVER-DIAG` named three of them outright.
+
+### 1. A FIRE BECAME HIS COMBAT TARGET
+
+```
+PATTERN=PerchBreath/Leave state=Flight job=ExtinguishSelf jobTargetA=Fire
+| engageableTarget=Fire [Fire def=Fire spawned=True notPawn dist=0.0]
+| patherMoving=False stationaryTicks=29
+```
+
+He set himself alight with his own breath, RimWorld gave him `ExtinguishSelf`, and
+**`CurrentTargetOf` reads the current job's `targetA`** — so the fire burning on him became the
+thing he was fighting. `IsEngageable` ended with `p == null || (!p.Dead && !p.Downed)`, and
+`p == null` is **true for everything that is not a pawn**.
+
+At `dist=0.0` every "am I close enough" test in the pattern logic said yes. **One accessor feeds
+approach, engage distance, the dive, the breath and the circling gate** — the same shape as the
+corpse bug of 2026-08-05, and the same lesson: *when several rules share one accessor, suspect the
+accessor.* Now pawns only.
+
+### 2. …AND HE HUNG IN THE AIR PUTTING HIMSELF OUT
+
+Same sample. `ExtinguishSelf` is not a melee job, so `CancelAirborneMelee` ignored it — but it
+roots him identically. Added to the list. **A dovah does not stop flying to beat out a fire; he
+burns.** Whether he should be ignitable by his *own* breath at all is left alone deliberately —
+that is a design call, not something to fold into a bug fix.
+
+### 3. THE OCTANT DEAD ZONE WAS 18.4° WHERE IT HAD TO BE 22.5°
+
+*"caught him going east while facing south-east."*
+
+Yesterday's look-ahead reduced the chord to a sign per axis with a dead zone of **a third** of the
+dominant axis. `atan(1/3)` is **18.4°**, but the boundary between E and SE is **22.5°** — so any
+heading in that four-degree band read as diagonal when it was plainly axial.
+
+Now `(major * 5) / 12` = 0.4167 = **22.62°**, the true boundary to within a fifth of a degree, and
+integer arithmetic so there is no float work on a per-tick path.
+
+> **A dead zone is not a taste setting — it is a boundary with a correct value.** It was picked by
+> feel the first time and was wrong by exactly the amount the user could see.
+
+### 4. THE BRAWL GAZE — requested, facing only
+
+*"in brawl pattern mode, he isnt just standing there when no target is nearby but is still looking
+at the nearest available target or doing two/three facing changing before taking off (I m talking
+about the facing only here, no behavior change)."*
+
+`UpdateBrawlGaze` runs only while he is **Grounded, mid-brawl-Execute, with no engageable target**.
+It faces the nearest hostile pawn, and with nobody in sight turns a quarter every 1.5–2.5 seconds
+in a rolled direction, so he looks about rather than rotating like a turret. **No job, duty, state
+or timing is touched.**
+
+Two traps handled by construction:
+
+- **`pawn.Rotation` cannot do this** — `Pawn_RotationTracker.UpdateRotation` runs from
+  `ProcessPostTickVisuals`, a separate pass *after* the whole tick, and re-faces any pawn with a
+  job. `SetFrozenFacing` installs a `Graphic_Single` instead, which ignores `Rot4` entirely.
+- **A `Graphic_Single` left installed freezes him for ever**, so this is one method called
+  unconditionally from the top of `RunPattern` that re-evaluates its own condition every tick and
+  releases the moment it stops holding. **There is no exit path for it to miss** — which is the
+  failure mode §5 records for every other user of that slot. It also stands down while the grab's
+  shake owns the slot, so the two can never both author the sprite.
+
+The hostile scan is cached for 30 ticks and walks `AllPawnsSpawned`, not cells — RocketMan.
+
+### 5. THE STUN AND THE TERRAIN — both put to the user, both answered, both built
+
+**`stunned=True` is why he froze in mid-air**, twice in the log, both times with a perfectly good
+`job=Goto` and a destination he could not act on:
+
+```
+PATTERN=DiveAndBrawl/Leave state=Flight job=Goto jobTargetA=cell (115, 0, 125)
+| fullBodyBusy=True stunned=True stance=Stance_Mobile
+```
+
+A stun sets `FullBodyBusy` and `PatherTick` returns immediately on it, so a stunned flyer hangs
+motionless in the sky. **That is the engine working correctly**, so the question — what should a
+flying creature do when stunned — went to the user rather than being answered quietly.
+
+**THE USER CHOSE STUN IMMUNITY WHILE AIRBORNE.** Recorded because it was *not* the recommendation
+— "he falls out of the sky" was offered on the grounds that it makes stuns the anti-air answer the
+design lacks, and the user chose immunity instead. **That is their call and it must not be
+"corrected" back.**
+
+`Patch_AirborneIgnoresStun` prefixes **`StunHandler.StunFor`**, which is the single chokepoint:
+`Notify_DamageApplied` routes all three of its cases (EMP, stun damage, the 1200-tick case) through
+it, so one prefix covers every source in the game.
+
+> ⚠ **`HoldStill` had to be exempted or the fix would have deleted a feature.** The post-breath
+> "stay motionless" beat is implemented AS a stun, and a breath happens in **Soar — which is
+> airborne**. A blanket refusal would have silently removed a rule the user asked for twice, with
+> nothing in the log. `AllowSelfStun` is raised around that one call, in a `try/finally` so an
+> exception cannot leave every dragon stunnable again. **A flag, not an instigator test:**
+> `HoldStill` passes the pawn as its own instigator, which looks like a safe discriminator right
+> up until something else does the same.
+
+**And the terrain patch was taken.** `Patch_AirborneIgnoresTerrain` postfixes
+`Pawn_PathFollower.CostToMoveIntoCell(Pawn, IntVec3)` so an airborne dragon pays his own move time
+and nothing else — no snow, no mud, no rubble, no edifice.
+
+> ⚠ **THIS IS THE SPEED HALF ONLY, AND THE DISTINCTION IS NOT PEDANTRY.**
+> `CostToMoveIntoCell` decides how fast he crosses a cell. **The ROUTE comes from
+> `Verse.AI.PathFinder`**, which has its own cost model — so he will still path *around* expensive
+> terrain even though crossing it now costs him nothing. Straightening the route means patching the
+> pathfinder's per-node cost, called thousands of times per path rather than once per cell moved,
+> and that has **not** been taken. Do not describe this patch as "the dragon now flies straight."
+
+**These are the first patches this mod has put on a hot path**, against `CLAUDE.md`'s "none
+per-tick" rule, so the guard is the strictest available and comes first: a cached **ThingDef
+reference compare** — one pointer comparison, no string work, no comp lookup, no allocation — and
+every pawn that is not a dragon leaves on that line. `AlduinGraphicsUtility.IsAlduin` was
+deliberately **not** reused: it compares `defName` as a string, which is fine on the event-shaped
+paths it was written for and far too expensive here.
+
+All three patch targets verified by reflection against the real assembly before building —
+`CostToMoveIntoCell` is static with parameters named `pawn` and `c` (Harmony binds by name),
+`StunFor` has one overload, `StunHandler.parent` is a public field.
+
+**The residual wobble is RimWorld's grid** and is unchanged by any of this: a pawn moves cell to
+cell, so any line that is not axial or 45° is walked as a staircase. Invisible on a 1.5-cell
+colonist, plainly visible on a 4.6-cell dragon at 3.6× speed. Removing it entirely means drawing
+him off his logical cell — a pawn-render change this project has avoided throughout.
+
+## The log spam and the mid-air freezes were ONE bug, and it was ours (2026-08-12)
+
+First playtest of the 2026-08-06 build. The user: *"The log popped up a lot (especially during
+attacks and damages dealt moments). He is more fluid and respects the pattern much better now…
+his flight feels a bit twitchy still."*
+
+**Zero config errors, zero exceptions of ours.** The only exception in the whole log is Melee
+Animation failing to phone home about missing weapon tweak data, with no internet. The spam was
+this, hundreds of times:
+
+```
+Dovahkiin_Alduin_Test55060 started 10 jobs in 10 ticks.
+List: (AttackMelee (Job_1462) A=Thing_Human723) , (AttackMelee (Job_1463) …
+```
+
+### Root cause: `CancelAirborneMelee` created a vacuum, and RimWorld punishes that
+
+Decompiled `Pawn_JobTracker` and `JobUtility` rather than reasoning about them. The loop:
+
+1. Our `CompTick` ends the melee job with `startNewJob: false`, leaving `curJob` **null**.
+   `CompTick` runs from `Pawn.Tick`'s `base.Tick()`, **before** `jobs.JobTrackerTick()`.
+2. `JobTrackerTick` then reaches
+   `if (curJob == null && !pawn.Dead && pawn.mindState.Active) TryFindAndStartJob();`
+   — which runs the **whole** Animal think tree from the top. The retaliation node sits **above
+   `LordDuty`**, so it hands back `AttackMelee`. That counts as a job given.
+3. Every tick. At ten, `Pawn_JobTracker.FinalizeTick` sums `jobsGivenRecentTicks`, finds `>= 10`,
+   and calls `JobUtility.TryStartErrorRecoverJob` — which does `Log.Error(...)` **and then
+   `StartJob(JobMaker.MakeJob(JobDefOf.Wait, 150))`**.
+
+**That forced `Wait` is 150 ticks — 2.5 seconds of a dragon standing still in mid-air.** It is
+exactly what `HOVER-DIAG` recorded during `DiveAndBrawl/Leave`: `job=Wait patherMoving=False
+curPathNull=True` with `stationaryTicks` climbing 29 → 58 → 87.
+
+> **So the spam and the stalls were never two problems.** The freeze is RimWorld's error-recovery
+> disciplining us for the thrash, and the log line is that same recovery announcing itself.
+
+**Fixed by not creating the vacuum** — `AirborneReplacementJob` builds the replacement *before* the
+job is ended, and it is started in the same tick, so step 2 never runs and the think tree is never
+asked. Started with `addToJobsThisTick: false` so the cure cannot trip the alarm it was written to
+silence. Damage cannot reopen it either: `Notify_DamageTaken` gates `CheckForJobOverride` behind
+`TicksGame >= lastDamageCheckTick + 180`, so a hit costs at most one job every three seconds, and
+a `Goto` has no expiry.
+
+**It honours the PHASE, or the cure breaks something else.** Flying him to a waypoint is right
+while circling and wrong mid-breath — Execute holds him still on purpose (`Defend` radius 0) so he
+does not wander out of his own jet, and a `Goto` there would drag him out of a breath he is
+casting. So: **Leave** → the circling waypoint; **Approach** → onward to the target, because a
+waypoint would undo the phase and fly him away from the pawn he is meant to be diving on;
+**Execute-with-breath** → a 30-tick `Wait` we own. The method never returns null, which is the
+whole point — every path out of it fills the job.
+
+**Why this fix over cancelling more cleverly:** every variation of "end the job better" leaves
+`curJob` null for one tick, and one tick is all the think tree needs. The only way to win a
+tug-of-war with a think tree that re-decides on demand is to give it nothing to decide. This is
+the notebook's own circling-pause rule one layer down: **if a hand-off pauses, hand off BEFORE the
+current step completes.**
+
+### And the twitchy flight was the SPRITE, not the movement
+
+*"goes north, north east, north, north, north east instead of north a good amount of time, then
+north east for a while longer."*
+
+`HeadingOctant` read `pather.nextCell`, which is **one cell away**. RimWorld has no sub-cell
+movement, so any line that is not exactly axial or exactly 45° is walked as a **staircase** — a
+leg 14 north and 5 east comes out N, N, NE, N, N, NE. Each stair was a sprite swap. **His path was
+straight the whole time**; the flicker was entirely in the reading of it.
+
+Now sampled `dragonFacingLookaheadCells` (**6**) ahead via `PawnPath.Peek`, which measures the
+chord across several stairs instead of one tread. A dead zone of a third of the dominant axis
+stops a 14-north/1-east chord reading as north-east.
+
+> **⚠ Deliberately a look-ahead and NOT a dwell timer.** "Hold the last facing for N ticks" would
+> also hide it, and this project has been bitten **five** times by that exact shape — a cooldown
+> added to stop flicker outranks correctness and then lies about a real turn. This changes what is
+> **measured**, not how long an answer is honoured, so a genuine turn still shows on the tick it
+> happens.
+
+**No new movement system was needed**, which the user asked about directly. Both faults were in
+files that already existed: one wrong ordering, and one baseline that was one cell too short.
+
+Build clean, 0 warnings. `dragonFacingLookaheadCells` is exposed in `DovahkiinTuningDef.xml`.
+
+## Two causes of the stops, both found in the log rather than guessed (2026-08-06)
+
+The user reported logs popping up and continued stopping in flight. Reading `Player.log` gave both
+answers outright, and neither was a tuning matter.
+
+### 1. RimWorld stops travellers ON PURPOSE
+
+`JobGiver_GotoTravelDestination` opens with:
+
+```csharp
+pawn.mindState.nextMoveOrderIsWait = !pawn.mindState.nextMoveOrderIsWait;
+if (pawn.mindState.nextMoveOrderIsWait && !exactCell)
+    return Wait_Wander with expiryInterval 30–80 ticks;
+```
+
+**It alternates travelling with waiting by design** — every other order is a half-to-one-second
+stop. Correct for a caravan ambling across a map, wrong for a dragon, and exactly what the log
+showed: `job=Wait_Wander` throughout the circling.
+
+`exactCell` disables it, but that is a field on the job giver set in RimWorld's own DutyDef, not
+something a duty can pass. So the flag is set **true** each tick and the giver's own flip turns it
+false — every order it produces is a travel order. `CompTick` runs from `Pawn.Tick`'s `base.Tick()`,
+**before** `jobs.JobTrackerTick()`, so the value is always right when the giver next runs.
+
+### 2. The waypoints were unreachable
+
+The next log showed `job=Wait` with `stationaryTicks` climbing to 87. Waypoints were chosen
+**geometrically** — in bounds and standable — and handed straight to the duty. But that same job
+giver does `if (!pawn.CanReach(destination, PathEndMode.OnCell, …)) return null;`, so a cell across
+a wall or in another room produced **no job at all**, and he stood until the stuck-timer rescued
+him a second and a half later.
+
+`FindCircleCell` now requires `CanReach` too, and falls back to
+`CellFinder.TryFindRandomReachableCellNear` when the whole ring is walled off — so he keeps flying
+instead of standing.
+
+> **The shape of both: a destination that LOOKS valid is not the same as one the job giver will
+> accept.** Standable and in-bounds is our test; reachable is its test. When handing a target to
+> vanilla machinery, satisfy the machinery's own precondition, not a reasonable-looking proxy.
+
+### And a red config error in the new faction
+
+```
+Config error in Dovahkiin_DovFaction: raidLootValueFromPointsCurve must be defined
+```
+
+Required whenever `raidCommonalityFromPointsCurve` is defined. Added, pinned to zero — dragons
+carry no loot and the faction never raids. **A clean build and a def that parses both pass this;
+only RimWorld's load-time config pass catches it** — the notebook's standing rule, hit again.
+
+### Also this pass
+
+- Post-breath motionless beat doubled: `dragonPatternBreathTailTicks` 120 → **240** (4 seconds).
+- **His facing is locked during it.** Assigning `pawn.Rotation` cannot do this — the rotation
+  tracker runs after the whole tick and re-faces anything with a job — so a `Graphic_Single` is
+  installed instead, which returns the same sprite for every `Rot4`. Same mechanism as the grab's
+  shake, routed through the same slot so the restore is already handled.
+
+## Circling polish: the pause at each corner, and a dragon that traded blows in mid-air (2026-08-06)
+
+### He stopped at every waypoint
+
+*"in his flight circling phase he sometimes stays motionless for a brief moment before changing
+trajectory."*
+
+**Structural, not a stutter.** The next waypoint was chosen on ARRIVAL — by which point the goto
+job had already completed on its own, and between a finished job and our next-tick waypoint the
+think tree handed him something idle. That gap *is* the pause.
+
+Re-targeting now happens at **40% of the circling radius out from the waypoint**, so the
+destination changes while he is still flying and the old job never finishes. He turns instead of
+stopping.
+
+> **The general shape: if a hand-off pauses, hand off BEFORE the current step completes.** Waiting
+> for completion guarantees a window in which something else decides what happens next.
+
+### He fought back in mid-air
+
+*"an insect attacked him, and it made him attack in return too (making him stay motionless again
+while roling melee while in his flight sprite)."*
+
+Both halves are one bug — a melee swing halts movement, which is why he read as motionless in a
+flight sprite.
+
+`TravelOrWait` has **no fight branch at all** (goto, needs, wander), so the retaliation comes from
+higher in the Animal think tree, **above `LordDuty`, where no duty of ours can reach it**. Rather
+than hunt which node it is, the invariant is enforced where it cannot be argued with:
+`CancelAirborneMelee` ends any melee job while he is airborne and clears the busy stance with it —
+otherwise the attack's cooldown keeps him rooted for its remainder even after the job is gone,
+which would read as exactly the same bug.
+
+That restores SPEC.md 6.5's "immune to melee and **unable to melee**" while airborne. It runs
+before the phase logic, so the duty is re-asserted on the same tick and there is no idle gap for
+the think tree to fill.
+
+## Lord, first playtest: a wander deadlock, a maniac, and the no-hovering rule made absolute (2026-08-06)
+
+Three reports, and the first is a deadlock the Lord change introduced.
+
+### 1. He never engaged — the idle duty prevented him finding a target
+
+*"he stayed blocked in the cycling in flight state and thus I couldnt see if he was hostile."*
+
+The no-target branch set **`WanderClose`**. A wandering dragon never acquires anyone, so
+`CurrentTargetOf` stayed null, so the branch ran again — **wandering for ever.** The faction was
+probably working fine; he simply had no way to notice anybody.
+
+**Now `AssaultColony`**, whose think node is `JobGiver_AIFightEnemies` at `targetAcquireRadius`
+**65**. He goes hunting; the moment he acquires someone, `mindState.enemyTarget` is set,
+`CurrentTargetOf` returns it, and a pattern begins.
+
+> **The lesson: an IDLE behaviour must not preclude leaving idle.** `WanderClose` was chosen for
+> how it *looks*, and it silently removed the only way out of that state.
+
+### 2. Circling looked like a maniac — WanderClose turns every 2–3 cells
+
+*"What I want is him flying in straight lines not change directions every 2-3 cells."*
+
+`WanderClose`'s `JobGiver_WanderNearDutyLocation` has **`wanderRadius 3` baked into the DutyDef**,
+so it was never going to produce long legs whatever radius the duty carried.
+
+**Circling is now WAYPOINTS.** `TravelOrWait` uses `JobGiver_GotoTravelDestination` — a straight
+run to one point — so each leg is a straight line by construction. The angle advances **55–95°**
+per leg, a real turn rather than a wobble; small steps would put waypoints nearly in line and read
+as drifting.
+
+### 3. "Never in flight while motionless" — made absolute
+
+*"we need something that FORCES him to either always move while in flight or never be in flight
+while motionless."*
+
+**Standing still is now the very condition that gives him somewhere new to be.** If he is
+stationary past the grace:
+
+- in **Leave**, it picks a new waypoint immediately;
+- in **Approach**, it cuts straight to Leave — because a stalled approach means he *cannot* reach
+  the target, and waiting out the 25-second approach timeout hovering is exactly the symptom
+  reported across five sessions.
+
+There is no longer any path where a stationary dragon in flight is left alone.
+
+## THE LORD: dragons leave the mental state, and the patterns finally own their behaviour (2026-08-06)
+
+The user, after a third playtest: *"he still unfortunately acts very much like a wild beast. I
+think the lord route is our next option"* — and earlier, accepting the price: *"Combat esthetics
+is worth more than the guarding duty."*
+
+### The structural cause, stated plainly
+
+**Mental states outrank `LordDuty` in the Animal think tree.** From `Core/ThinkTreeDefs/Animal.xml`,
+in priority order:
+
+```
+Downed -> BurningResponse -> MentalStateCritical -> … -> MentalStateNonCritical
+       -> RopedPawn -> LordDuty -> Animal_PreMain (mod insert tag)
+```
+
+While a dragon was in `ManhunterPermanent`, **nothing below that line ever ran** — no duty, no
+custom think node, no injected job. That is why four rounds of injected `Goto` jobs never
+produced circling, and why the pattern executor could set his sprite and speed while the
+manhunter AI did the fighting.
+
+**Hostility came FROM the mental state**, since a factionless animal is hostile to nobody. So the
+mental state could not simply be removed — it had to be *replaced*. That makes this one change,
+not two.
+
+### What was built
+
+- **`Dovahkiin_DovFaction`** — hidden, `permanentEnemy`, animal tech, `autoFlee false`, raid
+  commonality pinned to zero so the storyteller can never raise a dragon raid on its own. Shaped
+  after vanilla's own `Insect` faction.
+  **`requiredCountAtGameStart` is 0**, not 1: a required count creates the faction at *world
+  generation*, which does nothing for a save that already exists — and this is being tested on
+  one. `DovahFactionUtility.DovFaction()` creates it on demand instead, so old and new saves
+  behave identically.
+- **`LordJob_DovahPatterns`** with a single toil whose `UpdateAllDuties` is **deliberately empty**.
+  The Lord exists only to satisfy `ThinkNode_ConditionalHasLord` so the duty branch runs; the
+  *pattern* assigns the duty. A toil that also assigned one would be a second author of the same
+  decision — the exact mistake that made the dwell timer cause five defects.
+- **A duty per phase**, set every tick by the executor:
+
+| phase | duty | why |
+|---|---|---|
+| Approach / brawl | `AssaultThing` | its think node is `JobGiver_AIFightEnemies`, which finds targets **by hostility** — now supplied by the faction |
+| Breathing | `Defend`, radius 0, own cell | he must not wander out of his own jet |
+| **Leave** | **`WanderClose`** around the target | **this is the circling.** `JobGiver_WanderNearDutyLocation` needs no hostility at all — it just moves him near a point |
+
+### Two places that would have silently undone it
+
+- **The guardian woke by starting `ManhunterPermanent`.** Rousing a guardian would therefore have
+  switched his attack patterns straight back off. He is already hostile through the faction, so
+  waking is now simply *ceasing to hold the mound*.
+- **The debug spawn started manhunter for an invading dragon.** Removed; `EnsureUnderLord` ends
+  any mental state it finds anyway, so it would have been undone a tick later and left a confusing
+  half-state.
+
+**Accepted cost, and the user took it knowingly:** guarding behaviour is now built on a duty
+rather than a mental state, and dragons belong to a faction. Grep confirms no `ManhunterPermanent`
+remains anywhere in the dragon path — only the comments explaining why.
+
+**Untested.** Nothing here has run in the game.
+
+## First pattern playtest: the executor was barely running, and the Lord is not optional (2026-08-06)
+
+The user: *"the dragon still has his earlier symptom: motionless in flight state, doesn't circle
+around at all and just chases and kills like any normal manhunting beast. He uses breathing from
+time to time but not how he is supposed to, not by the patterns."*
+
+**Two separate problems. One was mine and is fixed; the other settles a question that was left
+open earlier the same day.**
+
+### 1. The fact rules were eating the pattern executor — FIXED
+
+`CompTick` only ran `RunPattern` when `ApplyStateFacts` returned **false**, *and* only on a
+60-tick poll. `ApplyStateFacts` had **five** `return true` paths, and in a fight at least one was
+true nearly every tick — the **disengage** alone fires whenever he is grounded with a target out
+of reach, which is most of a chase.
+
+**So the pattern executor was hardly executing.** What the user watched was the leftover
+pre-pattern rules doing what they have always done: land in melee range, soar when the target
+leaves. That is precisely "chases and kills like any normal manhunting beast", and it explains
+breathing that happens "from time to time" — only on the rare ticks `RunPattern` got through.
+
+**The disengage, its soar pause and the anti-hover drop are deleted.** All three were written
+before patterns and solve problems patterns solve properly: the disengage *is* the Leave phase,
+the pause *is* a pattern's own timing, and the anti-hover drop was treating a **job** problem with
+a **state** lever. What remains in `ApplyStateFacts` is only what a pattern must never override —
+too hurt to fly, something in his jaws, standing in melee, mid-breath.
+
+**And the executor now runs every tick, not on a poll.** A poll is the dwell timer's mistake in
+slower form: a phase could sit a full second past its boundary before advancing. `nextStateCheckTick`
+is gone with it.
+
+### 2. Patterns can set his STATE. They cannot set his BEHAVIOUR.
+
+`HOVER-DIAG` shows the manhunter think tree owning **every** job — `AttackMelee`,
+`Wait_MaintainPosture`, `Wait_Wander` — and our circling `Goto` being discarded: the destination
+changes between samples while the job comes back as `Wait`. The sprite and the speed follow the
+pattern; the fighting is ordinary manhunter AI.
+
+> **⚠ SO THE LORD IS NOT POLISH — IT IS WHAT MAKES THE PATTERNS REAL.** When the user asked about
+> it earlier today the honest answer was "the circling would be scrappy". That was too weak. The
+> real answer is that **without owning the job layer, approach, leave and pattern-driven breathing
+> do not exist**, and the patterns are decorative.
+>
+> The cost has not changed and is still genuine: dropping `ManhunterPermanent` drops his hostility,
+> so he needs a faction or an assault duty to fight at all; guardian mode is built on that mental
+> state; and mental states outrank `LordDuty`, so it is either/or. **That is a design decision and
+> remains the user's to make** — it is not something to slip in at the end of a bug-fix round.
+
+`HOVER-DIAG` now prints the pattern and phase, so the next test says outright whether the executor
+is running rather than leaving it to be inferred.
+
+## Breath length matched to the audio, guarding restored, and a third balance pass (2026-08-06)
+
+### The breath now lasts exactly as long as its roar
+
+`dragonBreathDurationTicks` **180 → 263** (4.383s against the clips' 4.380s — within one tick,
+which is the finest the game can express).
+
+**The user's figure was right and mine was not.** Parsing the MP3's Xing header gave 4.416s from
+its frame count; the ~0.036s difference is **encoder padding**, which the header counts and the
+ear does not. Their editor reports the audible length. *When a measurement disagrees with someone
+who made the artefact, suspect the measurement.*
+
+**Everything downstream followed from that one number, because it is all derived:**
+
+| | before | after |
+|---|---|---|
+| damage pulses | 9 | **13** |
+| per-pulse damage | 11.18 | 7.74 |
+| **total damage** | 100.64 | **100.64 — unchanged** |
+| hover-breath pattern | 210 ticks | 293 |
+| perch-breath pattern | 330 ticks | 413 |
+
+Total damage held because it is split across however many pulses exist, and both breath patterns
+re-derive their length from the breath plus a tail — so a pattern still cannot peel away mid-jet.
+That is the payoff for deriving rather than storing twice, and it is the third time this session
+that discipline has turned a multi-value edit into a one-value edit.
+
+### Guarding restored
+
+`dragonGuardTriggerEnabled` back to **`true`**. Guardians rouse when approached again, as SPEC.md
+6.5c requires. **This clears one of the two must-not-ship switches**; only the `HOVER-DIAG` logging
+remains, and it is worth keeping for the first pattern playtest.
+
+### Third balance pass
+
+Damage 100.64 → **90.576** (−10%), AP 0.2835 → **0.25515** (−10%). Both breaths.
+
+| fire breath vs a 3-word Dragon Aspect | damage taken |
+|---|---|
+| start of today (heat 0.60, dmg 148, AP 0.35) | ~120 |
+| before this pass | ~72 |
+| **now** (effective armour 0.405, 20% deflect) | **~63** |
+
+**48% less than this morning.** Worth noting the AP cuts did the heavy lifting rather than the
+damage cuts: effective armour has gone 0.25 → 0.405, so Dragon Aspect now deflects or halves about
+40% of pulses where it did nothing at all when the day started.
+
+## The dragon gets a voice — the mod's first original sound effects (2026-08-06)
+
+`Sounds/DragonBreathFire.mp3` and `DragonBreathFrost.mp3`, **made by the user** after asking
+whether Skyrim's own audio could be used. It cannot: ripped game audio is copyrighted and may not
+be redistributed — the same rule this project already applies to another mod's art ("their art is
+a ruler, never a source"), and sharper here because **the repo is public, so committing such a
+file is distribution before the mod ships anywhere, and git history keeps it after a delete.**
+
+Two `SoundDef`s, wired into `Thing_DragonBreath` for both the pattern executor and the debug
+action. Four things checked rather than assumed:
+
+- **`.mp3` is accepted.** Read off `ModContentLoader.AcceptableExtensionsAudio` — `.wav, .mp3,
+  .ogg, .xm, .it, .mod, .s3m`. No conversion needed, and guessing here would have meant a silent
+  failure with nothing in the log.
+- **The two clips are genuinely different audio.** They are byte-for-byte the *same size*
+  (106,704), which looked like one file copied twice; SHA256 says otherwise. Worth the ten seconds
+  — testing frost and hearing fire would have read as a wiring bug.
+- **Played on the first TICK, not in `SpawnSetup`.** `SpawnSetup` runs inside `GenSpawn.Spawn`,
+  which runs inside our own `Spawn()` — **before the caller can call `SetSound`**. Playing it there
+  means `breathSound` is always null and the breath is always silent, with nothing to see. The
+  first tick is after every setter regardless of the order the caller uses them in.
+- **Positional, not on-camera.** `context MapOnly` with a `distRange`, played via
+  `PlayOneShot(new TargetInfo(...))`. The notebook records the reverse trap: a sound authored
+  `onCamera` must use `PlayOneShotOnCamera` or it is inaudible off its own tile.
+
+A missing `SoundDef` resolves to null and the breath simply plays nothing — sound can never take
+the effect down with it.
+
+## ATTACK PATTERNS: the state rhythm is deleted, and a dovah picks an attack (2026-08-06)
+
+SPEC.md 6.5c-4, designed 2026-08-04 and blocked ever since on the breath. **The breath now exists,
+so three of the four patterns are buildable.**
+
+### The dwell rhythm is gone, not disabled
+
+The user's call: *"we should delete that previous rule, the dwell timers, since the patterns are
+the only behavioral AI suited for the dragons… the timers set shouldn't be set as a single general
+constant 'X secondes in this state', but rather 4 set of timers with each set for a specific
+pattern."*
+
+**They were right, and the record backs it: that dwell caused five separate defects across three
+sessions** — hovering in flight, meleeing from the air, carrying a grabbed pawn off the map,
+jogging after fleeing colonists for nine seconds, and an anti-hover check that took 2.5s to fire
+against a 1.5s grace. All the same shape: a rule expressing a **fact** queued behind a **rhythm**.
+
+The deeper reason they cannot coexist: **a dwell timer and an attack pattern are two authors of
+one decision.** The timer says "hold this state N seconds then roll"; the pattern says "the state
+sequence *is* the attack". Both `ChooseNextState` (85 lines) and the dwell logic are **deleted**,
+not flagged off — leaving them behind a switch would have kept both authors in the file.
+
+Nothing useful was lost: the chase rule (flight unconditionally while closing) is now the Approach
+phase, the arrival rule (land straight from flight, never via soar) is `BeginExecute`, and the
+guardian rule lives in `RunPattern`'s no-target branch.
+
+### Three phases, and flight is home
+
+Every pattern runs **APPROACH** (flight, closing) → **EXECUTE** → **LEAVE** (flight, circling).
+That is what makes flight the connective tissue between attacks rather than a fourth attack.
+
+| pattern | execute state | engage distance | duration |
+|---|---|---|---|
+| **Dive and brawl** | Grounded | `dragonLandToBiteDistance` | `dragonPatternBrawlTicks` (480) |
+| **Hover breath** | Soar | `dragonBreathSoarRange` | breath + tail |
+| **Perch breath** | Grounded | 60% of cone range | breath + tail + `PerchLiftTicks` |
+| ~~Strafing run~~ | — | — | **not selectable** |
+
+**Strafing is deliberately excluded rather than quietly missing.** It needs a breath whose impact
+point *moves* with the dragon (SPEC.md 4.6a) and both current shapes are static. **A pattern that
+cannot execute must not be rollable**, or the dragon periodically does nothing and it reads as a
+hang.
+
+Breath durations are **derived** from `dragonBreathDurationTicks` plus a tail, so a pattern can
+never peel away mid-jet — two numbers that must agree, derived rather than stored twice.
+
+### Never the same attack twice running
+
+The user's rule. At three selectable patterns an unconstrained roll repeats about a third of the
+time, and a dragon that dives twice running reads as the AI being stuck rather than choosing.
+
+Implemented by **building a pool without the previous pattern**, not by rerolling until something
+differs: a reroll loop is unbounded in the worst case and becomes infinite the day somebody leaves
+one selectable pattern. `lastPattern` is saved, or the rule silently resets across a reload.
+
+### Also this pass
+
+- `dragonPatternApproachTimeoutTicks` (1500) abandons a pattern he cannot close on and rolls
+  another — the unreachable-target case that produced four rounds of "motionless in flight".
+- Frost blue softened a further 12.5% toward white (half the previous step), on all three blue
+  values across both shapes.
+- **Both breaths −15% damage** (118.4 → **100.64**) and **−10% AP** (0.315 → **0.2835**).
+
+**Untested.** Nothing here has been in the game once.
+
+## Frost breath, and two balance answers — one of which is not the number that was asked for (2026-08-06)
+
+### Frost breath
+
+The breath class already took its damage def, hediff, snow depth and colours as parameters, so
+frost is a palette and a payload rather than a second class. It mirrors the Dovahkiin's own Frost
+Breath: `Dovahkiin_Chilled`, `Dovahkiin_Fleck_FrostWave`, snow instead of ignition. The near-end
+tint is **white** where fire's is yellow — the hottest part of a flame goes yellow, the harshest
+part of a frost jet goes white, and both mean "the near end is more extreme than the far end".
+
+**⚠ IT DOES NOT USE VANILLA `Frostbite`, AND THAT IS THE IMPORTANT PART.**
+
+`Frostbite` has **no `armorCategory`**, and `ArmorUtility.GetPostArmorDamage` opens with
+`if (damageDef.armorCategory == null) return amount;` — so **Frostbite ignores every kind of
+armour completely.** Sharp, blunt, heat, and armour penetration all mean nothing against it.
+
+Tolerable for the Dovahkiin's shout, aimed at raiders. **Intolerable for a dragon breathing at the
+player**: a colonist in cataphract plate under a three-word Dragon Aspect would take exactly what
+a naked one takes — strictly worse than the frailty the user was already complaining about.
+
+New `Dovahkiin_DragonFrost`: same worker, same frostbite hediff, with `armorCategory Heat` so
+protection means something. Heat is the right category rather than a fudge — it is what RimWorld
+uses for temperature damage, and it makes Dragon Aspect's fire resistance cover a dragon's breath
+of **either** element, which is what "dragon aspect" ought to mean. **The Dovahkiin's own Frost
+Breath is untouched** and still uses vanilla Frostbite.
+
+### "Dragon aspect isn't giving any piercing resist?" — it is, and always has been
+
+`ArmorRating_Sharp` **is** RimWorld's piercing/cutting resistance; there is no separate "piercing"
+stat, which is why searching for one finds nothing. Dragon Aspect has granted it at every stage
+since Phase 2i: **+0.10 / +0.40 / +0.60**. Nothing was broken and nothing was changed.
+
+### Fire resistance +10%, damage −20% — and the number that actually matters
+
+Both applied as asked: `dragonBreathDamage` 148 → **118.4**, Dragon Aspect heat 0.40 → **0.44** and
+0.60 → **0.66**.
+
+| 3-word Dragon Aspect vs fire breath | effective armour | deflect | damage taken |
+|---|---|---|---|
+| before | 0.25 | 12.5% | ~120 |
+| **now** | 0.31 | 15.5% | **~91** |
+
+**24% less damage taken.** But the arithmetic says plainly that the resistance change contributed
+very little of that, and the reason is the same one that produced the maw bug:
+
+**`dragonBreathArmorPenetration` is 0.35, which eats more than half of a three-word Dragon
+Aspect's heat resistance before the roll is even made.**
+
+| breath AP | effective armour | damage taken |
+|---|---|---|
+| 0.35 (now) | 0.31 | ~91 |
+| 0.20 | 0.46 | ~78 |
+| 0.10 | 0.56 | ~69 |
+| 0.00 | 0.66 | ~60 |
+
+**Not changed** — the user asked for two specific numbers and got them; AP is a design decision
+and theirs to make. Raised with them rather than adjusted quietly.
+
+**And one likely explanation for "quite frail" that is not a balance issue at all: Dragon Aspect
+grants NO heat resistance whatsoever at one word.** Only Mul Qah (two) and Mul Qah Diiv (three)
+carry it. At one word a dragon's fire breath is entirely unmitigated.
+
+> **METHOD NOTE, and the notebook caught me with its own gotcha:** the first pass at this table
+> used `[Math]::Max(0, $armor - $ap)`, which in PowerShell picks the `Max(int, int)` overload and
+> truncates the result to 0 — so every row read "effective armour 0.00, deflect 0%". The notebook
+> has recorded that exact trap since 2026-07-29. **A diagnostic that lies is worse than none**;
+> write `[Math]::Max([double]0.0, …)` in any numeric check.
+
+## REVERSED BY THE USER: the soaring circle leads — and the lever is OPACITY, not brightness (2026-08-06)
+
+> **⚠ THE RGB BRIGHTNESS MULTIPLIER BELOW WAS BUILT AND THEN REJECTED IN PLAY, SAME DAY.**
+> The user: *"now it feels like the cone and circle has the same color, revert back to the earlier
+> parameters. Just make the color of the circle a bit less transparent instead, let's tweak the
+> opacity channel instead."*
+>
+> **The failure was predictable from the numbers, and had been flagged when it shipped: red was
+> already saturated at 1.0 in every circle band.** So a ×1.5 multiply could only lift green and
+> blue — which walks the circle's hue *toward* the cone's bright yellow-orange rather than away
+> from it. The two converged. Exactly the thing the change was meant to prevent.
+>
+> **`dragonBreathSoarCircleBrightness` is gone** (not left at 1.0 — a knob nobody can turn is a
+> lie about the design, per the Call of Valor level-ladder lesson) and replaced by
+> **`dragonBreathSoarCircleOpacity` = 1.4**. The fill sits at alpha 0.34, so the circle now draws
+> at ≈0.48 against the cone's ≈0.20 — **2.3× the weight**, with hue untouched.
+>
+> **THE GOAL IS UNCHANGED AND STILL STANDS:** the circle leads, the cone reads as the jet feeding
+> it. Only the mechanism changed.
+>
+> **THE TRANSFERABLE LESSON: when a channel is already saturated, a multiplier on it is not a
+> lever.** Check the headroom before choosing brightness as the way to separate two elements —
+> and prefer opacity when the thing you actually want to change is *weight* rather than *colour*.
+
+*The original entry, kept because the intent it records is still correct:*
+
+*"make the circle alone's layer of color 50% brighter than the cone, it should be looking that way
+not the other (my initial approach was wrong)."*
+
+**This contradicts their instruction of the previous day** — *"the cone is clearer at start
+compared to the circle"* — which the whole distance-ramp design was built to deliver. Recorded
+loudly in three places (the tuning def C#, the XML, and `Thing_DragonBreath.DrawAt`) precisely
+because a session reading only the older reasoning would flip it back as a bug.
+
+**It is also the better read on its merits**, which is worth saying so the reversal does not look
+arbitrary: the circle is where the damage actually lands, so it should be what the eye goes to,
+and the cone should read as the jet feeding it rather than as the main event.
+
+`dragonBreathSoarCircleBrightness` = **1.5**, applied to RGB only (alpha stays the separate
+envelope axis) and clamped per channel. Grounded is untouched — it has no circle.
+
+| soar, start of breath | R | G | B | alpha |
+|---|---|---|---|---|
+| reaching cone, band 0 | 0.99 | 0.91 | 0.31 | ×0.6 |
+| circle, band 6 — before | 0.77 | 0.35 | 0.12 | ×1.0 |
+| circle, band 6 — **now** | **1.00** | **0.53** | **0.17** | ×1.0 |
+
+**Note red saturates at 1.0 across every circle band.** Raising the multiplier further therefore
+buys less than it looks like it should — the gain lands only in green and blue. If more is wanted,
+the honest levers are `dragonBreathFillColor` itself or the fill alpha, not this number.
+
+## Yellowness: a second ramp on the fill, and the whole gradient moves to XML (2026-08-06)
+
+The user: *"Add in the gradient's parametters the 'yellowness' of the fire. Soar: yellower cone,
+untouched yellowness for the circle. Grounded: yellower at the begining of the cone gradienting
+down to unchanged color at the tip."*
+
+### A second ramp on the axis that already existed
+
+Yellowness runs on the **same distance-from-the-mouth axis** as the lightness ramp: strongest at
+the mouth, gone by the far end. Grounded therefore falls out for free — the cone yellows at its
+start and reaches base colour at the tip.
+
+Measured, at the start of a breath (green is the channel doing the work):
+
+| band | mouth → tip | R | G | B |
+|---|---|---|---|---|
+| 0 | mouth | 0.99 | **0.81** | 0.37 |
+| 3 | | 0.91 | 0.64 | 0.27 |
+| 7 | tip | 0.74 | **0.31** | 0.08 |
+
+Band 7 lands on (0.74, 0.31, 0.08) against a base of (0.72, 0.26, 0.05) — *"unchanged color at
+the tip"*, as asked.
+
+### The circle is EXCLUDED, not merely far away
+
+Soar's damaging circle sits at the far end of the ramp, so it would already have taken only a
+little yellow — **but "a little" is not "untouched".** It is excluded outright with a
+`yellowScale` of 0, while the reaching cone takes the full ramp. Verified: cone band 0 is
+(0.99, 0.81, 0.37), circle band 6 is (0.77, 0.36, 0.12) with no yellow term applied at all.
+
+This is the first time in this sequence that the shared axis was **not** enough on its own, and it
+is worth noting why: the previous two requests were about *relative* position, which one axis
+expresses; this one names a specific region and says "leave it alone", which needs an exclusion.
+
+### The whole gradient is now live-tunable
+
+`dragonBreathFillColor`, `dragonBreathFillBright`, `dragonBreathFillYellow` and
+`dragonBreathYellowStrength` are all in `DovahkiinTuningDef.xml`. Verified first that
+`Verse.ParseHelper.ParseColor` accepts `(R, G, B)` and `(R, G, B, A)` and auto-detects 0–1 versus
+0–255, so the colours are safe to author as floats. `DovahkiinTuningDef.cs` needed
+`using UnityEngine;` — it had never held a `Color` before.
+
+The 0.8 dark floor stays **in code**, deliberately: it is the user's stated constraint rather than
+a taste setting, and a floor that can be edited past is not a floor.
+
+### Raised the same day: more contrast, same tip
+
+*"add a bit more yellowness… still the same value of yellow at the end of the cone. My goal is to
+make the contrast of yellow a bit more noticeable."*
+
+The tip already sits at zero yellow — the ramp is `strength × (1 - distance)`, which reaches zero
+at the far end **whatever the strength is**. So raising the strength buys contrast rather than
+yellowing the whole cone, which is precisely what was asked for. Strength 0.45 → **0.75**, and the
+yellow itself (1, 0.93, 0.35) → **(1, 0.98, 0.28)** — purer, with less blue diluting it.
+
+| | mouth G | tip G | spread |
+|---|---|---|---|
+| before | 0.81 | 0.31 | 0.50 |
+| now | **0.91** | **0.32** | **0.58** |
+
+The gain tapers exactly as intended: **+0.09 green at the mouth, +0.01 at the tip.** Blue at the
+mouth also drops 0.37 → 0.31, which sharpens the yellow read further.
+
+**Both the XML and the C# default were changed.** The XML is what actually runs; the C# default
+only applies if the def fails to load — but leaving them different is the
+`ancientDragonbornLifetimeTicks` trap (3750 in code against 15000 in the def), where the
+disagreement can only ever surface in the one situation where nobody can see it.
+
+## "Added injury to Tongue" — a pre-existing shout bug the breath made visible (2026-08-06)
+
+The user reported red errors while testing the breath on pawns. Read out of `Player-prev.log`
+(the current `Player.log` had already been overwritten by the next launch — worth remembering):
+
+```
+Added injury to Tongue but it should be impossible to hit it. pawn=Gransier
+dinfo=(def=Flame, amount=4.111111, instigator=Dovahkiin_Alduin_Test62274,
+       hitPart=BodyPartRecord(Tongue parts.Count=0), armorPenetration=0.35)
+```
+
+### The engine's rule, and it is not the one our code tested
+
+`Verse.Hediff_Injury.PostAdd`:
+
+```csharp
+if (Part != null && Part.coverageAbs <= 0f && dinfo.Def != DamageDefOf.SurgicalCut)
+    Log.Error("Added injury to " + Part.def + " but it should be impossible to hit it…");
+```
+
+**The gate is `coverageAbs <= 0`, not `depth == Inside`** — and `SelectSpreadTarget` filtered on
+neither, while `SelectDeepenTarget` filtered on the second. Both now also use
+`CanBeHitDirectly`, which is the engine's test copied exactly rather than a parallel one invented
+to match it.
+
+Two things worth being precise about:
+
+- **No damage was ever lost.** The check is in `PostAdd`, not a rejection — the injury is applied
+  and *then* complained about. This was pure log spam. Red log spam, which `CLAUDE.md` forbids
+  leaving in place, but not a balance bug.
+- **The bug is PRE-EXISTING and belongs to the Dovahkiin's shouts**, not the dragon. Marked for
+  Death and Unrelenting Force use the same picker. The breath merely made it constant: nine pulses
+  × four instances is **36 aimed hits per victim**, so a part that used to surface once in a long
+  while now surfaced every time.
+
+### The blast radius is exactly two parts
+
+Checked rather than assumed — the humanlike body has precisely **two** zero-coverage parts:
+
+| part | coverage |
+|---|---|
+| Tongue | 0 |
+| Waist | 0 |
+
+So Marked for Death's intent that *"organs are thematically right for a death-mark"* is fully
+preserved: hearts, lungs, livers and kidneys all have real coverage and remain targetable. Only
+the tongue and the waist drop out, and both were only ever producing errors.
+
+**This is why the test had to be `coverageAbs` and not `depth`.** Filtering on depth would have
+removed every organ and quietly rewritten a signed-off shout to fix a logging problem.
+
+## The fill becomes a gradient, in space and in time (2026-08-05)
+
+The flat wash was right in principle and wrong in execution. The user's correction:
+
+> *"it should be a clearer orange than the particles in the begining grading back to darker than
+> the particles afterwards… For the soar breath: the cone is clearer at start compared to the
+> circle. For the grounded breath: the tip of the cone starts darker, going clearer the closer it
+> is to the dragon… the darkest color used should be at most a 20% darker of the color used
+> rightnow."*
+
+### Two gradients on different axes
+
+- **SPATIAL** — light at the mouth, dark at the far end.
+- **TEMPORAL** — starts as that gradient, then everything settles to the dark floor.
+
+**The two shape-specific requests turned out to be one rule.** "The tip of the cone is darker than
+near the dragon" and "the soaring cone is lighter than the circle" are the same statement once
+measured **from the mouth**: the reaching cone lies between him and the circle, so banding both
+sets on one shared distance scale produces the soar behaviour for free, with no second rule to
+keep in step. That is why `BuildBandedMeshes` takes the origin and a shared `maxDist`.
+
+| | R | G | B | |
+|---|---|---|---|---|
+| flecks | 1.00 | 0.62 | 0.24 | the particles |
+| mouth, t=0 | 1.00 | 0.76 | 0.40 | **lighter than the flecks**, as asked |
+| tip, t=0 | 0.72 | 0.26 | 0.05 | the base fill |
+| everywhere, t=1 | 0.58 | 0.21 | 0.04 | **base × 0.8 — the user's floor, exactly** |
+
+The floor is a stated constraint, not a taste call, so `DarkFloor = 0.8f` is named and commented
+as such. Nothing in the ramp can pass it: the temporal lerp's far endpoint *is* the floor.
+
+### Why bands rather than a vertex-colour ramp
+
+**`Graphics.DrawMesh` references its material rather than copying it**, so a single shared material
+mutated between queued draws renders *every* draw in whichever colour was set last. The gradient
+therefore needs one material per band — eight bands, eight meshes, eight materials, built once and
+destroyed with the Thing.
+
+Eight draw calls against the ~190 a per-cell fill would have cost, and smooth enough at play
+distance. Band colours are sampled at the band **centre**, so the ramp does not pin its first band
+to pure bright and its last to pure floor.
+
+## The breath gets a body: a filled wash under the particles (2026-08-05)
+
+The user, after the second breath test: *"there should be a whole layer of color filling the whole
+circle, a transparent darker orange"* — and the same for the cone.
+
+**They are right about the principle, and it is worth stating: particles alone never read as a
+volume, however many you use.** The two previous passes both attacked the symptom by adding or
+enlarging flecks. What makes a breath look like a body of fire is a **continuous field of colour**
+with the particles sitting on top of it.
+
+### One mesh, one draw call
+
+The fill is a single `Mesh` covering every cell of the shape, built once at spawn alongside the
+cells it is made from, drawn in **one** `Graphics.DrawMesh` call per frame.
+
+The obvious alternative — a quad per cell — is ~190 draw calls a frame for a full cone, sixty
+times a second, with RocketMan installed. A combined mesh costs the same whether the breath covers
+four cells or four hundred, which is the rule the fleck sampling already follows.
+
+This is the project's established route for a Thing drawing its own geometry
+(`Thing_DragonAspectOverlay` and `Thing_ValorPortal` both do it) — **not** a pawn render patch and
+nothing on the pawn render path.
+
+### Four details that would each have been a defect
+
+- **`ShaderDatabase.Transparent`, not `MoteGlow`.** MoteGlow is *additive* — it brightens what is
+  under it. The request was a **darker** orange, which is a tint, not a glow.
+- **`drawOffscreen` is required.** RimWorld culls dynamic drawing by the Thing's **own cell**, and
+  this Thing sits at the dragon's feet while drawing up to 24 cells away. Without it the fill
+  silently stops rendering when the dragon's cell leaves the view — the notebook's existing gotcha,
+  hit from a new direction.
+- **One material per breath, mutated in place — NOT `SolidColorMaterials`' cache.** That dictionary
+  is keyed by colour, and the fill's alpha animates every frame, so the cache would grow without
+  bound. Mutating `material.color` is free.
+- **Meshes and materials are Unity objects and are not garbage collected.** Both are destroyed with
+  the Thing. Note the name collision that makes this easy to get wrong: inside a `Thing`, an
+  unqualified `Destroy()` is `Thing.Destroy(DestroyMode)`, so the cleanup must say
+  `UnityEngine.Object.Destroy`.
+
+Drawn at `AltitudeLayer.MoteLow` — **under** pawns, so a victim is visibly standing *in* the fire
+rather than behind it. The soar version fills its damaging circle at full strength and its
+cosmetic reaching cone at 45% of that, so the two remain visually distinct: one is a threat, the
+other is the jet arriving.
+
+The fill colour is **derived from the fleck tint** when not set explicitly (darker, translucent),
+so a frost breath gets a cold wash without anyone having to remember — the same reasoning as
+deriving the pulse count.
+
+## The breath, first playtest: soar had no range cap, no state, and holes in it (2026-08-05)
+
+Three defects and one design note from the first breath test.
+
+### 1. He neither soared nor looked at the target
+
+*"he didn't soar nor looked toward the targeted cell. So make sure that the SOAR breath makes him
+look and soar."*
+
+The debug action called `Thing_DragonBreath.Spawn` directly, which only ever knew about geometry.
+**The shape and the movement state are not independent** — SPEC.md 4.6a gives soar a circle and
+grounded a cone, so firing a Pool breath *means* being in the air.
+
+Now routed through **`Comp_AlduinFlight.BreatheAt`**, which does the three things that belong
+together: enters the state the shape implies, turns him to face the target, then spawns the
+breath. **This is the method the attack-pattern executor will call**, so the debug action and the
+patterns cannot drift apart.
+
+Two supporting details:
+- Facing works here because `Pawn_RotationTracker.FaceTarget` returns immediately on an invalid
+  target, and a scripted breath runs on a pawn whose job has no rotate-to-face target. It would
+  **not** survive on a pawn mid-attack — so the pattern must own the job while a breath runs.
+- The state is **pinned for the breath's duration** (`stateHoldUntilTick`). Without it the rhythm
+  rolls him straight back out — a guardian returns to Grounded within a second of taking off.
+
+### 1b. …and the grounded cone had the opposite fault: it never changed length
+
+*"Careful, the grounded breath is always spanning a fixed range, it's always the same cone."*
+
+The cone's **direction** followed the aim; its **length** never did. It always spanned the full
+`dragonBreathConeRange`, so breathing at something three cells away still burned everything twenty
+cells beyond it. He could breathe in a *direction*, never **at** anything.
+
+It now reaches the target and stops, plus a three-cell overshoot so the jet washes over whoever is
+aimed at rather than stopping dead at their feet — clamped between the new
+`dragonBreathConeMinRange` (8) and the existing max (24), which is unchanged because the user had
+already judged the maximum correct.
+
+| aimed at | cone length |
+|---|---|
+| 2 cells | 8 (the floor) |
+| 10 cells | 13 |
+| 18 cells | 21 |
+| 30 cells | 24 (the cap) |
+
+The overshoot is a **constant, not a knob**: it is a property of how a jet looks rather than a
+balance number, and a second range knob that must agree with the first is the trap this session
+has recorded twice already. **Setting `dragonBreathConeMinRange` equal to `dragonBreathConeRange`
+restores the old fixed-length jet** in one edit.
+
+### 2. Soar had no range limit at all
+
+*"He shouldn't be able to target such a faraway distance."*
+
+Pool's reach is simply the distance from the dragon to the aimed cell, and **nothing bounded it** —
+he could place the circle anywhere on the map. New `dragonBreathSoarRange` (14); aiming beyond it
+clamps rather than refusing. The grounded cone was reported as correct and is untouched at 24.
+
+### 3. "Incomplete/holed" — and it was my own optimisation
+
+*"the breath looks esthetically incomplete/holed, there should be another layer of vfx or effect
+that makes it whole."*
+
+Correct, and the cause was the performance fix from earlier the same day: a **fixed** 14 flecks
+scattered over a cone of several hundred cells is necessarily sparse, and the bigger the cone the
+worse it gets. Three changes, none of which restores a per-cell cost:
+
+- **A second, dimmer, much larger layer underneath.** A wide soft wash fills the volume; the
+  bright sparse layer on top supplies detail. The same trick the Dragon Aspect aura's underglow
+  bands already use — the notebook records those as what stopped it reading flat.
+- **Fleck size grows with distance from the mouth.** A cone *widens*, so the size that packs the
+  throat leaves gaps at the far end — and most of a cone's cells are at the wide end. This is
+  probably the single biggest contributor to "holed".
+- **Count grows as the square root of the cell count**, so a large breath is denser than a small
+  one without the cost scaling with area. Emit interval 5 → 3.
+
+### 4. Noted, not built: TES character progression
+
+The breath downed and then killed naked colonists, which the user judged correct — *"it's on point
+for naked random pawns but what about the 'warriors'…? I think the solution is another more phase
+on the project: TES's character progression system, the perks and all that but we'll think about
+that later, note it."*
+
+Recorded in the notebook. **The framing is the valuable part:** RimWorld has no way for a pawn to
+be a *warrior* in the Elder Scrolls sense — skills raise work speed and hit chance, not resistance
+to being burned. So a dragon calibrated against a trained fighter is harmless to everyone else,
+and one calibrated against a colonist kills everyone. A progression layer is what makes the dragon
+tunable against a moving target rather than a fixed one. **No numbers invented.**
+
+## `Thing_DragonBreath`: an active skill with no verb, and the per-tick cost designed out (2026-08-05)
+
+The largest unbuilt piece of the dragon now exists. **Not wired to anything** — the attack-pattern
+executor will be its only caller; a debug action fires it meanwhile.
+
+### It has no verb and no tool, and that is the whole design
+
+The user, giving the constraint before a line was written: a dragon's breath *"isn't just a random
+melee or ranged roll, it's an ACTIVE SKILL… their breathing should be used exactly as in the
+patterns"*, and *"I dont want to risk the dovahs to breath multiple times during a grounded
+period"*.
+
+**So there is no `<tools>` entry and no `Verb` anywhere for it.** Had it been either, RimWorld's
+combat AI would pick it up and fire it on its own schedule — which is exactly the failure being
+ruled out. The only entry point is `Thing_DragonBreath.Spawn`.
+
+### Gradual damage is the mechanic, not a flavour word
+
+SPEC.md 4.6 asks for *"+100% damage delivered GRADUALLY over time of exposure"*. `Thing_ShoutWave`
+applies its payload the instant its front arrives — right for a shout, wrong for a breath. This
+one lingers and **pulses**: each pulse applies one share of the total to whoever is standing in it
+*at that moment*. Walk out after one pulse, take one share. There is deliberately **no
+`alreadyHit` set** — being hit again next pulse is the entire point.
+
+Pulse count is **derived** (`duration / interval`) and the per-pulse share derived from that, so
+the numbers cannot drift apart — this session's repeated lesson.
+
+### Geometry per state (SPEC.md 4.6a)
+
+- **Grounded → `Cone`**: a damaging cone swept along the ground, held open for the duration.
+- **Soar → `Pool`**: a damaging **circle** at the impact point plus a **purely cosmetic** cone
+  reaching down from the dragon. Damaging and cosmetic cells are separate lists, so "what is
+  drawn" and "what is hit" cannot drift into each other — the reason soar needed its own class
+  rather than repeated cone waves.
+- **Flight** → nothing yet; strafing is a third parameter set on this class later.
+
+### The performance shape, after a correction from the user mid-build
+
+The user, while this was being written: *"reusing the same wave mechanics used by the dragonborn
+would be a great performance risk in the case of how dragon's breaths behave (overtime)."*
+
+**They were right, and it landed on a real fault in the first draft** — not the one they feared.
+The rejected 2026-08-04 proposal was ~15 overlapping `Thing_ShoutWave`s; that was never built,
+there is exactly one Thing here and it never draws (`drawerType None`). But the fleck emitter
+walked **every cell of the cone every tick** rolling `Rand.Chance` — several hundred cells at
+60/s, on a tick path, with RocketMan installed. Precisely what `CLAUDE.md` forbids.
+
+Three changes, all measured against "cost must not scale with the size of the breath":
+
+| was | now |
+|---|---|
+| flecks: every cell, every tick | a **fixed count** at randomly chosen cells, every 5th tick — O(flecks), independent of cone size |
+| damage: walk every cell, `GetThingList` each | walk the **map's pawns** and test a `HashSet` of cells — tens of pawns beats hundreds of cells, and allocates nothing |
+| fire/snow: every cell, every pulse | a **sample** of cells. Also fixes a gameplay bug: 0.25 per cell per pulse over 9 pulses would have set very nearly the whole cone alight |
+
+### Shared, narrowly, as instructed
+
+`DovahkiinStrike.ScorchCell` now holds the ground-fire and snow constants, called by **both**
+`Thing_ShoutWave.StrikeBand` and the breath — the notebook's instruction, so burned cells and
+snowy patches cannot come out subtly different from the Dovahkiin's. **Only the terrain half is
+shared**; the damage halves stay separate, because "hit once as the front passes" and "hit
+everyone in me each pulse" are genuinely different rules, not one rule with a flag. The shout
+wave's behaviour is unchanged — same constants, same order, moved.
+
+## Instrumenting beat guessing: the hover is our own stun, plus a think tree that owns the job (2026-08-05)
+
+One playtest with `HOVER-DIAG` settled what three fixes had failed to. **Two causes, neither of
+them anything that had been changed.**
+
+### Cause 1 — our own disengage stun leaked into flight. FIXED.
+
+Six of nine samples: `state=Flight … stunned=True stance=Stance_Cooldown` — **with `soarPause=0`**,
+i.e. stunned after the pause had already ended.
+
+`HoldStill` was called every tick of the pause with a rolling 10-tick stun, so the stun outlived
+the pause and he entered Flight already frozen. `StunHandler.StunFor` takes `Max(existing, ticks)`,
+so **one call for the exact pause length** is both sufficient and precise. Done.
+
+This is also most of what the user called *"a bit more twitchy"*: in a running fight the disengage
+fires constantly, and every one of them froze him for a full second. `dragonDisengagePauseSeconds`
+= 0 removes the beat entirely if it still reads badly.
+
+It matches their description exactly — *"landed on the pawn, the pawn got stunned and hit but
+still managed to flee and Alduin just stood there, went into soar, then landed again, then was in
+flight motionless"*. That is the disengage cycle with a leaking stun on the end of it.
+
+### Cause 2 — a mental state owns job selection. NOT FIXED; needs a decision.
+
+**Every sample read `mentalState=ManhunterPermanent`.** The three clean ones — no target, not
+stunned, not busy — read `job=Wait_MaintainPosture`, `patherMoving=False`, `curPathNull=True`,
+**and the destination changed between samples**. So `TryCircle` is firing, issuing its `Goto`, and
+the manhunter think tree is discarding it and re-deciding on the next tick. `GotoWander` shows up
+in the samples too.
+
+**The user diagnosed this unprompted:** *"You set dovah's as animals right? animals sometimes have
+a moment where they move really slow while they idle."* Exactly right — wander jobs run at a low
+`LocomotionUrgency`, so he ambles rather than flies.
+
+> **THE RULE: YOU CANNOT DRIVE A PAWN BY INJECTING JOBS WHILE A MENTAL STATE'S THINK TREE IS
+> RE-DECIDING EVERY TICK.** Injection works on an ordinary idle animal. Against
+> `ManhunterPermanent` it is a tug-of-war, and the tug-of-war *is* the twitch. The proper answer is
+> a `Lord`/`LordJob` with duties, or our own think-tree node — RimWorld's actual mechanism for
+> scripted creature behaviour. **Deliberately not attempted in this pass**; it is an architectural
+> choice and belongs in front of the user, not slipped in at the end of a debugging round.
+
+### The process lesson, and it is the expensive one
+
+**Four reports, three wrong fixes, and the log was not read until the fourth.** Each theory was
+plausible enough to feel like progress, which is exactly what kept the instrumentation from being
+written. The notebook has said *"read the log BEFORE building a theory"* since 2026-07-30.
+**Instrument on the SECOND failure at the latest.** One diagnostic line beat three careful guesses.
+
+## A killed pawn is not Destroyed, it is despawned — one bad test fed four rules (2026-08-05)
+
+> **⚠ THIS DID NOT FIX THE HOVERING. The user, immediately after: *"nope, nothing changed."***
+> The corpse bug below is **real and the fix is kept** — a dead pawn genuinely was passing as a
+> live target — but it was **not** the cause of "motionless in flight", and neither were the two
+> fixes before it. **Three consecutive wrong diagnoses on one symptom.**
+>
+> Verified before guessing a fourth time: DLL built 19:40, RimWorld started 20:38, log written
+> live — **the running game has the code and nothing is throwing.** So the model is wrong, not the
+> numbers. A temporary `HOVER-DIAG` line now prints the whole decision context (state, job,
+> job target vs engageable target, pather, stance, stun, held-grounded, mental state) every two
+> seconds while he is stationary in flight. **Measure, then fix.** Delete `HoverDiagnostic` and its
+> call site once the cause is known.
+>
+> **The standing rule was followed one round too late:** *if a fix does not work twice, stop and
+> question the diagnosis.* It failed twice before instrumentation was reached for, and the log
+> should have been read at the FIRST report, not the fourth — which is the notebook's oldest
+> lesson in this project.
+
+**The dive is confirmed in play.** Two things left, and they turned out to be one cause and one
+consequence of it.
+
+### The cause: `CurrentTargetOf` accepted corpses
+
+The user: *"still motionless sometimes (after his target's demise **especially**)"* — and, the
+round before, *"the moment his target was downed"*. Both point at the same line.
+
+The target test was `!thing.Destroyed`. **A killed pawn is not `Destroyed`.** It is *despawned*
+into a `Corpse`, and the `Pawn` object goes on living inside it. So a dead target kept passing as
+a live one — and `CurrentTargetOf` is the single input to **four** separate rules, every one of
+which then believed he was still in a fight:
+
+| rule | what it concluded about a corpse |
+|---|---|
+| `MustBeGrounded` | target within 4 cells → **stay grounded**, hard override |
+| `OutOfReach` | target is right there → **do not disengage** |
+| `TryCircle` | he has a target → **skip circling**, no destination |
+| `ChooseNextState` | target exists → run the combat rhythm, not the idle branch |
+
+Nothing left could move him on. He hung over the body until something else happened to him.
+
+**`IsEngageable` now rejects destroyed, despawned, dead and downed.** Downed is deliberate — the
+user reported it as a hovering trigger last round — and it does mean **he now leaves downed pawns
+alone and looks for the next threat**, which is a real behaviour change and is flagged rather than
+buried.
+
+> **THE LESSON: `Destroyed` is not "gone", and for a pawn it is not even "dead".** The three states
+> are independent — `Destroyed`, `!Spawned`, `Dead` — and a corpse is the middle two without the
+> first. Any "is this still a thing I care about" test on a Pawn needs all of them. And when one
+> accessor feeds four rules, a wrong answer there does not look like one bug; it looks like four
+> unrelated ones, which is exactly how this presented across two sessions.
+
+### The consequence: "the speed seemed to periodically be dialed down, alternatively"
+
+**Nothing was modulating his speed.** He was cycling states, and each state carries its own
+multiplier: Flight **3.60x** → Grounded **1.00x** → Soar **1.32x** → Flight again.
+
+The loop ran because `TryCircle` refused to act. It only overrode `Wait` / `Wait_Wander` /
+`GotoWander`, so any *other* idle job his think tree produced left him unable to get a
+destination — he hovered to the grace, dropped to Grounded, disengaged (nothing in reach), soared
+the one-second pause, flew, and hovered again. Every lap is a visible slow-down.
+
+Two fixes:
+
+- **No target means no fight, so any idle job may be replaced.** The narrow job gate is gone; the
+  guard that matters is the caller's, which only circles when there is no target at all.
+- **A minimum leg, DERIVED from the radius.** `CellFinder.RandomClosewalkCellNear` treats the
+  radius as a *maximum* and will happily return a cell one step away, so he was doing one-cell
+  hops with a stop between each — stuttering, not flying. Half the radius makes each leg a real
+  sweep. Derived rather than given its own knob **on this session's own lesson**: a second number
+  that must agree with `dragonCirclingRadius` is a number that will one day disagree with it.
+
+## The landing a runner could not lose: two numbers that never agreed (2026-08-05)
+
+The user: *"his stun-landing is 95% of the time outran by his fleeing target."*
+
+**That was not bad luck. The landing was unloseable for the target by construction**, for two
+independent reasons that each had to be found separately:
+
+1. **The trigger distance and the blast radius never agreed.** He lands when the target is within
+   `dragonLandToBiteDistance` = **4 cells**, but the landing stun only reaches
+   `dragonLandingStunRadius` = **2.4 cells**. A target at the distance that *causes* the landing
+   is outside the blast it produces. Two numbers that must relate, in two different places, with
+   nothing tying them together.
+2. **Landing costs him the speed that let him catch up.** Flight is `dragonFlightSpeedFactor`
+   **3.60x**; grounded is **1.00x** of `MoveSpeed` 4.6 — which is roughly what a fleeing colonist
+   runs at. So having missed once, he could never close again. He simply trailed them until the
+   disengage fired, took off, and repeated it.
+
+### The fix: the landing finishes the dive
+
+He now comes down on a cell **beside the target** rather than wherever he happened to be when the
+landing triggered, and the stun is centred on where he actually lands. That is what *"LAND ON the
+target using the landing stun"* meant in SPEC.md 6.5c-4's pattern 1 from the beginning — it had
+been implemented as "switch state to Grounded", which is a different thing.
+
+- **Beside, never on.** Landing in the target's own cell would hand them the collision shunt and
+  restart the conveyor that caused three rounds of kidnapping. `BestCellBeside` picks the free
+  neighbour nearest the dragon, so the dive reads as coming in from the direction he was flying.
+- `Notify_Teleported(false, true)` — **endCurrentJob false** so he does not forget the target he
+  is mid-attack on, **resetTweenedPos true** or he visibly slides across the intervening cells
+  instead of dropping.
+- Bounded by `dragonDiveMaxCells` (6) so a pounce can never become a map-wide teleport, skipped
+  entirely under 1.5 cells (already on top of them), and suppressed while `IsHeldGrounded` so a
+  grab landing cannot pounce.
+
+> **THE LESSON: two numbers that must agree, held in two places, will eventually disagree.** The
+> trigger distance lives in `dragonLandToBiteDistance` and the blast in `dragonLandingStunRadius`,
+> and nothing in the code or the def said they were related — so the landing shipped with a hole
+> in it that reads exactly like bad luck. Whenever a range decides *whether* something fires and a
+> second range decides *what it hits*, state the relationship where both can see it, or derive one
+> from the other.
+
+**Deliberately NOT changed in this pass.** The user asked for the landing first and said they
+would re-judge the motionless-flight report afterwards, so nothing else was touched — a second
+change now would make the next report impossible to attribute. Two candidate causes are already
+identified and written up in the notebook for when that report comes.
+
+## A dovah does not jog after you: the disengage, and facts moved off the one-second poll (2026-08-05)
+
+**The shake is confirmed in play** — the user: *"finally it works and it is indeed quiet funny and
+amazing at the same time."* Two things came with that report.
+
+### 1. He chased people on foot — and it was the dwell timer for the third time
+
+The user: *"during combat in general, he still seems to chase around people in grounded state."*
+
+`ChooseNextState` **already** returns Flight the moment a target is out of reach. It was never
+being asked: grounded dwell is **nine seconds**, and `UpdateState` returns early on that cooldown
+long before the choice is reached. So every landing bought nine seconds of ordinary animal AI
+trotting after a colonist.
+
+**This is the third defect from the same root, and the rule was already written down:** *sort every
+state rule into FACT or RHYTHM; facts must bypass the cooldown.* "My target is out of reach" is a
+fact. It had been left on the wrong side of the line.
+
+**The new shape, the user's own:** a grounded dragon whose target is further than
+`dragonDisengageDistance` (4, they suggested "2-4") breaks off — **Soar**, hang motionless for
+`dragonDisengagePauseSeconds` (1), then peel away into a **circling flight**, which is where the
+attack-pattern choice will live once patterns exist. Static soar is a designed state, not a
+side effect; SPEC.md 6.5c-4's pattern 2 is literally "soar static, breathe, leave".
+
+The pause holds him with a **stun**, because that is the engine's own movement gate — the lesson
+from the grab, reused rather than rediscovered. A guardian is exempt: sitting still *is* its job.
+
+### 2. "Standing still while in flight… the moment his target was downed" — two causes
+
+**Cause A: the facts ran on a one-second poll.** Everything lived inside `UpdateState`, called on
+`dragonStateIntervalTicks` (60). The anti-hover grace is 1.5s, so he could hang in the air for up
+to **2.5 seconds** before anything noticed. `ApplyStateFacts` now runs **every tick**; only the
+rhythm still waits for the interval.
+
+**Cause B, and it is the one that would have kept biting: flight with nothing to chase has no
+destination.** He was not stuck — he genuinely had nowhere to be. Worse, the old fix for it
+(drop to Grounded) would now feed straight into the new disengage and oscillate: land, disengage,
+soar, flight, land, for ever.
+
+**So flight now CIRCLES.** With no target and no path, he is sent to a cell within
+`dragonCirclingRadius` (14) via `CellFinder.TryRandomClosewalkCellNear` + `JobDefOf.Goto`, using
+the same "only override an empty or wandering job" gate the guardian's Wait job already uses.
+That makes SPEC.md 6.5c-4's *"FLIGHT IS HOME"* literally true instead of aspirational.
+
+### Safety
+
+`MustBeGrounded` is checked first in `ApplyStateFacts` and already returns true while
+`IsHeldGrounded`, so **the grab is immune** — he cannot disengage mid-shake. `soarPauseUntilTick`
+is in `PostExposeData`; without it a game reloaded mid-pause would leave him hovering for ever,
+since nothing else would move him on to flight.
+
+### Still NOT built, and the user asked directly
+
+**The attack-pattern framework does not exist.** Grepping the whole source for it returns nothing
+but comments. What exists is the movement state machine, and the loop above is *pattern 1 (dive
+and brawl)* emerging from it rather than being chosen. **Patterns 2, 3 and 4 are all blocked on
+`Thing_DragonBreath`, which has never been written** — that remains the largest single piece of
+unbuilt work in the dragon.
+
+## The shake: `pawn.Rotation` cannot survive the rotation tracker, so the sprite is swapped instead (2026-08-05)
+
+**The kidnapping is confirmed fixed in play** — the user: *"no more kidnapping finally."* What was
+left: *"the 'shake around' (both were standing still, no east-west view change nor pawn
+localisation change)."*
+
+### Why assigning `pawn.Rotation` showed nothing
+
+`Verse.Pawn_RotationTracker.UpdateRotation()` overwrites it, and it runs from
+`Pawn.ProcessPostTickVisuals` — **a separate pass after the whole tick**, so there is no point
+during `Tick` at which we could win the race:
+
+```csharp
+if (pawn.Destroyed || pawn.jobs.HandlingFacing) return;
+if (curStance is Stance_Busy s && s.focusTarg.IsValid) { Face(...); return; }
+if (pawn.pather.Moving) { FaceAdjacentCell(nextCell); return; }
+if (pawn.jobs.curJob != null) FaceTarget(CurJob.GetTarget(curDriver.rotateToFace));
+```
+
+A grabbing dragon has a job targeting his victim, so that last line re-points him at the victim
+every tick and the flip is discarded before a frame is drawn. Note also that
+`Pawn_RotationTracker` has **no `RotationTrackerTick`** in 1.4 — searching for one finds nothing
+and looks like the class is inert.
+
+### The fix reuses the eight-way flight trick
+
+A **`Graphic_Single` returns the same material for every `Rot4`**, which is exactly why the flight
+octants work without a render patch. So the shake installs the grounded `_east` / `_west` sprite
+as a `Graphic_Single` and the engine's facing stops mattering. `AlduinGraphicsUtility
+.SetShakeProfile` + `GroundedProfile`; no Harmony patch, no fight with the rotation tracker, and
+it reuses sprites already shipped.
+
+**The victim now swings with him too** — the hold cell is recomputed on each flip to the side he
+is facing, which is the *"pawn localisation change"* the user was missing. It is still always an
+**adjacent** cell, never his own; that rule is now stated in capitals at both sites, because
+breaking it is what caused three rounds of kidnapping.
+
+### The undo is owned by the DRAGON, deliberately
+
+A `Graphic_Single` ignores `Rot4` **by design**, so leaving one installed freezes him in profile
+permanently — facing one way whichever direction he walks. Three exit paths had to be covered, and
+only one of them is the ordinary one:
+
+- **normal release** — `Comp_AlduinFlight.EndShakeProfile()`, immediate
+- **victim dies mid-shake** — `Pawn_HealthTracker.HealthTick` opens with `if (Dead) return`, so
+  **the hediff simply stops ticking** and can never clean up after itself
+- **save/reload mid-shake** — `shakeUntilTick` is now in `PostExposeData`, or the restore is
+  disarmed by the reload
+
+So the comp holds a `shakeUntilTick` and restores the sprite from its own `CompTick`, which runs
+on the dragon and therefore runs regardless of what became of the victim. `EnterState` could not
+have covered this: it only fires on a state **change**, and he is pinned Grounded throughout.
+
+`SetShakeProfile` is guarded on `IsAlduin` — without it, any future creature with a
+`Dovahkiin_Maw` tool that triggers the grab would have **Alduin's sprite** installed on it, since
+the swap does not care whose graphic it is.
+
+## THE KIDNAPPING, SOLVED: the grab was moving the DRAGON, and it always had been (2026-08-05)
+
+Third report. The user: *"still not working, a rather chaotic mixt with disappearing kidnapping
+trajectory this time, the pawn survived and was down at least. I took a closer look: he spawned,
+flew to a pawn, **stood there a bit**, then kidnapped the pawn."*
+
+**Two fixes had been aimed at stopping the DRAGON from walking off. The dragon was never walking
+off. The grab was pushing him, one cell per tick.**
+
+### The mechanism
+
+`Hediff_DovahGrabbed.Tick` held the victim with `victim.Position = grabber.Position` — putting a
+pawn inside the dragon's own cell every tick. That is a **collision**, and RimWorld resolves
+collisions by moving the pawn that is stood on:
+
+```
+Verse.AI.Pawn_PathFollower.PatherTick()
+
+  if (WillCollideWithPawnAt(pawn.Position))        <-- TRUE, we just teleported the victim in
+  {
+      ...
+      pawn.Position = cell;                        <-- ⚠ THE DRAGON IS MOVED, DIRECTLY
+      ResetToCurrentPosition();
+      if (moving && TrySetNewPath()) TryEnterNextPathCell();   <-- and put back on his journey
+  }
+  else
+  {
+      if (pawn.stances.FullBodyBusy) return;       <-- ⚠ the stun gate is ONLY in this branch
+      ...
+  }
+```
+
+Teleport → shunt → teleport → shunt, sixty times a second. **The grab built its own conveyor
+belt.** Every symptom falls out of it:
+
+| symptom | cause |
+|---|---|
+| `StopDead()` did nothing (fix 1) | the collision branch calls `TrySetNewPath()` immediately after |
+| stunning him did nothing (fix 2) | **the collision branch never reads `FullBodyBusy`** |
+| *"chaotic… disappearing trajectory"* | the teleport/shunt alternation, tick by tick |
+| *"stood there a bit, THEN kidnapped"* | before the grab nothing is in his cell, so the normal branch runs and the stun works perfectly |
+| *"the pawn survived and was **down**"* | `PawnUtility.PawnBlockingPathAt` **skips downed pawns** — the conveyor switches itself off the instant the victim goes down |
+
+That last row is the user's own detail and it is the strongest confirmation in the set.
+
+A standing victim always collides: `ShouldCollideWithPawns` is true for anyone not downed/dead
+with hostiles nearby — **a stun does not exempt them** — and `PawnsCanShareCellBecauseOfBodySize`
+returns false outright when either pawn is `BodySize >= 1.5`. The dragon is **4.6**.
+
+### The fix
+
+**Hold the victim in an ADJACENT cell, never the dragon's own.** At `drawSize` 4.6 the dragon
+covers roughly four cells, so a neighbouring cell is still visually inside his sprite and reads
+exactly as "in the jaws" — while the engine sees an empty cell beneath him and leaves him alone.
+
+The cell is chosen once (nearest free neighbour to where the victim already stands, so being
+seized pulls them the shortest distance), kept for the duration so the shake's east/west flipping
+does not drag them about, and saved in `ExposeData`. Cells occupied by a third pawn are skipped —
+otherwise the same shunt is simply handed to whoever is standing there.
+
+The stun from fix 2 is **kept and is now actually honoured**, because the collision branch no
+longer fires. `StopDead` stays as path cleanup. Both remain correct; they were just never
+sufficient on their own.
+
+> **THE LESSON, and it is worth more than the bug:** *the fix was aimed at the dragon for two
+> rounds because the symptom was "the dragon moves".* Nobody asked **what is moving him**. The
+> answer was our own code, through an engine path that exists to be helpful. **When something
+> moves and you cannot find who told it to, look for what you did to the cell it is standing in**
+> — and read *every* branch of the engine method you are relying on, not the one that confirms
+> the theory. Fix 2 failed because I read `PatherTick`'s `else` and stopped.
+
+## The kidnapping, second report: `StopDead` and a grounded flag were never movement stops (2026-08-05)
+
+**⚠ THIS FIX DID NOT WORK EITHER — see the entry above for the real cause.** Everything below is
+still *true*, and both changes were kept, but neither was sufficient: the dragon was being moved
+by a collision path that ignores the stun entirely. Retained because the API facts are correct and
+the reasoning is what narrowed the search on the third round.
+
+The user, after the 2026-08-04 fix: *"he still kidnaps pawns and fly them away, only difference is
+they all died on arrival. He is supposed to be static while he does the bite and throw."*
+
+**Second report of the same bug, so the diagnosis was questioned rather than the numbers retuned**
+— the standing rule in `CLAUDE.md`. That was correct here: **neither half of the first fix was a
+movement stop, so no amount of tuning either one could ever have worked.**
+
+### Why the first fix could not have worked
+
+| what it did | what it actually affects |
+|---|---|
+| `pather.StopDead()` every tick | Clears `curPath` / `moving` / `nextCell` and **nothing else**. It never touches the **job**, so the job driver paths again on its next tick. |
+| `HoldGroundedUntil(...)` | Constrains only which **movement state** the machine picks. **A grounded dragon still walks.** Its own doc comment claimed it stopped him; that comment was wrong, and reading it is how the wrong model survived. |
+
+There is a second, nastier layer: **this hediff lives on the VICTIM**, so it ticks inside the
+*victim's* `health.HealthTick()`. `Verse.Pawn.Tick()` runs `pather.PatherTick()` and
+`jobs.JobTrackerTick()` for the **dragon** on the dragon's own tick, independently. So `StopDead()`
+was being called from one pawn's tick and undone during another's, every single tick.
+
+### The real gate is the engine's, and it is one line
+
+```
+Verse.AI.Pawn_PathFollower.PatherTick()   ->  if (pawn.stances.FullBodyBusy) return;
+Verse.Pawn_StanceTracker.FullBodyBusy     ->  if (!stunner.Stunned) return curStance.StanceBusy;
+                                              return true;
+```
+
+**A stunned pawn cannot move, and RimWorld enforces it** — no fighting the job system, no
+per-tick tug-of-war. And `RimWorld.StunHandler.StunFor` only sets `stunTicksLeft` (plus an
+optional battle-log entry and mote flag); **it does not stop or clear jobs**, so the dragon keeps
+the job he had and resumes it the instant the grab ends.
+
+**The fix is to stun the grabber every tick — exactly what the VICTIM two lines below already
+got.** That the right tool was already in the same method, applied to the other pawn, is the tell
+that this was a modelling error and not a missing feature.
+
+`StopDead()` is kept, demoted to what it really is: cleanup, so he does not resume a stale path to
+his old destination when the stun lapses. `HoldGroundedUntil` is kept for its real job, stopping
+the state machine swapping his sprite to flight mid-shake. **Both doc comments corrected**, since
+the false one is what made this bug survive a round.
+
+### "They all died on arrival" — most likely a consequence of today's other fix
+
+Not proven, but the timing is hard to ignore: **`dovahGrabChance` was silently running at 0.02 all
+along** because of the stray `>` fixed earlier today, and it is now genuinely **1.0**. So *every*
+bite grabs, and each grab ends in 22 Cut + 18 Stab + `HealthUtility.DamageUntilDowned` on top of a
+45-power bite — then he bites again immediately. **Put `dovahGrabChance` back to 0.02** and this
+should stop being constant. If victims still die every single time at 0.02, the release damage
+stack is too heavy and that is a tuning question, not this bug.
+
+> **THE LESSON, and it is the reason the rule exists:** *"if a fix does not work twice, stop and
+> question the diagnosis rather than trying a third variation of the same idea."* Both halves of
+> the first fix were plausible, named the right bug in their comments, and did nothing. **A code
+> comment asserting a behaviour is not evidence of that behaviour** — `HoldGroundedUntil`'s
+> summary said "and does not move" and was believed for a full round. Verify the gate, do not read
+> the claim.
+
+## The bite that cancelled Dragon Aspect, and a stray `>` that silenced a test (2026-08-05)
+
+### The maw keeps power 45 and gains `armorPenetration 0.30` — the power was never the problem
+
+The user: the dovah's bite was one-shotting a **naked but Dragon-Aspected** Dovahkiin roughly
+70% of the time, and asked for about −15%. **That cut was applied and then reverted the same day,
+because measuring it showed it could not fix the cause.**
+
+`Verse.Tool.armorPenetration` defaults to **−1**, and `VerbProperties.AdjustedArmorPenetration`
+then derives it as **`damage × 0.015`** (decompiled, not recalled). The maw declared no explicit
+AP, so **its power *was* its armour penetration**:
+
+| maw power | derived AP | vs Dragon Aspect's +0.60 Sharp |
+|---|---|---|
+| 45 | **0.675** | armour **fully cancelled** — negative margin, every bite at full damage |
+| 38.25 (−15%) | 0.574 | 0.026 left — still nothing. **This is why the cut was reverted** |
+
+`Bite` is `armorCategory Sharp` with `harmAllLayersUntilOutside`, so Dragon Aspect's armour is
+exactly the stat that should have been saving her — and against this tool it had never once
+applied. A naked Aspected pawn was dying precisely as fast as a naked one.
+
+**Root cause: a creature tool's melee power silently doubles as its armour penetration, so tuning
+the damage down tunes the penetration down with it and the two can never be balanced apart.**
+Cutting damage treats the symptom and moves the cause along with it — which is why the user's
+−15%, correctly aimed at what they could observe, could not have worked.
+
+**The fix separates them.** `<armorPenetration>0.30</armorPenetration>` on the maw, power restored
+to **45**. Per `Verse.ArmorUtility.ApplyArmor` — `effective = max(rating − AP, 0)`, then
+`roll < effective/2` deflects and `roll < effective` halves the damage and converts Sharp to
+Blunt:
+
+| target | effective armour | per bite |
+|---|---|---|
+| Dragon Aspect, 3 words (+0.60) | 0.30 | **15% deflect + 15% halved-and-blunted** |
+| Dragon Aspect, 2 words (+0.40) | 0.10 | 5% + 5% |
+| Dragon Aspect, 1 word (+0.10) | 0 | unchanged |
+| naked, no Aspect | 0 | unchanged — still bitten in half |
+
+So the shout finally does defensively what it claims, and an unprotected pawn gains nothing.
+**Armour is the answer to a dragon, not hit points** — which is the shape SPEC.md §6.6 already
+wanted when it made wounding a dragon tactical rather than a damage race.
+
+**Known and accepted consequence, flagged to the user rather than buried:** this helps *every*
+armoured pawn. A colonist in good plate (~0.75 Sharp) reaches effective 0.45, so a dragon is
+markedly less dangerous to a well-equipped colony than it was. Kept deliberately.
+
+**Wing bash (AP 0.45) and tail sweep (AP 0.51) are still on the derived default** and were left
+alone — they were not what the user reported, and their lower power makes the effect milder
+(effective 0.15 and 0.09 against three words). Worth revisiting if the same complaint arrives
+about them.
+
+> **THE METHOD LESSON, and it is the one that changed the outcome:** the user gave a number
+> (−15%) aimed at the symptom they could see, and it was the wrong lever — but *only measurement
+> showed that*, not argument. Deriving the AP took one decompile call and turned "reduce it a bit
+> and see" into a fix with arithmetic behind it. **When a balance request arrives, compute what
+> the number actually does before shipping it**; this project's standing habit of verifying an API
+> paid here in a place that looked like pure tuning.
+
+### `dovahGrabChance` was `>1.0` — the grab test was never at 1.0
+
+`<dovahGrabChance>>1.0</dovahGrabChance>`. XML permits a bare `>` in text content, so the file
+parsed clean and **no check in this project could see it**: `[xml](...)` passes, the build passes,
+the def loads. But `>1.0` is not a float, so RimWorld logged an XML error, dropped the field, and
+left the **C# default of 0.02** in force.
+
+**Consequence: the "force the chance to 1.0 and prove the grab fires" test was silently running at
+2%.** The one diagnostic the next playtest depends on was disarmed by a single character.
+
+> **THE PATTERN, and it is one this project keeps paying for in new coats:** *well-formed is not
+> valid.* The Ancient Dragonborn's missing `CompEquippable`, the test dragon's `Teeth` body-part
+> group against `Bird`, and now a stray `>` in a float — all three parse, all three build, all
+> three fail only in RimWorld's own load-time pass. **Read the log after touching any def.**
+
+*(Corrected while verifying: a `[float]::TryParse` check called `1.0` invalid. That was the
+harness, not the file — this machine's culture is **fr-FR**, decimal comma. RimWorld's
+`ParseHelper` uses **InvariantCulture**, under which `1.0` and `38.25` both parse and `>1.0` does
+not. Any float check written in PowerShell on this machine must pass InvariantCulture explicitly
+or it lies in exactly the direction that invites a wrong "fix".)*
+
+## Two bugs with one shape: a parameter read from the wrong place, and a cooldown that outranked a rule (2026-08-04)
+
+**Guarding was confirmed working** by the user in the same round. These are the two that were not.
+
+### The grab never fired, even at chance 1.0
+
+`Verb_MeleeAttackDamage.DamageInfosToApply` has the signature **`DamageInfosToApply(LocalTargetInfo
+target)`** — the target is passed **in**. The patch was reading `Verb.CurrentTarget` instead,
+which is set by the casting path and is **not reliably populated for a melee swing**, so
+`CurrentTarget.Thing` came back null and the early-out fired on every single hit.
+
+The user had already forced the chance to 1.0, which is what made it obvious the roll was never
+being reached rather than being unlucky. **Take the parameter; do not re-derive it from state.**
+
+### He meleed while flying, and hovered motionless doing it
+
+Reported as two things — *"he still does melee rolls while still in flight (he shouldn't be able
+to)"* and *"he still is sometimes being static while in flight (flight state IS NEVER
+motionless)"* — but they are **one bug**, and the user diagnosed the second half themselves:
+*"animals manhunting tend to stop a bit after hitting their target."*
+
+**The cause was the dwell timer.** Arrival already returns Grounded, but flight's dwell is 8
+seconds, so on reaching his target he stayed locked airborne and spent it swinging — and because
+attacking halts movement, a flying dragon appeared to hover.
+
+Landing-to-attack is now a **hard override** alongside the grounding rule, not a choice the
+cooldown can veto. That also delivers SPEC.md 6.5b's "cannot melee while airborne" for free, by
+making it impossible to be airborne and in melee range at the same time.
+
+> **THE PATTERN ACROSS BOTH, WORTH KEEPING:** a cooldown added to stop *flicker* silently became
+> a cooldown that outranked *correctness*. Rules that express facts — too hurt to fly, holding
+> something in your jaws, standing in melee — must bypass it. Rhythm choices must not. Every new
+> state rule needs that question asked of it explicitly.
+
+## The live kidnapping, and a guardian that guarded nothing (2026-08-04)
+
+Three defects from one playtest, and **two of them share a root cause worth naming: a flag that
+only ever reached the RENDERER was expected to change BEHAVIOUR.**
+
+### 1. The kidnapping
+
+The user: *"he flew to a pawn, grabbed him, and kept flying straight… I just witnessed a live
+kidnapping"* — all the way to the map edge.
+
+**The grab pinned the VICTIM and nothing else.** Dragging the victim into the dragon's cell every
+tick, while the dragon carried on pathing, turned "held in the jaws" into "carried away": the
+victim faithfully teleported after him, off the map.
+
+A dovah shaking something **stands still to do it**. The grab now calls `pather.StopDead()` every
+tick — every tick, not once, because his AI keeps issuing fresh move jobs and a single stop is
+overridden by the next one — and pins the movement state machine to **Grounded** for the
+duration, so it cannot decide mid-shake that he ought to be flying.
+
+That also explains the frozen facing the user noticed: with him travelling while grabbing, the
+shake's east/west flips were fighting the movement state for control of the sprite. A stationary
+dragon has no such contest.
+
+### 2 and 3. The guardian wandered, and ignored colonists standing next to it
+
+*"When I spawned Alduin in guarding mode he still kept his old idle pattern (wanders around
+instead of staying static), and also he isn't attacking anybody despite the pawns being real
+close."*
+
+**Both were the same omission.** `isGuardian` only ever reached the state machine — which picks
+his **sprite and speed**. It never touched his **jobs**. So he stayed an ordinary wild animal:
+wandering because animals wander, and ignoring colonists because **a wild animal is hostile to
+nobody** — the notebook's own gotcha, arriving from a new direction.
+
+**Guarding is a behaviour, so it had to be enforced on his AI:**
+
+- **Holding still** is now a `JobDefOf.Wait` job refreshed while idle or wandering, rather than
+  a per-tick fight with his pather. It stops the wander job being *issued*, instead of cancelling
+  it after the fact.
+- **The trigger** scans for a **player-faction** pawn within `dragonGuardTriggerRadius` (12) and
+  starts `ManhunterPermanent`. Deliberately **not** a hostility test — a factionless dragon is
+  hostile to nobody, so `GenHostility` would return nothing and the mound would never wake. That
+  is the third time this project has been bitten by the same blind spot; it is checked for by
+  faction instead.
+- Wildlife is excluded on purpose: a squirrel wandering past should not rouse the World-Eater.
+
+## The summons become targetable without losing the spirit look (2026-08-04)
+
+**The defect:** a dragon chased fleeing colonists and *"couldn't attack the ancient dragonborn"*.
+The summons' whole designed role is to **divide enemy attention — to tank** — and they were being
+ignored entirely.
+
+**The cause, verified by scanning all 12,819 types in `Assembly-CSharp` for callers of
+`PawnUtility.IsInvisible`:**
+
+| caller | effect |
+|---|---|
+| **`Verse.Pawn.ThreatDisabled`** | **decisive — an invisible pawn is not a threat at all** |
+| `JobGiver_AIFightEnemy`, `JobGiver_ReactToCloseMeleeThreat`, `JobGiver_Berserk.FindPawnTarget` | AI never picks them |
+| `Toils_Combat.FollowAndMeleeAttack`, `JobDriver_AttackStatic` | attacks in progress drop them |
+| `Verse.GenUI.TargetsAt` | **the player could not click them either** |
+
+Both hediff defs already carried a comment warning this was possible and calling it *"a balance
+question, not a bug"*. **It was a bug**: being ignored defeats the summons' entire purpose.
+
+### A diagnosis that was made too fast, and corrected
+
+This was first attributed to invisibility **before reading the game log**. The log — which the
+user had to ask for — carried six config errors: three of the test dragon's four melee tools
+named body-part groups vanilla `Bird` does not have, so he could barely fight *anything*. That
+was a confound, and it was ours.
+
+Only after fixing the tools, when the user reported he now chased colonists but still ignored the
+summon, did the invisibility diagnosis become sound. **Check the log before building a theory.**
+
+### The fix: vanilla's own materials, applied ourselves
+
+Both options first offered were bad. Dropping invisibility outright (**A**) would have made them
+ordinary visible allies, and the user was explicit that a spirit is not negotiable. Patching the
+targeting (**B**) meant 5–7 Harmony patches — several needing **transpilers**, since the
+`IsInvisible` check sits mid-method — on the AI hot path that RocketMan caches, with a missed
+call site producing enemies that target them *sometimes*.
+
+**`Verse.InvisibilityMatPool.GetInvisibleMat` is PUBLIC STATIC**, and it is the whole of what
+vanilla invisibility does to a material:
+
+```csharp
+value.shader = ShaderDatabase.Invisible;
+value.SetTexture(NoiseTex, TexGame.InvisDistortion);
+value.color = new Color(0.75f, 0.93f, 0.98f, 0.5f);
+```
+
+So **NEW `Graphic_Spectral`** wraps a graphic and hands out those same materials, and
+**`SpectralPawnUtility`** puts wrappers on the summon's body, head, hair, beard and fur graphics.
+**Pixel-identical to the signed-off look, shimmer included** — not an approximation — while the
+pawn no longer carries `HediffComp_Invisibility`, so `IsInvisible()` is false, so
+`ThreatDisabled` is false, so enemies see him.
+
+**Zero Harmony patches. Nothing on the AI path.** `Verse.Graphic` has no abstract members, so
+only the `Mat*` surface needed overriding.
+
+### Details that matter
+
+- **All five graphics, not just the body.** A humanlike is drawn from several; wrapping only
+  `nakedGraphic` gives a solid head floating over a ghostly body.
+- **`ClearCache()`, never `SetAllGraphicsDirty()`** — the latter calls `ResolveAllGraphics()`,
+  which rebuilds every graphic and throws the wrappers away. Same trap as the dragon's swap.
+- **Re-applied every 60 ticks** from `Hediff_AncientDragonborn.Tick` (which `Hediff_CallOfValor`
+  inherits, so one hook covers both), because anything calling `ResolveAllGraphics` discards
+  them. `MakeSpectral` returns false without work once the wrappers are on, so the common case
+  is five reference compares. `Wrap` refuses to wrap a wrapper, so re-application cannot nest.
+- **Corpse, rotting and dessicated graphics are deliberately NOT wrapped** — a summon leaves no
+  corpse (the doomed pattern, `RISKS.md` §9), and a solid one would be correct if it ever did.
+- **Become Ethereal keeps its invisibility comp**, verified: exactly one remains in the mod. On
+  the Dovahkiin's own shout the untargetability is the point.
+
+## State cooldowns, and the combat rhythm (2026-08-04, after the first behaviour playtest)
+
+**The defect was flicker, not weighting — and the user's own suggested fix is what cures it.**
+
+Reported: he *"barely switches to soar at all and is using flight a bit too often"*, together
+with a request for *"a system of cooldown between each switch"*. Those turned out to be the same
+item. Idle-and-moving is Flight and idle-and-stationary is Grounded, so with no minimum dwell
+the state flipped **every time he started or stopped wandering**. What read as "too much flight"
+was the state machine oscillating, not a bad probability.
+
+**Each state now has a minimum dwell time in real-time seconds**, as the user specified them,
+and nothing may leave a state until it expires.
+
+**One thing bypasses the cooldown: the grounding rule.** Being too hurt to fly is a fact, not a
+rhythm choice — waiting out a six-second timer to honour it would read as the rule not working.
+
+### The combat rhythm
+
+Target given by the user: **SOAR ≥ GROUNDED > FLIGHT** by time spent, *"he shouldn't be using
+grounded or soar state more than the other"*, with flight used *"from time to time to back away
+from the fight a bit then come back"*.
+
+- **Adjacent to a bite target → Grounded, not rolled.** He cannot melee while airborne
+  (SPEC 6.5b), so hovering beside a target is the one genuinely useless thing he could do.
+- **From Grounded** → rolls to take off into Soar.
+- **From Soar** → two exits: Flight (the user's "higher chance") or Grounded (the "lower").
+- **From Flight → always back to Soar.** In combat, flight is an excursion, never a stance.
+
+**Flight's dwell is the shortest of the three on purpose.** That, plus "flight always returns to
+soar", is what keeps it the rarest state by *time* even though soar's higher-chance exit leads
+into it. **Dwell times and chances weight the result together**, which is why both are exposed —
+computing their interaction on paper would be false precision, so the test script tells the user
+which knob moves which way instead.
+
+### Idle behaviour was already right, and is now confirmed rather than guessed
+
+The user's later clauses were the spec, not the opening observation: *"it is very important that
+dovahs stay in flight mode while idle, circling and moving around, and be grounded while
+stationary (in the case of dragon mound guarding for example)."* That is what was already built,
+so it is left alone and recorded as settled. **Soar barely appearing while idle is correct** —
+soar is a combat stance. Idle remains deterministic rather than rolled: a circling dragon should
+keep circling, and the dwell timer is what stops it flickering.
+
+## The movement state machine, and the speeds that go with it (2026-08-04)
+
+**Tests 1 and 2 passed first** — the user confirmed all three sprite sets render correctly, and
+then *"8 facings tested and confirmed."* So both the `nakedGraphic` swap and the
+`Graphic_Single`-per-octant scheme are **proven in play**. This builds on two mechanisms that
+work rather than two that ought to.
+
+The dragon now picks his own state. `Comp_AlduinFlight` decides grounded / soar / flight on an
+interval, keeps the eight-way facing pointed, and applies the speed for that state. Build clean,
+0 warnings; all 27 def and patch files parse. `TESTS/alduin-test-dragon.md` sections 7-9 are the
+script. **Not yet run in game.**
+
+### The grounding rule is not a latch, and that is the user's design, not a simplification
+
+Asked whether the half-HP grounding should latch for the rest of the fight, the user answered
+better than the question: *"dovahs shouldn't have unusual regeneration — same natural slow
+regeneration and wound mechanics used by the entities of the vanilla game. Their strength should
+rely on having a lot of HP… once they fall into the perma-grounded category they are basically
+doomed to stay that way, unless they are somehow not that much wounded and heal naturally over
+time enough to fly off again."*
+
+So it is **a plain threshold check plus vanilla healing** — no latch variable, no special case,
+**nothing saved**. Three things fall out of that, and they are why it is the better design:
+
+1. **The latch behaviour emerges from the healing rate.** RimWorld's natural healing is slow, so
+   a grounded dragon stays grounded for the fight anyway — the guarantee the latch was for,
+   without a flag to persist, restore, or get wrong across a save. `RISKS.md` §9 puts bespoke
+   cross-save state at the top of the corruption risks; this has none.
+2. **It makes a dragon a recurring threat.** One that breaks off and heals over days can return
+   to the air. A latch would have left every survivor permanently crippled — a worse story.
+3. **Dovah get NO custom regeneration anywhere.** Their strength is a huge HP pool. Written down
+   as a rule with teeth: if a dragon ever appears to regenerate unusually, that is a bug.
+
+### Speeds: stored against grounded, not against each other
+
+The user gave flight as "+50% of soar". Soar is +20% of grounded, so flight is ×1.80 of grounded
+— and it is **stored that way**. Writing it as a multiple of soar would mean retuning soar
+silently moves flight too, which is exactly how `SPEC.md`'s "twice the Ancient Dragonborn's
+lifetime" went stale the moment his own lifetime changed. Both provisional; the user asked to
+recalibrate in game.
+
+### Why a StatPart and not statFactors on the hediff
+
+The obvious route is a HediffDef with two stages carrying `<statFactors><MoveSpeed>`. It needs
+no code and no patch — and it was **rejected**, because it writes each speed **twice**: once as
+the stage's factor in the hediff XML, and once as the severity the comp sets to select that
+stage. That is precisely the `ancientDragonbornLifetimeTicks` trap already in the notebook, where
+an XML default of 15000 and a C# fallback of 3750 disagreed, and the disagreement could only
+surface in the failure case.
+
+Instead the **severity carries the factor** and `StatPart_DragonAirborne` reads it back. Each
+speed exists once, in `DovahkiinTuningDef.xml`, where `CLAUDE.md` says tuning numbers live. The
+part is added to Core's `MoveSpeed` with a **`PatchOperationAdd`**, appending to the existing
+`<parts>` list rather than replacing it, so vanilla's `StatPart_Glow` and any other mod's parts
+survive. It early-outs for anything without the airborne hediff — the same cheap-guard shape as
+the mod's existing combat-path patches.
+
+### Target selection does not use a hostility test
+
+`DecideState` asks what the dragon is **actually doing** — `CurJob.targetA`, then
+`mindState.enemyTarget` — rather than scanning for hostiles. `GenHostility.HostileTo` is false
+for wild animals, and this project has already lost a playtest round to exactly that blind spot
+(the Ancient Dragonborn ignoring a boar the Dovahkiin was attacking). Asking is both cheaper and
+correct.
+
+### Scope held deliberately narrow
+
+Melee immunity, inability to melee, obstacle crossing, the breath, and the wing/maw/tail/leg
+wound effects are all **absent on purpose**. Each is a separate mechanism — a damage-path gate, a
+verb gate, a pathing override, a new Thing, a new BodyDef — and bolting them on before the state
+machine has been seen working would make a failure impossible to attribute. Same reasoning that
+kept the Ancient Dragonborn's summon and his ability apart. The test script says which are
+missing so they are not reported as bugs.
+
+The wing-damage half of the grounding rule specifically needs a Dovah `BodyDef`; the test
+creature uses vanilla `Bird`, which has no wings to damage.
+
+## Eight-way flight facing, without a render patch (2026-08-04)
+
+**Test 1 passed first** — the user confirmed all three states render correctly in game:
+grounded *"the right art is on wherever he is going"*, soar and flight *"all good too"*. So the
+`nakedGraphic` swap, the four facings and the three sets are **proven in play**, and everything
+below is built on a mechanism that works rather than one that ought to.
+
+**NEW `Tools/MakeFlightOctants.ps1`** — eight flight facings from the one top-down drawing,
+plus `Comp_AlduinFlight` to keep a flying dragon pointed where he is going. Build clean, 0
+warnings. Manifest 48 of 48. **Not yet run in game.**
+
+### Rot4 has four values. The way round it is Graphic_Single.
+
+The user, 2026-08-04: creatures move diagonally, so a flying dragon locked to four facings reads
+badly — and diagonals should be **flight only**, by re-orienting existing art rather than
+generating more.
+
+`Verse.Rot4.RotationCount` is **4**. The engine has no diagonal facing for pawns, and
+`PawnGraphicSet` picks its material with a bare `nakedGraphic.MatAt(facing)`. So eight-way
+facing cannot be expressed the normal way, and it looked like it would need a render patch —
+the one thing this mod avoids under RocketMan.
+
+**It does not.** Each octant is a **`Graphic_Single`**, which returns the same material for
+*every* `Rot4` (verified: `MatSingle`, `MatNorth`, `MatEast`, `MatSouth`, `MatWest` all return
+the same `mat`). So whichever rotation the engine hands the pawn, the octant sprite is what
+draws and the engine's own facing becomes irrelevant. The octant is chosen from the dragon's
+**true heading** instead — `Verse.AI.Pawn_PathFollower.nextCell` is a public field, so diagonals
+are readable with no patch and no reflection.
+
+### Two things measured rather than assumed
+
+- **The frame had to grow, and the reason is invisible if you skip it.** Rotation is about the
+  frame centre, so what must fit is the farthest ink pixel swept round a circle. Measured on the
+  flight sprite: ink spans 491×485 of a 512 frame and its farthest corner is **344.4px** from
+  centre, against a half-frame of **256**. A 45° turn would have **clipped the wingtips
+  silently** — the only symptom being a dragon whose wings are cut off on diagonals only. Frame
+  is now **704** (minimum 689), and every octant is checked against the frame edge after
+  generation.
+- **`drawSize` scales the FRAME, not the creature**, so the same dragon in a bigger frame draws
+  *smaller*. Derived rather than eyeballed: `512: 5.6 × (491/512) = 5.369 cells`, so
+  `704: d × (491/704) = 5.369 → d = 7.70`. That constant lives in `AlduinGraphicsUtility` and
+  is tied to the script's frame size in a comment at both ends.
+
+### The rotation sign is validated, not reasoned about
+
+"Which way does a positive angle turn" is easy to get backwards and free to check, so
+`MakeFlightOctants.ps1` **reproduces the existing east cardinal** with its 90° octant and
+compares: **mean alpha delta 0.00 of 255**. An inverted sign would have produced the west sprite
+and a huge delta. Same discipline as the Melee Animation offset derivation — a formula that
+reproduces the reference is worth trusting; one that merely looks plausible is not.
+
+### On ticking
+
+`Comp_AlduinFlight` ticks, which `CLAUDE.md` normally forbids — but `TickRare` is 250 ticks and
+facing must track a pawn moving a cell every few ticks. It **early-outs on an `IntVec3` compare**
+before doing any work, so the dictionary lookup and cache flush happen only on the tick where
+the destination cell actually changes.
+
+**It deliberately does NOT implement the state machine.** `SPEC.md §6.5c` is a *proposal* with an
+open question (is the half-HP grounding a one-way latch?); building it before that is answered
+would be inventing design.
+
+## The test dragon: Alduin loads, renders, and switches sprite sets (2026-08-04)
+
+**First code for Phase 3.** The twelve sprites are now wired to a real creature — `ThingDef` +
+`PawnKindDef` + a runtime graphic switch + two debug actions. Build clean, 0 warnings.
+`TESTS/alduin-test-dragon.md` is the script. **Never yet run in game.**
+
+The user's call, and it was the right one: **use Alduin as the test dragon before building him
+as intended.** Twelve sprites had been signed off on preview sheets and never once rendered by
+RimWorld. Draw size, facing and the state swap cannot be judged from a preview.
+
+### It needs NO Harmony patch — settled by decompiling, not by trying
+
+The open question since 2026-08-03 was whether assigning `PawnGraphicSet.nakedGraphic` survives.
+It does. `nakedGraphic` is a **public field** and `AllResolved => nakedGraphic != null`, so every
+re-resolve on the draw path — `PawnRenderer.RenderPawnAt`, `RenderPawnInternal`,
+`Widgets.GetIconFor` — is guarded by `!AllResolved` and becomes a no-op. Nothing re-resolves per
+frame or per tick.
+
+That matters beyond convenience: a patch on the pawn render path is the single most fragile
+thing available under RocketMan, and this mod has avoided one throughout.
+
+**Two traps, each of which would have cost a playtest round:**
+
+1. **`SetAllGraphicsDirty()` is the method that UNDOES the swap**, and it is the one whose name
+   sounds right. It calls `ResolveAllGraphics()`, which for an animal does
+   `nakedGraphic = curKindLifeStage.bodyGraphicData.Graphic` — reinstating the PawnKindDef's
+   sprite. Use `ClearCache()`.
+2. **`ClearCache()` is required, not optional.** `MatsBodyBaseAt` caches materials against a hash
+   of `(facing, RotDrawMode, drawClothes, dead)`. Assigning `nakedGraphic` changes none of them,
+   so the OLD material keeps drawing until the creature happens to turn — which reads as "the
+   swap works, but only sometimes". The test script asks for that symptom by name.
+
+**Completeness came from an IL scan, not from reading two likely classes:** all 12,819 types in
+`Assembly-CSharp` swept for callers, 17 call sites found. Fourteen are humanlike-only (genes,
+style, tattoos, styling station, body-type debug tool) or portrait paths behind
+`pawn.story != null` — and `pawn.story` is null for animals, since every `pawn.story` access in
+`ResolveAllGraphics` sits inside its `if (pawn.RaceProps.Humanlike)` branch.
+
+### DOVAH ARE TIMELESS — the user's design, and it protects the renderer
+
+*"They do not age, they do not birth, they just are."* Expressed in the def, and it is load-
+bearing rather than flavour:
+
+- **One life stage.** `Pawn_AgeTracker.RecalculateLifeStageIndex` is the **only** thing in the
+  assembly that can undo the sprite swap for an animal, and it fires `SetAllGraphicsDirty()`
+  only when the life-stage index actually *changes*. With a single stage the index is always 0,
+  so it fires at most once, at spawn. **The lore requirement and the graphics mechanism protect
+  each other** — that convergence is why this design is safe rather than merely convenient.
+- **No `hediffGiverSets`.** `AnimalThingBase` inherits `OrganicStandard`, which is what applies
+  age-related decline. Cleared with `Inherit="False"`, confirmed as real syntax against four
+  vanilla precedents rather than assumed.
+- **`fixedGender Male`.** `JobGiver_Mate` opens with `if (pawn.gender != Gender.Male ||
+  pawn.Sterile()) return null`, and its target test `PawnUtility.FertileMateTarget` requires a
+  **female** of the same def. Every Alduin is male, so a mate target can never exist. Chosen
+  over `hasGenders=false`, which also works but makes RimWorld call him **"it"** — dragons are
+  "he" throughout Skyrim.
+
+### Kept clear of the boss invariant
+
+The test creature is `Dovahkiin_Alduin_Test`, a **third def the registry never sees**. CLAUDE.md
+invariant 2 gives `GameComponent_DragonbornRegistry` sole ownership of the one boss Alduin per
+save; a dev spawn that could set `SlainForever` or drop a soul would quietly poison a save. The
+design already anticipated exactly this with `Alduin_Scripted`; this follows that pattern. The
+old "Spawn Alduin (Phase 4)" stub is kept and now points at the test action.
+
+### Method notes
+
+- Every one of the 20 `race` fields was checked against the decompiled `Verse.RaceProperties`
+  before shipping, because **a def naming a field that does not exist still loads and quietly
+  does nothing**. `RaceProperties` is in `Verse`, not `RimWorld` — the same namespace trap the
+  notebook already records for `PawnRenderer`.
+- The def shape was copied from vanilla's Thrumbo rather than invented.
+- Body is vanilla `Bird` — structurally a biped with wings. A custom Dovah `BodyDef` (jaws,
+  tail, wings, no beak) is worth writing for the real creature, not for a test.
+
 ## Grounded east — ALDUIN'S ART IS COMPLETE (2026-08-04)
 
 **Twelve sprites: flight, soar and grounded, four facings each.** Signed off — *"Good job"*.

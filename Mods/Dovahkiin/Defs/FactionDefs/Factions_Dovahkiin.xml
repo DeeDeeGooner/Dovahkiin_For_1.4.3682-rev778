@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  THE DOV. A hidden, permanently hostile faction that exists for exactly one reason:
+  SO THAT DRAGONS CAN BE HOSTILE WITHOUT BEING IN A MENTAL STATE.
+
+  ============================================================================================
+  WHY THIS EXISTS AT ALL
+  ============================================================================================
+  Dragons were made hostile with ManhunterPermanent, because a factionless animal is hostile to
+  nobody (this project's own long-standing gotcha). That worked, and it cost everything else:
+  MENTAL STATES OUTRANK LordDuty IN THE ANIMAL THINK TREE, so while a dragon was manhunting, no
+  duty we set could ever run. The attack-pattern executor could choose his STATE - sprite and
+  speed - while the manhunter AI did the actual fighting. The user, after three playtests:
+  "he still acts very much like a wild beast", "doesn't circle around at all and just chases and
+  kills like any normal manhunting beast".
+
+  Hostility from a FACTION instead of a mental state frees the duty branch, and the patterns can
+  finally own his behaviour rather than decorate it.
+
+  ============================================================================================
+  SHAPED AFTER VANILLA'S OWN "Insect" FACTION (Core/Factions_Hidden.xml)
+  ============================================================================================
+  Hidden, non-humanlike, animal tech, permanently hostile, no diplomacy, no settlements, and a
+  raid commonality curve pinned to zero so the storyteller can never send a dragon raid on its
+  own. Dragons arrive because this mod spawns them, never because RimWorld decided to.
+
+  ⚠ requiredCountAtGameStart is 0, NOT 1 like Insect's. A faction with a required count is
+  created at world generation - which does nothing for the SAVES THAT ALREADY EXIST, and this
+  project is being tested on one. DovahFactionUtility creates the instance on demand instead, so
+  it works on an existing save and on a new one identically.
+-->
+<Defs>
+
+  <FactionDef>
+    <defName>Dovahkiin_DovFaction</defName>
+    <label>dov</label>
+    <description>The dov - dragons. Firstborn of Akatosh, and older than men. They do not treat, they do not trade, and they do not forgive; a dragon that speaks to you is deciding how you will die.</description>
+    <pawnSingular>dovah</pawnSingular>
+    <pawnsPlural>dov</pawnsPlural>
+    <fixedName>The Dov</fixedName>
+    <requiredCountAtGameStart>0</requiredCountAtGameStart>
+    <maxConfigurableAtWorldCreation>0</maxConfigurableAtWorldCreation>
+    <canMakeRandomly>false</canMakeRandomly>
+
+    <humanlikeFaction>false</humanlikeFaction>
+    <hidden>true</hidden>
+    <permanentEnemy>true</permanentEnemy>
+    <techLevel>Animal</techLevel>
+
+    <!-- A dovah does not run away. SPEC.md 6.5: below half health he STAYS GROUNDED and fights,
+         which is what makes him killable at all - fleeing would make that rule meaningless. -->
+    <autoFlee>false</autoFlee>
+    <canUseAvoidGrid>false</canUseAvoidGrid>
+
+    <!-- Pinned to zero: the storyteller must never raise a dragon raid from this faction.
+         Dragons appear through this mod's own events, per ROADMAP Phase 3. -->
+    <raidCommonalityFromPointsCurve>
+      <points>
+        <li>(0, 0)</li>
+      </points>
+    </raidCommonalityFromPointsCurve>
+
+    <!-- ⚠ REQUIRED WHENEVER raidCommonalityFromPointsCurve IS DEFINED. RimWorld's own config
+         check says so in as many words - "raidLootValueFromPointsCurve must be defined" - and it
+         is a RED error at load, which CLAUDE.md forbids leaving in place.
+         Zero throughout: dragons carry no loot and this faction never raids anyway. Another case
+         of the notebook's standing rule - a clean build and a def that PARSES both pass this;
+         only RimWorld's load-time config pass catches it. -->
+    <raidLootValueFromPointsCurve>
+      <points>
+        <li>(0, 0)</li>
+      </points>
+    </raidLootValueFromPointsCurve>
+
+    <colorSpectrum>
+      <li>(0.36, 0.13, 0.10)</li>
+      <li>(0.55, 0.22, 0.13)</li>
+    </colorSpectrum>
+  </FactionDef>
+
+</Defs>

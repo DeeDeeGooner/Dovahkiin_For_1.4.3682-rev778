@@ -161,14 +161,30 @@ Build in this order, each individually testable:
 2. **Dragon mounds** — word wall object + guardian dragon + the learn interaction.
 3. **Dragon burial sites** — the corpse, the loot, and the "very bad feeling" Alduin flyover
    + resurrection event.
-4. **Nordic crypts** — the big one, and **the single largest engineering risk in the project.**
-   Budget accordingly. 1.4's complex generator produces a randomised room graph with no notion
-   of depth or a terminal room, and its footprint is well below "a large fraction of the map."
-   The guarantees in `SPEC.md §7.3` — ordered entry → catacombs → sanctum, a word wall *at the
-   end*, a sealed treasure room *near the end* — are therefore **a custom `GenStep`, not a
-   `ComplexDef` configuration.** Design it, cost it in `RISKS.md`, and show me before building.
+4. **Nordic crypts** — the big one. 1.4's complex generator produces a randomised room graph
+   with no notion of depth or a terminal room, and its footprint is well below "a large fraction
+   of the map", so it is the wrong tool for `SPEC.md §7.3`'s guarantees.
+
+   > **⚠ THIS ENTRY USED TO CALL IT "the single largest engineering risk in the project" AND
+   > PRESCRIBE A CUSTOM `GenStep`. CORRECTED 2026-08-13 — `RISKS.md §1` reversed that long ago
+   > and both this file and `SPEC.md §7.3` were left stale.**
+   >
+   > **Crypts are authored, not generated.** VEF's KCSG lets the crypt be **built by hand
+   > in-game in dev mode and exported** (`Dialog_ExportWindow` →
+   > `KCSG.GenStep_CustomStructureGen`, `KCSG_UndergroundRoom`, `linkWithSite`); Dragon's
+   > Descent already ships a 110 KB hand-drawn dungeon this way in 1.4. Every §7.3 guarantee
+   > then holds by construction. **Budget AUTHORING TIME, not engineering time — and it is work
+   > the user can do themselves.** Author 3–4 layouts per tier and pick randomly.
+   >
+   > **⚠ Build DRAGON MOUNDS (step 2) FIRST and treat them as the guaranteed word source.**
+   > KCSG is VEF, so crypts vanish without it, and §7.3 calls crypts the primary way the player
+   > grows their shout library — which would make the baseline an empty shell and break
+   > invariant 5. `RISKS.md §3` settles it: mounds guaranteed, crypts rich.
+
    Then: dormant occupants (`CompCanBeDormant`/`CompWakeUpDormant`), tier-scaled loot,
-   optional dragon priest.
+   optional dragon priest, and the **crypt entry sound** (`Sounds/DungeonBackgroundNoise.mp3`,
+   already recorded — see `SPEC.md §7.3`). **⚠ It plays ONCE on FIRST ENTRY, is NOT a loop, and
+   is for crypts ONLY — not mounds, not burial sites.** "First entry" is saved per-site state.
 
 Regrowth biome compatibility gets explicitly tested here, not assumed. **Rimedieval filtering
 does not threaten site generation** — see the verified correction in `SPEC.md §7`: its

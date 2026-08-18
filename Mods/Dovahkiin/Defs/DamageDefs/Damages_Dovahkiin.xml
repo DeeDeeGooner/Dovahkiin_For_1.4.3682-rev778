@@ -25,4 +25,40 @@
     <deathMessage>{0} has withered away under the Thu'um.</deathMessage>
   </DamageDef>
 
+  <!--
+    A DRAGON'S FROST BREATH. SPEC.md 4.6.
+
+    ⚠ WHY THIS EXISTS INSTEAD OF USING VANILLA Frostbite DIRECTLY.
+
+    Vanilla's Frostbite has NO armorCategory at all, and Verse.ArmorUtility.GetPostArmorDamage
+    opens with "if (damageDef.armorCategory == null) return amount;" - so Frostbite IGNORES EVERY
+    KIND OF ARMOUR COMPLETELY. Not sharp, not blunt, not heat, and armour penetration means
+    nothing against it.
+
+    That is fine for the Dovahkiin's own Frost Breath, which the player aims at raiders. It is NOT
+    fine for a dragon breathing at the player: a colonist in cataphract plate under a three-word
+    Dragon Aspect would take exactly what a naked one takes. The user is already asking why Dragon
+    Aspect feels thin against dragon FIRE - shipping a frost breath that ignores armour outright
+    would be strictly worse than the thing they complained about.
+
+    So this is Frostbite's behaviour - same worker, same frostbite hediff - with an armorCategory
+    added so protection means something. HEAT is the right category rather than a compromise: it
+    is what RimWorld uses for temperature damage, and it makes Dragon Aspect's fire resistance
+    cover a dragon's breath of EITHER element, which is what "dragon aspect" ought to mean.
+
+    ⚠ THE DOVAHKIIN'S OWN FROST BREATH IS DELIBERATELY UNCHANGED and still uses vanilla Frostbite.
+    Her shout is a different thing pointed the other way, and it is signed off.
+  -->
+  <DamageDef>
+    <defName>Dovahkiin_DragonFrost</defName>
+    <label>dragon frost</label>
+    <workerClass>DamageWorker_Frostbite</workerClass>
+    <externalViolence>true</externalViolence>
+    <deathMessage>{0} has been frozen solid by a dragon's breath.</deathMessage>
+    <hediff>Frostbite</hediff>
+    <harmAllLayersUntilOutside>true</harmAllLayersUntilOutside>
+    <armorCategory>Heat</armorCategory>
+    <impactSoundType>Slice</impactSoundType>
+  </DamageDef>
+
 </Defs>

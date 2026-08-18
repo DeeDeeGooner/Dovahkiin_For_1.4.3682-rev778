@@ -34,6 +34,10 @@ namespace Dovahkiin
 
             foreach (BodyPartRecord part in pawn.health.hediffSet.GetNotMissingParts())
             {
+                if (!CanBeHitDirectly(part))
+                {
+                    continue;
+                }
                 float max = part.def.GetMaxHealth(pawn);
                 if (max <= 0f)
                 {
@@ -79,7 +83,10 @@ namespace Dovahkiin
 
             foreach (BodyPartRecord part in pawn.health.hediffSet.GetNotMissingParts())
             {
-                if (part.depth == BodyPartDepth.Inside)
+                // Organs excluded on purpose here - deepening burns off a limb, it does not
+                // detonate a heart. The coverage test is separate and is the ENGINE'S rule: a
+                // zero-coverage part logs a red error when injured. See CanBeHitDirectly.
+                if (part.depth == BodyPartDepth.Inside || !CanBeHitDirectly(part))
                 {
                     continue;
                 }
@@ -97,6 +104,34 @@ namespace Dovahkiin
             }
             // Null when nothing is hurt yet, which lets RimWorld roll normally.
             return worst;
+        }
+
+        /// <summary>
+        /// Can an aimed external hit land on this part at all?
+        ///
+        /// ⚠ THIS IS THE ENGINE'S OWN TEST, COPIED EXACTLY. `Verse.Hediff_Injury.PostAdd` does:
+        ///
+        ///     if (Part != null &amp;&amp; Part.coverageAbs &lt;= 0f &amp;&amp; dinfo.Def != SurgicalCut)
+        ///         Log.Error("Added injury to " + Part.def + " but it should be impossible to hit it...")
+        ///
+        /// so anything with zero absolute coverage produces a RED ERROR every time it is targeted.
+        /// The injury is still applied - it is in PostAdd, not a rejection - so nothing was losing
+        /// damage. It was pure log spam, but red, and CLAUDE.md forbids leaving red errors.
+        ///
+        /// FOUND 2026-08-05 by the user testing a dragon's breath on pawns: "Added injury to
+        /// Tongue but it should be impossible to hit it." **The bug is PRE-EXISTING and belongs to
+        /// the Dovahkiin's shouts** - Marked for Death and Unrelenting Force use this same picker.
+        /// The breath merely made it obvious: nine pulses x four instances is 36 aimed hits per
+        /// victim, so a part that used to come up once in a long while now comes up constantly.
+        ///
+        /// NOTE THE TEST IS `coverageAbs`, NOT `depth == Inside`. They are different rules, and
+        /// guessing at the second is how this would come back: an internal organ with real
+        /// coverage stays legitimately targetable, which preserves Marked for Death's intent that
+        /// organs are fair game, while the tongue and its like drop out.
+        /// </summary>
+        public static bool CanBeHitDirectly(BodyPartRecord part)
+        {
+            return part != null && part.coverageAbs > 0f;
         }
 
         /// <summary>

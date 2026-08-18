@@ -15,6 +15,133 @@ namespace Dovahkiin
     {
         private const string Category = "Dovahkiin";
 
+        /// <summary>
+        /// Fire a breath by hand. THIS IS THE ONLY WAY TO SEE ONE UNTIL THE PATTERN EXECUTOR
+        /// EXISTS, and that is by design: the breath has no verb and no tool, so RimWorld's own
+        /// combat AI can never fire it on its own schedule. The user's rule, 2026-08-05 - a
+        /// dragon's breath is an active skill belonging to an attack pattern, not a melee roll.
+        /// </summary>
+        [DebugAction(Category, "Dragon breath (pick shape, then aim)", allowedGameStates = AllowedGameStates.PlayingOnMap)]
+        private static void DragonBreathDebug()
+        {
+            List<DebugMenuOption> shapes = new List<DebugMenuOption>();
+            shapes.Add(new DebugMenuOption("FIRE - grounded cone", DebugMenuOptionMode.Action,
+                delegate { AimBreath(DragonBreathShape.Cone, true); }));
+            shapes.Add(new DebugMenuOption("FIRE - soar circle + reaching cone", DebugMenuOptionMode.Action,
+                delegate { AimBreath(DragonBreathShape.Pool, true); }));
+            shapes.Add(new DebugMenuOption("FROST - grounded cone", DebugMenuOptionMode.Action,
+                delegate { AimBreath(DragonBreathShape.Cone, false); }));
+            shapes.Add(new DebugMenuOption("FROST - soar circle + reaching cone", DebugMenuOptionMode.Action,
+                delegate { AimBreath(DragonBreathShape.Pool, false); }));
+            Find.WindowStack.Add(new Dialog_DebugOptionListLister(shapes));
+        }
+
+        private static void AimBreath(DragonBreathShape shape, bool fire)
+        {
+            DebugTools.curTool = new DebugTool("Breath: click the DRAGON", delegate
+            {
+                Pawn dragon = null;
+                List<Thing> here = UI.MouseCell().GetThingList(Find.CurrentMap);
+                for (int i = 0; i < here.Count; i++)
+                {
+                    Pawn p = here[i] as Pawn;
+                    if (p != null) { dragon = p; break; }
+                }
+                if (dragon == null)
+                {
+                    Messages.Message("No pawn in that cell.", MessageTypeDefOf.RejectInput, false);
+                    return;
+                }
+                DebugTools.curTool = new DebugTool("Breath: click the TARGET CELL", delegate
+                {
+                    FireDebugBreath(dragon, UI.MouseCell(), shape, fire);
+                    DebugTools.curTool = null;
+                });
+            });
+        }
+
+        private static void FireDebugBreath(Pawn dragon, IntVec3 target, DragonBreathShape shape, bool fire)
+        {
+            DovahkiinTuningDef t = DovahkiinTuningDef.Current;
+
+            // Routed through the COMP, not straight at Thing_DragonBreath.Spawn - the comp is what
+            // puts him in the right movement state, turns him to face the target and clamps a
+            // soaring breath's reach. Calling Spawn directly is what produced the user's
+            // "he didn't soar nor looked toward the targeted cell". The pattern executor will
+            // call this same method.
+            Comp_AlduinFlight flight = dragon.TryGetComp<Comp_AlduinFlight>();
+            Thing_DragonBreath breath = flight != null
+                ? flight.BreatheAt(target, shape)
+                : Thing_DragonBreath.Spawn(dragon, target, shape,
+                    t != null ? t.dragonBreathConeRange : 24f,
+                    t != null ? t.dragonBreathConeAngle : 38f,
+                    t != null ? t.dragonBreathPoolRadius : 3.5f,
+                    t != null ? t.dragonBreathDurationTicks : 263,
+                    t != null ? t.dragonBreathPulseIntervalTicks : 20);
+            if (breath == null)
+            {
+                Messages.Message("Breath failed to spawn - check the dev log.",
+                    MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+            float damage = t != null ? t.dragonBreathDamage : 90.576f;
+            int instances = t != null ? t.dragonBreathDamageInstances : 4;
+            float ap = t != null ? t.dragonBreathArmorPenetration : 0.25515f;
+
+            if (fire)
+            {
+                breath.SetPayload(DamageDefOf.Flame, damage, instances, ap,
+                    true, 0f, null, 1f);
+                // The mod's OWN fleck, not a vanilla one - ours is authored without
+                // renderInstanced so it accepts a per-instance tint. A batched vanilla fleck
+                // would silently ignore the colour, a trap this project has hit before.
+                breath.SetLook(DovahkiinDefOf.Dovahkiin_Fleck_FireWave, 1.6f,
+                    new UnityEngine.Color(1f, 0.62f, 0.24f));
+                // GetNamedSilentFail returns null with no message, so a missing SoundDef would
+                // present as "the breath is silent" rather than as an error. Null is handled -
+                // the breath simply plays nothing - so this cannot break the effect.
+                breath.SetSound(DefDatabase<SoundDef>.GetNamedSilentFail("Dovahkiin_DragonBreathFire"));
+                if (t != null)
+                {
+                    breath.SetFillGradient(t.dragonBreathFillColor, t.dragonBreathFillBright,
+                        t.dragonBreathFillYellow, t.dragonBreathYellowStrength,
+                        t.dragonBreathSoarCircleOpacity);
+                }
+            }
+            else
+            {
+                // ⚠ Dovahkiin_DragonFrost, NOT vanilla Frostbite. Frostbite has no armorCategory,
+                // so it ignores EVERY kind of armour - a dragon breathing it would go straight
+                // through Dragon Aspect and through cataphract plate alike. Ours is the same
+                // worker and hediff with a Heat category so protection means something.
+                HediffDef chill = DefDatabase<HediffDef>.GetNamedSilentFail("Dovahkiin_Chilled");
+                breath.SetPayload(
+                    DefDatabase<DamageDef>.GetNamedSilentFail("Dovahkiin_DragonFrost") ?? DamageDefOf.Frostbite,
+                    damage, instances, ap,
+                    false,
+                    t != null ? t.dragonBreathFrostSnowDepth : 0.22f,
+                    chill,
+                    t != null ? t.dragonBreathFrostChillSeverity : 1f);
+                breath.SetLook(DovahkiinDefOf.Dovahkiin_Fleck_FrostWave, 1.6f,
+                    new UnityEngine.Color(0.62f, 0.86f, 1f));
+                breath.SetSound(DefDatabase<SoundDef>.GetNamedSilentFail("Dovahkiin_DragonBreathFrost"));
+                if (t != null)
+                {
+                    // ⚠ FROST PICKS ITS PALETTE BY SHAPE, AND THE TWO ARE INVERTED - grounded runs
+                    // blue at the mouth to white at the tip, soar runs a white reaching cone over
+                    // an unchanged blue circle. See the note in DovahkiinTuningDef. Fire shares
+                    // one palette across both shapes; frost cannot.
+                    bool groundedFrost = shape == DragonBreathShape.Cone;
+                    breath.SetFillGradient(
+                        groundedFrost ? t.dragonBreathFrostConeFillColor : t.dragonBreathFrostSoarFillColor,
+                        groundedFrost ? t.dragonBreathFrostConeFillBright : t.dragonBreathFrostSoarFillBright,
+                        groundedFrost ? t.dragonBreathFrostConeFillTint : t.dragonBreathFrostSoarFillTint,
+                        groundedFrost ? t.dragonBreathFrostConeTintStrength : t.dragonBreathFrostSoarTintStrength,
+                        t.dragonBreathSoarCircleOpacity);
+                }
+            }
+        }
+
         [DebugAction(Category, "Force awaken pawn", allowedGameStates = AllowedGameStates.PlayingOnMap)]
         private static void ForceAwaken()
         {
@@ -419,8 +546,112 @@ namespace Dovahkiin
         [DebugAction(Category, "Spawn Alduin (Phase 4)", allowedGameStates = AllowedGameStates.PlayingOnMap)]
         private static void SpawnAlduin()
         {
-            Messages.Message("Not yet - Alduin is built in Phase 4.",
+            Messages.Message("Not yet - the BOSS Alduin is built in Phase 4. "
+                + "For the art, use 'Spawn Alduin (TEST creature)'.",
                 MessageTypeDefOf.RejectInput, false);
+        }
+
+        // --- The TEST dragon. Art and rendering only; NOT the boss. ---
+        //
+        // Deliberately separate from the stub above. CLAUDE.md invariant 2 gives the registry
+        // sole ownership of the one boss Alduin per save; this is a third def the registry
+        // never sees, so it can never be the boss, never drops a soul, and never sets
+        // SlainForever. It exists to judge twelve sprites and the three-state swap in the
+        // running game before any gameplay is built on them.
+
+        [DebugAction(Category, "Spawn Alduin (TEST creature)", allowedGameStates = AllowedGameStates.PlayingOnMap)]
+        private static void SpawnAlduinTest()
+        {
+            PawnKindDef kind = DefDatabase<PawnKindDef>.GetNamedSilentFail("Dovahkiin_Alduin_Test");
+            if (kind == null)
+            {
+                // GetNamedSilentFail returns null with NO message, so a def that failed to load
+                // would otherwise look like a debug action that simply does nothing.
+                Messages.Message("Dovahkiin_Alduin_Test PawnKindDef did not load - check the dev log for XML errors.",
+                    MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+            // SPEC.md 6.5c: there are only three ways to meet a dovah, and two of them are
+            // spawnable here. "A dovah doesn't just idle - it's a shard of a deity."
+            List<DebugMenuOption> how = new List<DebugMenuOption>();
+            how.Add(new DebugMenuOption("INVADING - arrives in manhunter", DebugMenuOptionMode.Action,
+                delegate { SpawnAlduinAs(kind, true); }));
+            how.Add(new DebugMenuOption("GUARDING - grounded and motionless until approached", DebugMenuOptionMode.Action,
+                delegate { SpawnAlduinAs(kind, false); }));
+            Find.WindowStack.Add(new Dialog_DebugOptionListLister(how));
+        }
+
+        private static void SpawnAlduinAs(PawnKindDef kind, bool invading)
+        {
+            Map map = Find.CurrentMap;
+            IntVec3 cell;
+            if (!CellFinder.TryFindRandomCellNear(map.Center, map, 12,
+                    delegate(IntVec3 c) { return c.Standable(map) && !c.Fogged(map); }, out cell))
+            {
+                cell = map.Center;
+            }
+            Pawn alduin = PawnGenerator.GeneratePawn(kind, null);
+            GenSpawn.Spawn(alduin, cell, map, WipeMode.Vanish);
+
+            Comp_AlduinFlight comp = alduin.TryGetComp<Comp_AlduinFlight>();
+            if (comp != null)
+            {
+                comp.isGuardian = !invading;
+            }
+
+            // ⚠ NO MANHUNTER, EITHER WAY. Hostility now comes from the dov FACTION, and a mental
+            // state would outrank the Lord duty the attack patterns run on - which is exactly what
+            // made three playtests report "he acts like a wild beast". EnsureUnderLord also ends
+            // any mental state it finds, so setting one here would simply be undone next tick.
+            DovahFactionUtility.EnsureUnderLord(alduin);
+
+            if (invading)
+            {
+                Messages.Message("Alduin (test) invades. He should cross in FLIGHT, land on his target, "
+                    + "then peel off and CIRCLE between attacks.",
+                    alduin, MessageTypeDefOf.ThreatBig, false);
+            }
+            else
+            {
+                Messages.Message("Alduin (test) guards this spot. He should sit GROUNDED and not move.",
+                    alduin, MessageTypeDefOf.NeutralEvent, false);
+            }
+        }
+
+        [DebugAction(Category, "Cycle Alduin sprite state", allowedGameStates = AllowedGameStates.PlayingOnMap)]
+        private static void CycleAlduinState()
+        {
+            List<DebugMenuOption> options = new List<DebugMenuOption>();
+            foreach (Pawn p in Find.CurrentMap.mapPawns.AllPawnsSpawned)
+            {
+                if (!AlduinGraphicsUtility.IsAlduin(p))
+                {
+                    continue;
+                }
+                Pawn target = p;
+                foreach (AlduinMovementState state in new[] {
+                    AlduinMovementState.Grounded, AlduinMovementState.Soar, AlduinMovementState.Flight })
+                {
+                    AlduinMovementState wanted = state;
+                    options.Add(new DebugMenuOption(
+                        target.LabelShortCap + " -> " + wanted, DebugMenuOptionMode.Action,
+                        delegate
+                        {
+                            bool changed = AlduinGraphicsUtility.SetState(target, wanted);
+                            Messages.Message(
+                                changed ? ("Alduin is now " + wanted + ".")
+                                        : ("Alduin was already " + wanted + ", or the swap failed - see the log."),
+                                target, MessageTypeDefOf.NeutralEvent, false);
+                        }));
+                }
+            }
+            if (options.Count == 0)
+            {
+                Messages.Message("No test Alduin on this map. Spawn one first.",
+                    MessageTypeDefOf.RejectInput, false);
+                return;
+            }
+            Find.WindowStack.Add(new Dialog_DebugOptionListLister(options));
         }
     }
 }

@@ -737,7 +737,13 @@
         <statOffsets>
           <ArmorRating_Sharp>0.40</ArmorRating_Sharp>
           <ArmorRating_Blunt>0.40</ArmorRating_Blunt>
-          <ArmorRating_Heat>0.40</ArmorRating_Heat>
+          <!-- Heat +10% (0.40 -> 0.44), 2026-08-06: a Dovahkiin under Dragon Aspect was still
+               "quiet frail" against a dragon's fire breath. ⚠ THE BIGGER LEVER IS THE BREATH'S
+               OWN ARMOUR PENETRATION - dragonBreathArmorPenetration is 0.35 and eats most of
+               this. Raise the resistance again, or lower that, if it still feels thin.
+               ArmorRating_Sharp above IS the piercing/cutting resistance; RimWorld has no
+               separate "piercing" stat, and it has been present at every stage since Phase 2i. -->
+          <ArmorRating_Heat>0.44</ArmorRating_Heat>
           <Insulation_Cold>20</Insulation_Cold>
         </statOffsets>
       </li>
@@ -748,7 +754,8 @@
         <statOffsets>
           <ArmorRating_Sharp>0.60</ArmorRating_Sharp>
           <ArmorRating_Blunt>0.60</ArmorRating_Blunt>
-          <ArmorRating_Heat>0.60</ArmorRating_Heat>
+          <!-- Heat +10% (0.60 -> 0.66), 2026-08-06. See the note on the Mul Qah stage. -->
+          <ArmorRating_Heat>0.66</ArmorRating_Heat>
           <Insulation_Cold>30</Insulation_Cold>
         </statOffsets>
       </li>

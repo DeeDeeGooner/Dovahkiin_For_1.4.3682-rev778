@@ -240,16 +240,11 @@ namespace Dovahkiin
             {
                 IntVec3 c = cells[i];
 
-                if (igniteGround && Rand.Chance(0.25f))
-                {
-                    FireUtility.TryStartFireIn(c, Map, 0.4f);
-                }
-                // Ice laid in the wake of the front. Snow is a real terrain layer, so this
-                // slows anything crossing it afterwards - the shout leaves the ground changed.
-                if (snowDepth > 0f && Map.snowGrid != null && Rand.Chance(0.8f))
-                {
-                    Map.snowGrid.AddDepth(c, snowDepth);
-                }
+                // Ignition and the ice laid in the wake of the front. Moved to DovahkiinStrike on
+                // 2026-08-05 with NO change of behaviour - the constants and the order are the
+                // same - so a dragon's breath can scorch identically instead of growing its own
+                // copy that drifts the first time either is tuned.
+                DovahkiinStrike.ScorchCell(c, Map, igniteGround, snowDepth);
 
                 List<Thing> things = c.GetThingList(Map);
                 // Reverse: effects can despawn a pawn (the flyer removes it from the cell).

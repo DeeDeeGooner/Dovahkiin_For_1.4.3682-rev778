@@ -200,6 +200,398 @@
          raising alpha instead fattens the arcs until the three orbits merge into one
          solid ring, which is the opposite of "waves circling". -->
     <valorPortalGlowGain>1.42</valorPortalGlowGain>
+
+    <!-- ============================================================================
+         PHASE 3 - DRAGON MOVEMENT STATES (SPEC.md 6.5)
+         grounded / soar / flight. The user's design 2026-08-03, specified 2026-08-04.
+         ============================================================================ -->
+    <!-- Multiples of GROUNDED speed. The user gave flight as "+50% of soar", which is
+         1.20 x 1.50 = 1.80 - but it is stored against GROUNDED so that retuning soar
+         cannot silently drag flight along with it. Both provisional; the user asked to
+         recalibrate them in game. -->
+    <dragonSoarSpeedFactor>1.32</dragonSoarSpeedFactor>
+    <dragonFlightSpeedFactor>3.42</dragonFlightSpeedFactor>
+
+    <!-- At or below this fraction of health, grounded. NOT A LATCH - it is re-checked
+         normally, and the "perma-grounded" feel comes from vanilla healing being slow
+         rather than from a saved flag. A dragon that escapes and heals over days should
+         fly again. Dovah have NO custom regeneration. -->
+    <dragonGroundedHealthFraction>0.50</dragonGroundedHealthFraction>
+
+    <!-- 60 ticks = once a second at normal speed. Responsive enough to read as a
+         reaction, cheap enough that RocketMan will never notice it. -->
+    <dragonStateIntervalTicks>60</dragonStateIntervalTicks>
+
+    <!-- ============================================================================
+         ATTACK PATTERNS - SPEC.md 6.5c-4. A dovah picks an ATTACK, not a state.
+
+         ⚠ THESE REPLACE THE GLOBAL "x seconds in this state" DWELLS FOR ANYTHING IN COMBAT.
+         The user, 2026-08-06: the timers "shouldn't be set as a single general constant
+         'X secondes in this state', but rather 4 set of timers with each set for a
+         specific pattern". A dwell timer and a pattern are two authors of one decision,
+         and that dwell caused five separate defects before it was removed.
+
+         Every pattern runs APPROACH (flight) -> EXECUTE -> LEAVE (flight, circling).
+         The same pattern never runs twice in a row.
+         60 ticks = one real second.
+         ============================================================================ -->
+    <!-- DIVE AND BRAWL: seconds on the ground fighting once he has landed on them. -->
+    <dragonPatternBrawlTicks>600</dragonPatternBrawlTicks>
+    <!-- Both breath patterns: how long he holds after the breath burns out, so he does not
+         peel away on its last tick and read as clipped. -->
+    <dragonPatternBreathTailTicks>240</dragonPatternBreathTailTicks>
+    <!-- How long he circles between attacks. This is what keeps flight the connective
+         tissue between attacks rather than a fourth attack. -->
+    <dragonPatternLeaveTicks>900</dragonPatternLeaveTicks>
+    <!-- Safety valve: give up on an unreachable target and roll a new pattern. Without it a
+         target inside a mountain base leaves him approaching for ever. -->
+    <dragonPatternApproachTimeoutTicks>1500</dragonPatternApproachTimeoutTicks>
+
+    <!-- Beyond this, cross in FLIGHT. Inside it, settle to SOAR and fight. -->
+    <dragonFlightEngageDistance>22</dragonFlightEngageDistance>
+    <!-- Within this of a melee target, land and bite. -->
+    <dragonLandToBiteDistance>4</dragonLandToBiteDistance>
+
+    <!-- DISENGAGE - "a dovah does not jog after you", the user 2026-08-05.
+         A grounded dragon whose target drifts further than dragonDisengageDistance breaks off
+         instead of walking after them: soar, hang still for the pause, then peel into a
+         circling flight. Try 2 for a twitchier dragon that lifts off the moment you step back,
+         4 to let him finish a brawl. Below 2 he will disengage mid-bite. -->
+    <dragonDisengageDistance>4</dragonDisengageDistance>
+    <dragonDisengagePauseSeconds>1</dragonDisengagePauseSeconds>
+    <!-- How far he ranges when circling with nothing to chase. Smaller keeps him overhead;
+         larger sends him on wider sweeps between passes. -->
+    <dragonCirclingRadius>20</dragonCirclingRadius>
+
+    <!-- How far ahead along his path the FLIGHT SPRITE reads his heading, in cells.
+         RimWorld walks a shallow diagonal as a staircase (north, north-east, north, north...),
+         so reading only the next cell made the sprite flip every couple of cells even though he
+         was flying dead straight. Reading further ahead averages the staircase out.
+         Higher = steadier facing but slower to show a real turn. 1 or below = the old
+         one-cell-at-a-time behaviour. -->
+    <dragonFacingLookaheadCells>6</dragonFacingLookaheadCells>
+
+    <!-- HOW BIG A DOVAH DRAWS. ABSOLUTE VALUES. NOT A DELTA, NOT A RECIPE.
+         ⚠ DO NOT SCALE THESE, EVER, UNLESS THE USER ASKS IN SO MANY WORDS. Standing
+            instruction, 2026-08-18: "it is supposed to be done once, i'll tell you again when
+            I want to touch the dovah's visual size."
+         ⚠ WHY THE WARNING EXISTS. This comment used to open "Raised 10% on 2026-08-12",
+            which states an OPERATION, not a fact. A later session read it as a live
+            instruction and applied the 10% a SECOND time: 5.06 became 5.566 and 6.16 became
+            6.776. A delta can be re-applied; an absolute cannot. Record the number that
+            stands, never the change that produced it.
+         ⚠ AND THE 5.566 / 6.776 BELOW IS SANCTIONED. Shown the arithmetic on 2026-08-18 the
+            user chose to KEEP the doubled size rather than revert to 5.06 / 6.16. DO NOT
+            "correct" it back. The value is right; only the way it was arrived at was wrong.
+         History, reference ONLY, never to be re-applied: 4.6 / 5.6 as first authored, then
+         5.06 / 6.16 after the single +10% the user asked for on 2026-08-12.
+         Airborne is larger on purpose - he is nearer the camera in the air.
+         ⚠ dragonDrawSizeGrounded MUST MATCH <drawSize> in
+            Defs/ThingDefs_Races/Alduin_Dovahkiin.xml. That one is what RimWorld uses before the
+            first graphic swap; this one is what every swap after it uses. A mismatch shows as him
+            changing size the first time he takes off. Change BOTH or neither. -->
+    <dragonDrawSizeGrounded>5.566</dragonDrawSizeGrounded>
+    <dragonDrawSizeAirborne>6.776</dragonDrawSizeAirborne>
+
+    <!-- The sharpest turn he will make between circling legs, in degrees.
+         Stops "north -> north-east -> south". 180 disables the rule; below ~60 he may run out of
+         candidates on a cramped map and fall back to the old behaviour. -->
+    <dragonMaxTurnDegrees>110</dragonMaxTurnDegrees>
+
+    <!-- AUDIO LENGTHS, MEASURED OFF THE FILES. 60 ticks = 1 second.
+           DragonTakeOff.wav           2.237s -> 135 ticks (rounded up so it is never clipped)
+           DragonFlightCircling1.mp3  15.192s -> 912 ticks  } both 633 MPEG frames,
+           DragonFlightCircling2.mp3  15.192s -> 912 ticks  } identical lengths
+         The dragon ALTERNATES the two circling takes, so the phase is cut to the longer one.
+         ⚠ The circling leg lasts Max(dragonPatternLeaveTicks, takeoff + circling) = 1047 ticks
+           (17.45s). It is DERIVED, so replacing a clip means changing the number here and nothing
+           else can silently truncate it. Raising dragonPatternLeaveTicks still makes the leg
+           longer; lowering it below the audio does nothing, on purpose. -->
+    <dragonTakeOffSoundTicks>135</dragonTakeOffSoundTicks>
+    <dragonCirclingSoundTicks>912</dragonCirclingSoundTicks>
+
+    <!-- ⚠ THE TWO KNOBS THAT DECIDE HOW LONG HIS STRAIGHT RUNS ARE. Leg length is
+         2 * radius * sin(step/2), so BOTH matter and it is easy to turn only one.
+
+         360 / step = number of sides.  Measured lengths at a few settings:
+             step 45, radius 14  ->  8 sides, leg 10.7 cells   (the first attempt - too busy)
+             step 72, radius 20  ->  5 sides, leg 23.5 cells   [CURRENT]
+             step 90, radius 20  ->  4 sides, leg 28.3 cells   (⚠ needs dragonMaxTurnDegrees > 90)
+            step 120, radius 22  ->  3 sides, leg 38.1 cells   (a triangle; very long runs)
+
+         The user, 2026-08-13: "make the trajectory of flight less octogonal for more 'rectiline'
+         flighttime". Raised 45 -> 72 and the radius 14 -> 20 together, which more than DOUBLES the
+         straight run, 10.7 -> 23.5 cells.
+
+         ⚠ IF YOU RAISE step TO 90 OR ABOVE, RAISE dragonMaxTurnDegrees WITH IT. That filter
+         rejects any waypoint demanding a sharper turn than it allows, and a 90-degree step against
+         a 90-degree limit sits exactly on the boundary - he would fall through to the unlimited
+         second pass and the shape would go ragged again for no obvious reason. -->
+    <dragonCirclingStepDegrees>90</dragonCirclingStepDegrees>
+
+    <!-- How far he looks for a new victim when the one he was brawling stops counting.
+         A DOWNED pawn no longer counts as a target, so knocking someone down used to leave him
+         standing over the body for the rest of the phase. Bounded on purpose: unbounded would send
+         a grounded dragon jogging across the map at walking speed. 0 = stand still, as before. -->
+    <dragonBrawlRetargetRadius>12</dragonBrawlRetargetRadius>
+
+    <!-- The pause before a breath fires. 60 ticks = 1 second, so 240 = the user's 4 seconds:
+         flight circling -> Land -> wait 4s -> Launch breathing -> tail pause -> circling.
+         He enters the breathing state at the START of the wind-up and is held motionless
+         throughout, so it reads as settling and drawing breath rather than hesitating.
+         Counted INSIDE the Execute phase length, so raising it lengthens the phase and the
+         hold-still together. Do not add it anywhere else as well. -->
+    <dragonBreathWindupTicks>240</dragonBreathWindupTicks>
+
+    <!-- Does an airborne dovah fly OVER walls, roofs and gates? SPEC.md 6.5.
+         Master switch on four Harmony patches (reachability, the path, the blocker check, the
+         terrain cost). Set false and they all stand down, restoring ordinary pathing, no rebuild.
+         ⚠ If any pathing oddity ever shows up in a save with this mod, TURN THIS OFF FIRST - it is
+            the fastest way to prove whether the dragon's flight is responsible.
+         Natural mountain rock stops him either way: that is what makes a mountain base the
+         player's architectural answer to a dragon. -->
+    <dragonFliesOverObstacles>true</dragonFliesOverObstacles>
+
+    <!-- A DOVAH NEVER LANDS OR WALKS UNDER A ROOF. HE FLIES OVER IT.
+         The user, 2026-08-18: "I hereby declare that dovah's cannot land nor walk inside roofed
+         area, only fly over it." Reported as messy AND unfair, and it is both.
+         It gates CHOOSING the ground: the dive pounce will not pick a roofed cell, melee range
+         will not ground him when the only ground is roofed, grounded attack patterns leave the
+         roll while his target is indoors, and he lifts into a soar if found standing under one.
+         It does NOT gate being FORCED down - downed, badly hurt, or holding somebody in his jaws
+         still ground him anywhere. That precedence is what stops the two rules fighting each
+         other every tick; force wins, choice does not.
+         Set false to restore the old behaviour with no rebuild. -->
+    <dragonNeverGroundedUnderRoof>true</dragonNeverGroundedUnderRoof>
+
+    <!-- THE SHORTEST CHORD A FLIGHT HEADING MAY BE READ FROM, IN CELLS. Below this he keeps the
+         facing he already has.
+         The user, 2026-08-18: "He oddly flies a lot in diagonal sprite (while going east/west)
+         when flying over roofed areas."
+         The octant dead zone is (chord * 5) / 12 in INTEGER arithmetic, so:
+             chord 1 to 2 cells -> dead zone 0   (any diagonal step reads as diagonal)
+             chord 3 to 4 cells -> dead zone 1
+             chord 5 to 7 cells -> dead zone 2
+         With no dead zone one Bresenham staircase step on a due-east run reads as NE, which is
+         the defect dragonFacingLookaheadCells was raised to 6 to cure. It survived in the TAIL of
+         every leg, where the look-ahead cannot reach six cells.
+         3 is the lowest honest value: the first chord whose dead zone is not zero. Higher is
+         steadier but slower to show a real turn; 1 restores the old behaviour. -->
+    <dragonFacingMinChordCells>3</dragonFacingMinChordCells>
+
+    <!-- THE DIVE. He drops onto a cell BESIDE his target to end a chase, rather than touching
+         down wherever he happened to be when the landing triggered.
+         Without it the landing was unloseable for the target: he lands at
+         dragonLandToBiteDistance (4) while the stun only reaches dragonLandingStunRadius (2.4),
+         so the target was outside the blast by construction - and landing drops him from 3.60x
+         speed to 1.00x, about what a fleeing colonist runs at, so he could never catch up again.
+         0 disables the pounce and lands him where he stands. -->
+    <dragonDiveMaxCells>6</dragonDiveMaxCells>
+
+    <!-- ============================================================================
+         THE BREATH - SPEC.md 4.6 and 4.6a.
+
+         Compare the Dovahkiin's Fire Breath at three words: 74 damage, range 13, cone 46.
+         A dragon's is about double the damage over double the range - but delivered
+         GRADUALLY, one share per pulse to whoever is standing in it at that moment.
+         Walk out after one pulse and you take one share.
+
+         Duration / pulse interval gives the pulse count, and the per-pulse share is the
+         total divided by that. All derived, so they cannot drift apart.
+
+         ⚠ THE BREATH HAS NO VERB AND NO TOOL, AND MUST NEVER GET ONE. It is an active
+         skill fired by the attack pattern, not something RimWorld's AI may roll.
+         ============================================================================ -->
+    <!-- 148 -> 118.4 (-20%) on 2026-08-06: a Dovahkiin under Dragon Aspect was still too frail
+         against it. Applies to fire and frost alike. -->
+    <dragonBreathDamage>86.0472</dragonBreathDamage>
+    <dragonBreathDamageInstances>4</dragonBreathDamageInstances>
+    <!-- 0.35 -> 0.315 (-10%) on 2026-08-06, so Dragon Aspect's heat resistance keeps more of
+         its value. Shared by fire and frost, like every other breath number. -->
+    <dragonBreathArmorPenetration>0.25515</dragonBreathArmorPenetration>
+    <dragonBreathDurationTicks>263</dragonBreathDurationTicks>
+    <dragonBreathPulseIntervalTicks>20</dragonBreathPulseIntervalTicks>
+    <!-- GROUNDED: a cone swept along the ground. -->
+    <dragonBreathConeRange>24</dragonBreathConeRange>
+    <dragonBreathConeAngle>38</dragonBreathConeAngle>
+    <!-- The cone REACHES ITS TARGET and stops (plus a short overshoot), between this and
+         dragonBreathConeRange. Before 2026-08-05 it always spanned the full range, so aiming
+         at something three cells away still burned everything twenty cells past it - the
+         direction followed the aim but the length never did.
+         ⚠ Set this equal to dragonBreathConeRange to go back to a fixed-length jet. -->
+    <dragonBreathConeMinRange>24</dragonBreathConeMinRange>
+    <!-- SOAR: a damaging CIRCLE at the impact point. The cone reaching down to it is
+         purely visual and hurts nobody. -->
+    <dragonBreathPoolRadius>3.5</dragonBreathPoolRadius>
+    <!-- SOAR: how far from himself he may place that circle. There was NO cap before
+         2026-08-05 - he could target anywhere on the map. Aiming further clamps to this. -->
+    <dragonBreathSoarRange>14</dragonBreathSoarRange>
+
+    <!-- THE FILL GRADIENT under the flecks. Edit and restart - no rebuild.
+         Colours are (R, G, B) or (R, G, B, A) as 0-1 floats.
+
+         Two ramps at once, both measured from the DRAGON'S MOUTH:
+           LIGHTNESS  - dragonBreathFillBright at the mouth, dragonBreathFillColor at the far
+                        end, everything settling to fillColor x 0.8 as the breath burns out.
+                        That 0.8 floor is fixed in code: "at most 20% darker than the colour
+                        used right now".
+           YELLOWNESS - strongest at the mouth, gone by the far end.
+                        GROUNDED: the cone yellows from its start down to unchanged at the tip.
+                        SOAR:     only the reaching CONE yellows. The damaging circle is left
+                                  untouched entirely, not merely faintly tinted.
+
+         dragonBreathYellowStrength 0 turns the yellow ramp off and leaves the plain
+         lightness gradient. -->
+    <dragonBreathFillColor>(0.72, 0.26, 0.05, 0.34)</dragonBreathFillColor>
+    <dragonBreathFillBright>(1.0, 0.76, 0.40)</dragonBreathFillBright>
+    <!-- Yellow raised 2026-08-06 for more contrast between the mouth and the far end.
+         The yellow itself went (1, 0.93, 0.35) -> (1, 0.98, 0.28): purer, less blue in it.
+         Strength went 0.45 -> 0.75.
+         The FAR end is untouched by both, because the ramp is strength x (1 - distance) and so
+         reaches zero at the tip whatever the strength is - which is exactly why raising the
+         strength buys contrast rather than just making the whole cone yellow. -->
+    <dragonBreathFillYellow>(1.0, 0.98, 0.28)</dragonBreathFillYellow>
+
+    <!-- ⚠ FROST HAS A PALETTE PER SHAPE, AND THE TWO ARE INVERTED. Fire does not - its cone and
+         its soaring jet share one set. Frost, by the user's own 2026-08-06 spec:
+
+           GROUNDED : "blue at the start down to snow white at the tip of the cone"
+                      -> mouth BLUE, tip WHITE
+           SOAR     : "make the cone whiter, dont touch the circle"
+                      -> reaching cone WHITE, impact circle BLUE and unchanged
+
+         Opposite arrangements, so one shared frost palette cannot express both. Not a mistake to
+         be tidied away: a ground jet reads as cold breath freezing white as it travels, a falling
+         jet as white air condensing into a blue pool where it lands. -->
+
+    <!-- FROST, GROUNDED CONE: blue at the mouth, snow white at the tip. -->
+    <dragonBreathFrostConeFillColor>(0.93, 0.97, 1.0, 0.34)</dragonBreathFrostConeFillColor>
+    <!-- Blue softened 25% toward white on 2026-08-06 ("reduce the blue overall a bit").
+         Lifted R and G rather than lowering B: dropping the blue channel alone makes a colour
+         darker and greyer, not less blue. Blueness is DOMINANCE, so the way to reduce it is to
+         bring the other two channels up toward it. -->
+    <dragonBreathFrostConeFillBright>(0.545, 0.729, 0.965)</dragonBreathFrostConeFillBright>
+    <dragonBreathFrostConeFillTint>(0.449, 0.641, 0.948)</dragonBreathFrostConeFillTint>
+    <dragonBreathFrostConeTintStrength>0.75</dragonBreathFrostConeTintStrength>
+
+    <!-- FROST, SOAR: a white reaching cone over an unchanged blue circle.
+         The tint is the ONLY lever that whitens the cone without touching the circle, because
+         the circle is excluded from the tint ramp entirely. Raise the strength for a whiter jet. -->
+    <!-- Softened the same way and by the same amount. ⚠ This DOES change the circle, which an
+         earlier instruction had asked be left alone - but the circle is where soar's blue lives,
+         so "reduce the blue for soar" cannot mean anything else. -->
+    <dragonBreathFrostSoarFillColor>(0.449, 0.598, 0.808, 0.34)</dragonBreathFrostSoarFillColor>
+    <dragonBreathFrostSoarFillBright>(0.80, 0.94, 1.0)</dragonBreathFrostSoarFillBright>
+    <dragonBreathFrostSoarFillTint>(0.97, 1.0, 1.0)</dragonBreathFrostSoarFillTint>
+    <dragonBreathFrostSoarTintStrength>0.95</dragonBreathFrostSoarTintStrength>
+    <!-- Snow laid in its cells, and how hard it chills whoever is caught. -->
+    <dragonBreathFrostSnowDepth>0.22</dragonBreathFrostSnowDepth>
+    <dragonBreathFrostChillSeverity>1.0</dragonBreathFrostChillSeverity>
+    <dragonBreathYellowStrength>0.75</dragonBreathYellowStrength>
+
+    <!-- SOAR ONLY: how much LESS TRANSPARENT the damaging circle is than the reaching cone.
+         A multiplier on its alpha; 1 = the same as everything else. The fill sits at 0.34, so
+         1.4 puts the circle at about 0.48 while the cone stays near 0.20.
+
+         ⚠ THE LEVER IS OPACITY, NOT BRIGHTNESS, AND THAT WAS LEARNED THE HARD WAY.
+         An RGB brightness multiplier was tried first (2026-08-06) and rejected in play - "now it
+         feels like the cone and circle has the same color". Red was already saturated at 1.0 in
+         every circle band, so multiplying could only lift green and blue, walking the circle's
+         hue TOWARDS the cone's yellow-orange. It made them converge. Opacity has no such ceiling
+         and changes weight without touching hue at all. -->
+    <dragonBreathSoarCircleOpacity>1.4</dragonBreathSoarCircleOpacity>
+
+    <!-- ============================================================================
+         STATE DWELL TIMES AND THE COMBAT RHYTHM (SPEC.md 6.5c)
+         The user, after the first playtest: he "barely switches to soar at all and is
+         using flight a bit too often", and asked for "a system of cooldown between
+         each switch". The dwell time is the fix for BOTH: without it the state
+         flickered every time he started or stopped wandering, because idle-and-moving
+         is flight and idle-and-stationary is grounded.
+         REAL-TIME SECONDS, as the user gave them. 60 ticks = 1 second at normal speed.
+         ============================================================================ -->
+    <!-- Raised from 6 to 9 (+50%) at the user's request, 2026-08-04 second playtest. -->
+    <dragonMinSecondsGrounded>9</dragonMinSecondsGrounded>
+    <dragonMinSecondsSoar>5</dragonMinSecondsSoar>
+    <!-- DOUBLED from 4 to 8 at the user's request, same round: "extend the duration of his
+         flight state". NOTE this is no longer the shortest of the three - grounded is - so
+         flight is now kept rare by "flight always returns to soar in combat" rather than by
+         a short dwell. If flight starts to feel too common again, that is the reason. -->
+    <dragonMinSecondsFlight>8</dragonMinSecondsFlight>
+
+    <!-- HE MUST NOT HOVER. Reported 2026-08-04: "he was still capable of being stationary
+         while in flight". Cause was the dwell timer itself - it locked him in flight even
+         after he stopped moving. This is the escape hatch: stand still this long while
+         flying and he lands, dwell timer or not.
+         It is a GRACE period, not zero, because a wandering pawn pauses briefly between
+         destinations and dropping him on every pause is the flicker we just fixed. -->
+    <dragonFlightStationaryGraceSeconds>1.5</dragonFlightStationaryGraceSeconds>
+
+    <!-- The combat rhythm. Target: SOAR >= GROUNDED > FLIGHT by time spent.
+         These are per-decision chances, rolled ONLY once the current state's dwell has
+         expired - so they are not time shares, and the dwell times above weight the
+         outcome as much as these do. THAT IS WHY BOTH ARE EXPOSED.
+         EXPECT TO TUNE THESE IN GAME: three dwell times against three chances is not
+         something worth computing on paper. If he flies too much, either lower
+         dragonCombatSoarToFlightChance or shorten dragonMinSecondsFlight. -->
+    <dragonCombatGroundedToSoarChance>0.55</dragonCombatGroundedToSoarChance>
+    <dragonCombatSoarToFlightChance>0.30</dragonCombatSoarToFlightChance>
+    <dragonCombatSoarToGroundedChance>0.34</dragonCombatSoarToGroundedChance>
+
+    <!-- ============================================================================
+         THE LANDING. User's request, 2026-08-04: "dovahs going from soar to grounded
+         causes a little dust flying around them and causes a brief stun."
+         Fires ONLY on soar -> grounded, which is the one transition that is a landing.
+         Flight -> grounded cannot happen directly (flight always exits via soar), and
+         grounded -> anything is a take-off, not an impact.
+         ============================================================================ -->
+    <dragonLandingDustPuffs>30</dragonLandingDustPuffs>
+    <!-- Cells. Small on purpose - this is the thump of him touching down, not a shout. -->
+    <dragonLandingStunRadius>4.4</dragonLandingStunRadius>
+    <!-- Ticks. 60 = one second at normal speed. "Brief" per the user; long enough to
+         read as a stagger, short enough not to be a stunlock if he lands repeatedly. -->
+    <dragonLandingStunTicks>120</dragonLandingStunTicks>
+    <!-- ============================================================================
+         THE GRAB (SPEC.md 6.6b) - "bite down, shake left-right, throw away".
+         The user's iconic move, and deliberately RARE: a surprise, not a staple.
+         At 0.02 a player might see it once in a long fight, which is what makes it
+         memorable. Raise it to test, then put it back.
+         ============================================================================ -->
+    <!-- How close a colonist must come before a GUARDING dovah wakes and turns manhunter.
+         Generous: a mound guardian that only notices you at arm's length guards nothing. -->
+    <dragonGuardTriggerRadius>12</dragonGuardTriggerRadius>
+
+    <!-- ############################################################################
+         ⚠⚠ TEMPORARY - TESTING ONLY. SET THIS BACK TO true. ⚠⚠
+
+         false = a GUARDING dovah sits motionless on his mound and NEVER rouses, so you can
+         walk up to him, click him and fire a debug breath without a fight. Turned off
+         2026-08-05 at the user's request purely to make breath testing quick.
+
+         THE REAL BEHAVIOUR IS true - approach within dragonGuardTriggerRadius and he wakes,
+         which is one of the three ways SPEC.md 6.5c says you may meet a dovah. Shipping with
+         this false would leave every guardian in the game permanently inert.
+
+         It does NOT make him passive in general: manhunterOnDamageChance is still 1.0, so
+         hitting him still starts a fight.
+         ############################################################################ -->
+    <dragonGuardTriggerEnabled>true</dragonGuardTriggerEnabled>
+
+    <!-- ⚠ WAS ">1.0" (a stray >) until 2026-08-05. XML accepts a bare > in text content, so the
+         file parsed clean and NOTHING complained - but ">1.0" is not a float, so RimWorld logged
+         an XML error, dropped the value, and left the C# default of 0.02 in force. The grab test
+         was never actually running at 1.0. PUT THIS BACK TO 0.02 once the grab is confirmed. -->
+    <dovahGrabChance>0.02</dovahGrabChance>
+    <dovahGrabDurationTicks>150</dovahGrabDurationTicks>
+    <!-- Ticks between facing flips during the shake. Lower is more violent. -->
+    <dovahGrabShakeIntervalTicks>12</dovahGrabShakeIntervalTicks>
+    <!-- Both damage types on release, per the user: teeth that puncture AND tear. -->
+    <dovahGrabSlashDamage>22</dovahGrabSlashDamage>
+    <dovahGrabPierceDamage>18</dovahGrabPierceDamage>
+    <dovahGrabThrowCells>7</dovahGrabThrowCells>
   </Dovahkiin.DovahkiinTuningDef>
 
 </Defs>
+
+
+

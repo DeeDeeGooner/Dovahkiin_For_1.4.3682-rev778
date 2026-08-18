@@ -49,15 +49,29 @@
         The Royalty *def* is DLC, but the CLASS is in Verse inside Assembly-CSharp, so this is
         baseline-safe - same reasoning that made PawnJumper usable.
 
-        KNOWN SIDE EFFECT, FLAGGED FOR PLAYTEST: vanilla invisibility also makes a pawn hard
-        to TARGET. On Become Ethereal that is arguably faithful. On a rescue summon it means
-        enemies largely ignore him, so he is far harder to kill than his health suggests -
-        which is a balance question, not a bug. TESTS/phase2j.md asks about it. If it is
-        unwanted, delete this one comp and he becomes an ordinary visible ally.
+        THE FLAGGED SIDE EFFECT HAPPENED, AND THE COMP IS GONE - 2026-08-04.
+
+        This warned that vanilla invisibility "also makes a pawn hard to TARGET… a balance
+        question, not a bug", and offered "delete this one comp and he becomes an ordinary
+        visible ally". Confirmed in play: a dragon chased fleeing colonists and never once
+        attacked the summon beside him. Scanning all 12,819 types for callers of
+        PawnUtility.IsInvisible found why - Verse.Pawn.ThreatDisabled returns TRUE for an
+        invisible pawn, so he is not a threat at all; plus four JobGivers, and GenUI.TargetsAt,
+        which is why the PLAYER could not click him either.
+
+        It was not a balance question after all. Dividing enemy attention is the entire POINT
+        of these summons, so being ignored defeats them.
+
+        BUT HE IS NOT AN "ORDINARY VISIBLE ALLY" EITHER - he is a spirit, and the user was
+        explicit that this is not negotiable. SpectralPawnUtility now puts vanilla's OWN
+        invisibility materials on his graphics in code, through the public
+        InvisibilityMatPool.GetInvisibleMat: same shader, same distortion noise, same
+        (0.75, 0.93, 0.98, 0.5). PIXEL-IDENTICAL to what this comp produced, shimmer included,
+        while leaving him a legal target. See Graphic_Spectral.cs.
+
+        DO NOT PUT THIS COMP BACK. It would restore the untargetability without changing how he
+        looks by a single pixel.
       -->
-      <li Class="HediffCompProperties">
-        <compClass>HediffComp_Invisibility</compClass>
-      </li>
     </comps>
     <stages>
       <li>
@@ -129,18 +143,14 @@
     <maxSeverity>1.0</maxSeverity>
     <defaultLabelColor>(0.72, 0.86, 1.0)</defaultLabelColor>
     <comps>
-      <!-- Vanilla's own invisibility, as above. A plain HediffCompProperties carrying
-           compClass, exactly as Royalty's PsychicInvisibility declares it: there is NO
-           HediffCompProperties_Invisibility type in 1.4, and inventing one is an XML error
-           that gets silently dropped, leaving a visible pawn under comments claiming
-           otherwise. The class lives in Verse, so this is baseline-safe.
+      <!-- INVISIBILITY COMP REMOVED 2026-08-04, for the reason given in full on the Ancient
+           Dragonborn's hediff above: it made these summons untargetable, which defeats the
+           tanking role they exist for.
 
-           Same flagged side effect: vanilla invisibility also makes a pawn hard to TARGET,
-           so he is harder to kill than 0.66/0.33 suggests. Delete this one comp and he
-           becomes an ordinary visible ally. -->
-      <li Class="HediffCompProperties">
-        <compClass>HediffComp_Invisibility</compClass>
-      </li>
+           He is still a spirit. SpectralPawnUtility applies vanilla's own invisibility
+           MATERIALS to his graphics in code - pixel-identical look, targetable pawn.
+
+           DO NOT PUT THIS COMP BACK. -->
     </comps>
     <stages>
       <li>

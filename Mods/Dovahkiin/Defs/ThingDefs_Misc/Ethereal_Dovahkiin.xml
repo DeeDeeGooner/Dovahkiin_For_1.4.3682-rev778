@@ -52,6 +52,39 @@
   </ThingDef>
 
   <!--
+    SPEC.md 4.6 / 4.6a - A DRAGON'S BREATH.
+
+    Same ethereal shape as the shout wave: never drawn (the effect is entirely flecks), never
+    selectable, ticks only while a breath is burning, then vanishes.
+
+    ⚠ THERE IS DELIBERATELY NO VERB AND NO tools ENTRY ANYWHERE FOR THIS.
+    The user, 2026-08-05: a dragon's breath "isn't just a random melee or ranged roll, it's an
+    ACTIVE SKILL... their breathing should be used exactly as in the patterns". Give it a verb
+    and RimWorld's own combat AI fires it whenever it likes, which is precisely the "several
+    breaths in one grounded period" being ruled out. The only way to start one is a code call to
+    Thing_DragonBreath.Spawn, which will come from the attack-pattern executor.
+  -->
+  <ThingDef ParentName="EtherealThingBase">
+    <defName>Dovahkiin_DragonBreath</defName>
+    <label>dragon breath</label>
+    <thingClass>Dovahkiin.Thing_DragonBreath</thingClass>
+    <tickerType>Normal</tickerType>
+    <useHitPoints>false</useHitPoints>
+    <!-- RealtimeOnly from 2026-08-05: it now draws its own FILL layer - one mesh covering the
+         whole shape, one draw call - under the flecks. The user asked for "a whole layer of
+         color filling the whole circle, a transparent darker orange".
+
+         ⚠ drawOffscreen IS REQUIRED, NOT OPTIONAL. RimWorld culls dynamic drawing by the THING'S
+         OWN CELL, and this Thing sits at the dragon's feet while drawing a cone or a circle that
+         may reach 24 cells away. Without it the fill silently stops rendering the moment the
+         dragon's own cell leaves the view - which reads as the breath flickering out early, with
+         no error anywhere. Vanilla's own RealtimeOnly movers (Tornado, PawnFlyerBase) both set it. -->
+    <drawerType>RealtimeOnly</drawerType>
+    <drawOffscreen>true</drawOffscreen>
+    <altitudeLayer>Skyfaller</altitudeLayer>
+  </ThingDef>
+
+  <!--
     SPEC.md 4.4e - Storm Call. The storm itself, carrying the strike schedule.
 
     Same shape as the shout wave: ethereal, never drawn, never selectable, ticks only while

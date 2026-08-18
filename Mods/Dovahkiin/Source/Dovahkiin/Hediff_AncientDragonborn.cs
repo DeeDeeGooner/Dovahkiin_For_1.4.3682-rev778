@@ -136,6 +136,25 @@ namespace Dovahkiin
                 return;
             }
 
+            // KEEP HIM SPECTRAL. He used to carry vanilla's HediffComp_Invisibility, which gave
+            // the right look and also removed him from the game's threat model - so enemies
+            // ignored him entirely and the tanking role he exists for did not work. The comp is
+            // gone; SpectralPawnUtility puts vanilla's OWN invisibility materials on his
+            // graphics instead, which is pixel-identical and leaves him targetable.
+            //
+            // Re-applied here rather than once at spawn because anything that calls
+            // ResolveAllGraphics on him rebuilds his graphics from his story and discards the
+            // wrappers. It is cheap: MakeSpectral returns false without doing any work once the
+            // wrappers are on, so the common case is five reference compares.
+            //
+            // Every 60 ticks rather than every tick - a one-second window of solidity after
+            // something re-resolves him is not worth a per-tick cost, and CLAUDE.md forbids
+            // per-tick work that can live on an interval.
+            if (p.IsHashIntervalTick(60))
+            {
+                SpectralPawnUtility.MakeSpectral(p);
+            }
+
             if (breathCooldown > 0)
             {
                 breathCooldown--;

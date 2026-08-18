@@ -204,6 +204,19 @@ The trail VFX is already in and does not depend on this.
   Phase 2. Spectral bronze-gold plating, silhouette-breaking shoulder spurs, ember rim-light,
   drifting motes. Failure to deliver the overlay is a stop-and-report, not a silent downgrade.
 
+## Audio already recorded but NOT yet wired
+
+**⚠ An unreferenced audio file is invisible — nothing in RimWorld reports one.** That cost six
+days with `DragonLanding.mp3`, which sat in `Sounds/` unused from 2026-08-06 to 2026-08-12.
+Anything recorded ahead of the feature it belongs to goes here until it is wired.
+
+| clip | length | for | state |
+|---|---|---|---|
+| `DungeonBackgroundNoise.mp3` | 15.408s | **Nordic crypts ONLY** (`SPEC.md §7.3`) — the user's own recording, 2026-08-13 | **Waiting on Phase 5.** ⚠ Plays **ONCE on FIRST ENTRY** — *not* a loop, *not* an ambience. ⚠ **Not** for dragon mounds (§7.1) or burial sites (§7.2). "First entry" is saved per-site state, so leaving and returning must not replay it. |
+
+Wired and working: `DragonBreathFire`, `DragonBreathFrost`, `DragonLanding`, `DragonTakeOff`,
+`DragonFlightCircling1`, `DragonFlightCircling2`.
+
 ## Not yet reached
 
 Phases 3–5 creatures (Alduin, the fallback dragon, draugr and the wight tier, deathlord,

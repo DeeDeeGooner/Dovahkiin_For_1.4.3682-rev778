@@ -1,0 +1,188 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The mod's own sound effects.
+
+  ⚠ EVERYTHING HERE MUST BE ORIGINAL OR PROPERLY LICENSED. Ripped game audio - Skyrim's above
+  all - is copyrighted and may not be redistributed, exactly as this project already rules for
+  another mod's ART ("their art is a ruler, never a source"). The repo is PUBLIC, so committing
+  such a file is distribution before the mod is published anywhere, and git history keeps it
+  after a later delete. All three clips were made by the user - the two breaths on 2026-08-06,
+  the landing recorded the same day and wired up on 2026-08-12.
+
+  clipPath is relative to the mod's Sounds/ folder and carries NO extension. RimWorld accepts
+  .wav, .mp3, .ogg, .xm, .it, .mod and .s3m (read off ModContentLoader.AcceptableExtensionsAudio,
+  not assumed) - so these .mp3 files need no conversion.
+-->
+<Defs>
+
+  <!--
+    A DRAGON'S FIRE BREATH.
+
+    context MapOnly + a distRange, so it is heard from where the breath actually is and fades
+    with distance. NOT onCamera: this project's notebook records that a sound authored
+    onCamera must be played with PlayOneShotOnCamera, and played positionally is inaudible from
+    anywhere but its own tile. These are positional, and Thing_DragonBreath plays them that way.
+
+    maxSimultaneous 2 - a dragon can only breathe one at a time, but two dragons might, and a
+    breath restarting on top of itself is what turns a roar into a wall of noise.
+  -->
+  <SoundDef>
+    <defName>Dovahkiin_DragonBreathFire</defName>
+    <context>MapOnly</context>
+    <maxSimultaneous>2</maxSimultaneous>
+    <subSounds>
+      <li>
+        <grains>
+          <li Class="AudioGrain_Clip">
+            <clipPath>DragonBreathFire</clipPath>
+          </li>
+        </grains>
+        <volumeRange>32~38</volumeRange>
+        <!-- A little pitch variation so repeated breaths in one fight do not read as a
+             copy-paste. Narrow on purpose: wide pitch ranges make a roar sound comical. -->
+        <pitchRange>0.94~1.06</pitchRange>
+        <distRange>0~45</distRange>
+      </li>
+    </subSounds>
+  </SoundDef>
+
+  <SoundDef>
+    <defName>Dovahkiin_DragonBreathFrost</defName>
+    <context>MapOnly</context>
+    <maxSimultaneous>2</maxSimultaneous>
+    <subSounds>
+      <li>
+        <grains>
+          <li Class="AudioGrain_Clip">
+            <clipPath>DragonBreathFrost</clipPath>
+          </li>
+        </grains>
+        <volumeRange>32~38</volumeRange>
+        <pitchRange>0.94~1.06</pitchRange>
+        <distRange>0~45</distRange>
+      </li>
+    </subSounds>
+  </SoundDef>
+
+  <!--
+    A DOVAH COMING DOWN. Played by Comp_AlduinFlight.DoLandingImpact, at the cell he actually
+    lands on - AFTER the pounce has moved him, or a dive would be heard where he took off from.
+
+    The clip was recorded 2026-08-06 and sat in Sounds/ unused until 2026-08-12: it postdates the
+    last edit to this file by twelve hours and simply never got a def. **A media file in the
+    folder is not a wired-up asset** - nothing warns about one nobody references, because from
+    RimWorld's point of view there is nothing to warn about.
+
+    distRange runs further than the breaths (0~60 against 0~45): an impact heavy enough to stun
+    everything within 2.4 cells should carry past the fight it happens in, and unlike a breath it
+    is one short event rather than a sustained roar, so it does not crowd the mix.
+
+    maxSimultaneous 1 - one dragon landing twice inside a second is the dive re-firing, not two
+    impacts, and layering the clip on itself turns a thud into a flam.
+  -->
+  <SoundDef>
+    <defName>Dovahkiin_DragonLanding</defName>
+    <context>MapOnly</context>
+    <maxSimultaneous>1</maxSimultaneous>
+    <subSounds>
+      <li>
+        <grains>
+          <li Class="AudioGrain_Clip">
+            <clipPath>DragonLanding</clipPath>
+          </li>
+        </grains>
+        <volumeRange>34~40</volumeRange>
+        <pitchRange>0.94~1.06</pitchRange>
+        <distRange>0~60</distRange>
+      </li>
+    </subSounds>
+  </SoundDef>
+
+  <!--
+    TAKE-OFF. Grounded -> Flight or Grounded -> Soar, played by Comp_AlduinFlight.EnterState,
+    gated on the SOURCE state exactly as the landing is - so Soar <-> Flight is silent, because
+    he never leaves the ground for it.
+
+    2.237s, and he is standing still when it fires, so unlike the circling loop below there is no
+    drift problem and a plain positional one-shot is right.
+
+    ⚠ .wav, where everything else here is .mp3. Both are in
+    ModContentLoader.AcceptableExtensionsAudio (.wav .mp3 .ogg .xm .it .mod .s3m), and clipPath
+    carries NO extension either way, so nothing needs converting.
+  -->
+  <SoundDef>
+    <defName>Dovahkiin_DragonTakeOff</defName>
+    <context>MapOnly</context>
+    <maxSimultaneous>1</maxSimultaneous>
+    <subSounds>
+      <li>
+        <grains>
+          <li Class="AudioGrain_Clip">
+            <clipPath>DragonTakeOff</clipPath>
+          </li>
+        </grains>
+        <volumeRange>34~40</volumeRange>
+        <pitchRange>0.96~1.04</pitchRange>
+        <distRange>0~60</distRange>
+      </li>
+    </subSounds>
+  </SoundDef>
+
+  <!--
+    CIRCLING, TAKE 1 AND TAKE 2. The dragon ALTERNATES them - a saved flag in Comp_AlduinFlight,
+    not a random roll: the two takes are the same length and similar in character, so a coin flip
+    would routinely play one three legs running and read as a single looping clip, which is the
+    very thing having two of them is meant to avoid.
+
+    ⚠ TWO SEPARATE DEFS, NOT TWO GRAINS IN ONE. A single def with both clips as grains would let
+    RimWorld pick, and RimWorld picks at RANDOM - which is precisely what we are avoiding. The
+    alternation has to live where it can be remembered across a save.
+
+    ⚠ EACH RUNS 15.192s, AND A PlayOneShot IS PINNED TO A FIXED WORLD POSITION FOR ITS WHOLE
+    LENGTH. It is therefore anchored at the CENTRE of the circle rather than at the dragon, who at
+    3.42x would otherwise fly a long way from his own noise. That is sound because circling is
+    bounded - he stays within roughly one dragonCirclingRadius of the centre. Anything that needs
+    audio to FOLLOW him across the map wants a Sustainer maintained per tick, not this.
+
+    distRange is wider than the breaths: this is the sound of something enormous overhead, and it
+    should reach a player whose camera is on the colony rather than on the dragon.
+  -->
+  <SoundDef>
+    <defName>Dovahkiin_DragonFlightCircling1</defName>
+    <context>MapOnly</context>
+    <maxSimultaneous>1</maxSimultaneous>
+    <subSounds>
+      <li>
+        <grains>
+          <li Class="AudioGrain_Clip">
+            <clipPath>DragonFlightCircling1</clipPath>
+          </li>
+        </grains>
+        <volumeRange>30~36</volumeRange>
+        <!-- Narrower than the one-shots on purpose: pitch-shifting a 15-second bed is audible as
+             a wobble, where on a 2-second thud it just reads as variation. -->
+        <pitchRange>0.98~1.02</pitchRange>
+        <distRange>0~70</distRange>
+      </li>
+    </subSounds>
+  </SoundDef>
+
+  <SoundDef>
+    <defName>Dovahkiin_DragonFlightCircling2</defName>
+    <context>MapOnly</context>
+    <maxSimultaneous>1</maxSimultaneous>
+    <subSounds>
+      <li>
+        <grains>
+          <li Class="AudioGrain_Clip">
+            <clipPath>DragonFlightCircling2</clipPath>
+          </li>
+        </grains>
+        <volumeRange>30~36</volumeRange>
+        <pitchRange>0.98~1.02</pitchRange>
+        <distRange>0~70</distRange>
+      </li>
+    </subSounds>
+  </SoundDef>
+
+</Defs>

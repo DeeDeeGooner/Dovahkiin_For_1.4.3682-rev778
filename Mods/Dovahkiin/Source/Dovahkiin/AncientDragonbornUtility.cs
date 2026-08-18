@@ -79,7 +79,7 @@ namespace Dovahkiin
                 }
 
                 DovahkiinTuningDef t = DovahkiinTuningDef.Current;
-                int lifetime = t != null ? t.ancientDragonbornLifetimeTicks : 3750;
+                int lifetime = t != null ? t.ancientDragonbornLifetimeTicks : 15000;
                 h.Configure(lifetime, Rand.Value < 0.5f);
                 summon.health.AddHediff(h);
 

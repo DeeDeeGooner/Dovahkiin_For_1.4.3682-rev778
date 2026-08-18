@@ -1,0 +1,42 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Defs>
+
+  <!--
+    Held in a dovah's jaws. SPEC.md 6.6b - the user's "bite down, shake left-right, throw away".
+
+    Applied to the VICTIM, not the dragon, and that is deliberate. This is a multi-second
+    scripted sequence involving two pawns, which is exactly the bespoke cross-save state
+    RISKS.md 9 warns about. Living on the victim means the game saves and restores it for us,
+    a mid-grab save simply continues on load, and every exit path in Hediff_DovahGrabbed ends
+    in Release() - including the one that fires when the dragon itself is gone.
+
+    A grapple must never leave a pawn permanently frozen. This one cannot.
+  -->
+  <HediffDef Class="Verse.HediffDef">
+    <defName>Dovahkiin_DovahGrabbed</defName>
+    <label>seized</label>
+    <description>Held crosswise in a dragon's jaws and being shaken like a caught animal.</description>
+    <hediffClass>Dovahkiin.Hediff_DovahGrabbed</hediffClass>
+    <isBad>true</isBad>
+    <scenarioCanAdd>false</scenarioCanAdd>
+    <everCurableByItem>false</everCurableByItem>
+    <tendable>false</tendable>
+    <maxSeverity>1.0</maxSeverity>
+    <defaultLabelColor>(0.85, 0.35, 0.30)</defaultLabelColor>
+    <stages>
+      <li>
+        <label>seized</label>
+        <!-- He cannot act while held. The stun is re-applied every tick by the hediff itself
+             so it can never outlive the grab; this just makes the state legible in the health
+             tab and stops him being useful if something else clears the stun. -->
+        <capMods>
+          <li>
+            <capacity>Manipulation</capacity>
+            <setMax>0.1</setMax>
+          </li>
+        </capMods>
+      </li>
+    </stages>
+  </HediffDef>
+
+</Defs>

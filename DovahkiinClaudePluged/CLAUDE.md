@@ -160,6 +160,35 @@ race. §15.6 has both.
 Confirmed feasible: `QuestPart_SubquestGenerator` with `maxActiveSubquests = 1` is exactly this
 behaviour, and the chain's progress is stored by the game rather than by us.
 
+## ⚠ AFTER EVERY PLAYTEST, READ THE LOG. NOT WHEN ASKED — EVERY TIME.
+
+**The user's standing instruction, 2026-08-06: "make sure that from now on every session always
+reads the logs whenever a test is done."** It is not optional and it is not a last resort.
+
+```
+C:\Users\User\AppData\LocalLow\Ludeon Studios\RimWorld by Ludeon Studios\Player.log
+```
+
+**⚠ ALSO READ `Player-prev.log` IN THE SAME FOLDER.** RimWorld **truncates `Player.log` on every
+launch**, so if the user relaunched before reporting, the evidence is in `-prev`. Its creation
+date is useless — the file is truncated, not recreated.
+
+Grep for `[Dovahkiin]`, `Config error`, `Exception`, and any diagnostic prefix currently in the
+build. **Do this BEFORE forming a theory**, not after one fails.
+
+**The record on why:** this rule has been in §5 of the notebook since 2026-07-30 and was skipped
+repeatedly anyway, because each new theory felt like progress. It has cost, at minimum:
+
+- three wrong fixes for "motionless in flight" before one `HOVER-DIAG` line settled it in a single
+  playtest
+- a wrong A/B/C design decision put to the user over invisibility, when six config errors naming a
+  body part group had been sitting in the log the whole time
+- two rounds on flight stops, answered instantly once the log showed `job=Wait_Wander`
+- a red `Config error` on a new FactionDef that had been firing at every load
+
+**A plausible cause is not evidence.** Instrument on the SECOND failure at the latest, and read
+the log on the FIRST.
+
 ## Tools installed on this machine — use them
 
 **A DECOMPILER IS INSTALLED. Read RimWorld's real C# instead of guessing at it.**

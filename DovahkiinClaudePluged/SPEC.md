@@ -484,6 +484,120 @@ gain more. They are not the Dovahkiin and never can be while one lives.
 
 **This is a hard requirement, not flavour.** A dragon that does not shout is not a dragon.
 
+> ### ⚠ RULE CHANGED BY THE USER, 2026-08-04. A DRAGON'S SHOUT IS **NOT** THE DOVAHKIIN'S.
+>
+> This section previously implied a dragon casts the same Fire Breath and Frost Breath the
+> Dovahkiin does. **That is reversed.** A dragon's breath is its own thing, and it must feel
+> like a different weapon from the other end:
+>
+> | | the Dovahkiin's (and other shout users') | **a DRAGON's** |
+> |---|---|---|
+> | damage | instant, on arrival | **+100%, but delivered GRADUALLY over time of exposure** |
+> | cone | as authored | **slightly NARROWER** |
+> | range | as authored | **twice the range, plus X** |
+>
+> **The gradual delivery is the whole point and the hardest part.** A dragon's breath is a
+> sustained jet you must get *out of*, not a burst you either ate or dodged. Standing in it
+> briefly should be survivable; standing in it is not. That inverts the tactical question from
+> "did I dodge" to "how fast can I break line" — which is what makes a dragon feel like weather
+> rather than an attack.
+>
+> **Consequences to respect when building it:**
+> - Damage-over-exposure means the wave cannot simply apply its payload on arrival the way
+>   `Thing_ShoutWave` does today (`SPEC.md §4.4`, and see the architecture note in the
+>   notebook: the wave "carries the payload and applies it as it arrives"). A dragon's breath
+>   needs a **lingering area**, or a per-tick re-application while a pawn stands in the cone.
+> - **Longer range + narrower cone is a real balance lever, not a reskin.** It rewards the
+>   dragon for lining up and rewards the player for moving off the axis.
+> - The exact multipliers (`X` on range, the exposure tick rate, the per-tick fraction) are
+>   **tuning numbers** and belong in `DovahkiinTuningDef.xml`, never inline.
+>
+> ### ⚙ HOW TO BUILD IT: ONE `Thing_DragonBreath`, NOT REPEATED `Thing_ShoutWave`s
+>
+> **Decided 2026-08-04 after the user raised performance, and after §4.6a made soar's geometry
+> different from grounded's.** An earlier proposal here was to emit ~15 ordinary shout waves in
+> quick succession, so that standing in the stream took repeated hits. **That is now rejected**,
+> for two reasons that compound:
+>
+> 1. **The user's performance concern is legitimate.** Fifteen overlapping `Thing`s per breath,
+>   each drawing its own quads every frame, is more Things than any shout in the mod currently
+>   spawns — and RocketMan is installed. One Thing that owns the whole breath is strictly
+>   cheaper than fifteen that each own a slice of it.
+> 2. **A bespoke breath Thing has to be written anyway.** §4.6a's soar mode — circular damage at
+>   an impact point plus a purely visual cone that stretches with range — cannot be expressed as
+>   repeated cone waves at all. So the wave-emitter hack would be written now and thrown away
+>   the moment soar arrives. **Build the thing that serves both states once.**
+>
+> **`Thing_DragonBreath`** — one Thing, living for the breath's duration, which:
+> - draws the jet **as a jet**, authored, rather than as a stutter of rings
+> - re-applies damage on an interval to whoever is currently inside its area, which is what
+>   makes damage accrue by **exposure**
+> - switches its area between **cone** (grounded) and **circle + cosmetic cone** (soar)
+>
+> **The environmental effects are already solved and must be REUSED, not rewritten.**
+> `Thing_ShoutWave.StrikeBand` is the single method that does ignition (`FireUtility.TryStartFireIn`),
+> snow (`Map.snowGrid.AddDepth`), damage, stun and hediffs. Extract that into a shared helper
+> both classes call. Rewriting it would produce burned cells and snowy patches subtly different
+> from the Dovahkiin's, which is exactly what the user asked NOT to happen.
+>
+> **This is the first real customer for the shared VFX kit** the notebook has had proposed and
+> deferred since 2026-08-01 — `Thing_ShoutWave`, `Thing_ValorPortal` and the Dragon Aspect aura
+> all draw N tinted rotated quads along a path over a lifetime curve and share not one line.
+>
+> **What is unchanged:** which shouts a dragon has, and how many. The table below still governs.
+
+> ### 4.6a THE BREATH'S GEOMETRY DEPENDS ON THE MOVEMENT STATE — user, 2026-08-04
+>
+> A dragon on the ground and a dragon in the air are not breathing at the same thing. The user's
+> words: *"in soar the shout goes from ground to ground to air to ground… in soar state the
+> shout is doing damage in a 'circle', followed with a cone of purely effects that should adapt
+> visually to the range where the shout is designated to land."*
+>
+> | | **GROUNDED** | **SOAR** |
+> |---|---|---|
+> | origin → target | ground → ground | **air → ground** |
+> | damage shape | **cone**, sweeping the ground | **CIRCLE** at the designated impact point |
+> | the cone | *is* the attack | **PURELY VISUAL** — no damage in it at all |
+> | visual cone length | fixed by range | **adapts to how far the impact point is** |
+>
+> **This is the right call and it solves a geometry problem rather than adding one.** A cone
+> swept along the ground from a creature that is thirty feet above it makes no sense; a jet
+> angled *down* onto a point does. It also gives the two states genuinely different threat
+> shapes — grounded is a wall of fire you break away from sideways, soar is a spot you must not
+> be standing on — which is the whole reason for having movement states.
+>
+> **FLIGHT gets the STRAFING breath — specified 2026-08-04, and it is a THIRD geometry.**
+>
+> The user: *"strafing is air to ground shouting too. Less concentrated over time per cell but
+> impacts way more cells in total. The dragon is strafing with his breath, and he should do that
+> sometimes while in battle — soar → flight away a bit → comes back while in flight state
+> strafing his breath."*
+>
+> | | SOAR breath | **STRAFING breath (flight)** |
+> |---|---|---|
+> | impact point | **fixed** — a chosen cell | **MOVES with the dragon** as he flies over |
+> | per-cell intensity | full | **lower** |
+> | total cells hit | few | **many more** |
+> | shape over time | a circle | a **swathe** painted along his flight path |
+>
+> **THE ATTACK PATTERN IS THE POINT, and it is the user's:** soar and trade → peel off into
+> flight → **come back on a strafing run**. That gives a dragon fight a rhythm instead of a
+> single stance, which is what "more attack patterns and game dynamics" meant on 2026-08-03.
+>
+> > **The user offered to cut this if it were expensive — it is NOT, given the architecture
+> > chosen below.** A strafing run is the SOAR mode with two changes: the impact point tracks
+> > the dragon instead of staying put, and the per-tick damage is lower. Once
+> > `Thing_DragonBreath` exists and already switches between cone and circle, this is a third
+> > parameter set on the same class — **not a new system**. Build it.
+>
+> **⚠ MY READING, FLAG IT IF WRONG:** "air to ground" is taken to mean the breath *originates at
+> the dragon in the air* and *lands at a targeted point*, with the visual cone connecting the two
+> and stretching as that point gets further away. The circle is the damage; the cone is the
+> tell.
+>
+> **The user's own assessment, recorded because it is correct:** *"that's a lot more headache on
+> the way, but worth it nonetheless."*
+
 **Normal dragons get exactly three shouts, and no others:**
 
 | Shout | Notes |
@@ -663,6 +777,221 @@ The mod also ships **its own dragon** (§12) so that none of this depends on Dra
 being installed. Note for Step 1: Dragon's Descent hard-requires Vanilla Expanded Framework,
 so VEF is already a transitive dependency of all borrowed dragon content.
 
+### 6.1a A DOVAH ATTACKS EVERY LIVING THING — the exemption list is *closed*
+
+**Given by the user 2026-08-13**, after a dragon declined to fight a wild insect:
+
+> *"make sure every creature (apart from the draugrs and dragon priests this mod is about to add)
+> are all not exceptions to dovah aggression."*
+
+**So the rule is: NO creature is exempt.** Not wild animals, not insects, not other mods' fauna,
+not tamed animals, not mechanoids — a dovah is hostile to all of it and will engage it. Species,
+faction and race are **not** inputs to whether he attacks.
+
+**The only exemptions, and this list may not grow without the user saying so:**
+
+| exempt | why |
+|---|---|
+| **Draugr** (all tiers) and **Dragon Priests** | This mod's own Nordic undead (§12), not yet built. They are the dragon cult's servants; a dovah has no quarrel with them. |
+
+⚠ **Both exemptions are FUTURE work — neither creature exists yet, so nothing implements this
+today, and that is correct.** It is recorded here so that when §12's bestiary is built the
+exemption is written *with* them rather than discovered later as "why is the dragon eating the
+draugr".
+
+⚠ **DO NOT implement the exemption as a species blocklist scattered through the targeting code.**
+When those creatures arrive, give them one shared marker — a `DefModExtension` or a shared
+`ThingDef` parent — and test that in the single place `Comp_AlduinFlight.IsEngageable` decides
+what counts as a target. **Verified 2026-08-13: there is no species filter anywhere in the dragon's
+targeting path today**, and it must stay that way — one test in one place, not a list in several.
+
+### 6.1b THE DRAGON TIER LADDER — armour, health and damage scale together
+
+**Given by the user 2026-08-13.** Their concern in their own words: giving dragons Dragon Aspect's
+armour value outright *"would make them a nightmare on colony start"* — so the answer is a ladder,
+not a flat buff, and the bottom rung is deliberately weak.
+
+**⚠ THESE ARE SKYRIM'S OWN DRAGON TIERS, NOT ANOTHER MOD'S.** Checked on disk 2026-08-13:
+Dragon's Descent names its dragons by **colour** (`Black_Dragon`, `Blue_Dragon`, `Gold_Dragon`,
+`Jade_Dragon`, `True_Dragon`…). It has no Blood/Frost/Elder/Revered/Legendary ladder. So this is
+**this mod's own progression**, built on the mod's own dragons (§12), and it borrows nothing.
+
+**NONE OF THESE EXIST YET** except the test Alduin. This is the table each one is built to as
+Phase 3/5 produces it.
+
+| # | tier | Sharp | Blunt | **Heat** | `baseHealthScale` | damage × | armour pen |
+|---|---|---|---|---|---|---|---|
+| 1 | **Dragon** | 0.00 | 0.00 | **0.90** | 7.0 | 0.50 | **FINAL** |
+| 2 | **Blood Dragon** | 0.10 | 0.07 | **0.96** | 9.8 | 0.59 | **FINAL** |
+| 3 | **Frost Dragon** | 0.20 | 0.14 | **1.03** | 13.3 | 0.67 | **FINAL** |
+| 4 | **Elder Dragon** | 0.30 | 0.21 | **1.09** | 17.4 | 0.76 | **FINAL** |
+| 5 | **Revered Dragon** | 0.40 | 0.29 | **1.16** | 22.2 | 0.84 | **FINAL** |
+| 6 | **Legendary Dragon** | 0.50 | 0.36 | **1.22** | 28.0 | 0.93 | **FINAL** |
+| 7 | **Named** (Odahviing, Durnehviir, Paarthurnax) | 0.60 | 0.43 | **1.29** | 34.4 | 1.01 | **FINAL** |
+| 8 | **Alduin** | 0.70 | 0.50 | **1.35** | 42.0 | **1.10** | **FINAL** |
+
+> **⚠ HEAT DOES NOT START AT ZERO AND DOES NOT SCALE FROM ZERO — THE USER'S CORRECTION,
+> 2026-08-13:** *"No heat and cold armor shouldnt be changed, instead it should be the same as
+> Alduin TEST for dragon up to +50% of it for Alduin."*
+>
+> So **every** dragon, including the weakest, starts at the test Alduin's **0.90** and the ladder
+> runs to **1.35**. Sharp and Blunt still climb from 0.00 — a starter dragon is soft to a spear and
+> a club, and *never* to fire. **An earlier draft of this table scaled Heat 0.30 → 0.90 and that was
+> wrong; do not reinstate it.**
+>
+> **⚠ HEAT ARMOUR AT OR ABOVE 1.00 MEANS FIRE CAN NEVER DO FULL DAMAGE.** Per
+> `ArmorUtility.ApplyArmor`, effective armour splits into a full deflect below `effective/2` and a
+> halved hit below `effective`. At Alduin's 1.35 against a zero-AP flame that is **~67% deflected,
+> ~33% halved, 0% full** — near-immunity. Deliberate for the World-Eater, and worth knowing before
+> anyone builds a fire-based counter to him and wonders why it does nothing.
+
+**"FINAL" = the values after the 2026-08-13 −5% cut, and they are the REFERENCE for the whole
+table:** maw **38.475** / wing bash **28.5** / tail sweep **32.3**, armour penetration **0.27075** /
+**0.18** / **0.22**, and the maw's `chanceFactor` is **1.4**.
+
+**THE MAW WAS CUT THREE TIMES ON 2026-08-13, IN THIS ORDER, AND ONLY THE LAST TWO DID MUCH:**
+45 -> 42.75 (-5%) -> **38.475** (-10% again); AP 0.30 -> 0.285 -> **0.27075**; `chanceFactor`
+1.6 -> **1.4**.
+
+**The chanceFactor is the deliberate part.** Measured, the maw was **58% of every swing he threw** -
+both his hardest attack and the majority of his attacks, which is why it did the killing. The user
+kept him bite-led on purpose: *"dragons in skrim always bites more than often (they even tend to
+turn around to bite you so I'd rather not change that tendency)."* 1.4 leaves the maw at **55%** of
+swings - still clearly a biting creature, just less of a machine gun. **Do not "balance" this down
+to parity with the sweeps; the bite-heaviness is intended flavour.**
+
+> **⚠⚠ ARMOUR PENETRATION IS CONSTANT ACROSS EVERY TIER. THE USER'S RULE, 2026-08-13, VERBATIM:**
+> *"Apply the -5% of damage and AP first (Final value), and then -50% of 'Final value' for dragon
+> up to +10% of 'final value' for Alduin, ARMOR PEN DOESNT CHANGE and is constant (final value),
+> only the DAMAGE changes."*
+>
+> **So the ladder multiplier applies to `<power>` ONLY.** Every tier — a starter Dragon and Alduin
+> alike — pierces armour identically at 0.285 / 0.18 / 0.22.
+>
+> **⚠ AND THIS IS WHY EVERY TOOL MUST KEEP ITS EXPLICIT `armorPenetration` (§6.1c).** With AP
+> derived from power, scaling damage down a tier would drag penetration down with it and the rule
+> above would be impossible to express. **A tier-1 dragon hits softly but pierces exactly as well as
+> Alduin** — which is the design: armour is the answer to a dragon's *damage*, never to its bite
+> being sharp.
+
+**Health and armour still scale** — both were the user's explicit earlier instruction (*"not only
+armor should scale up with the dragon tiers, damage and HP too"*). Only **penetration** is exempt
+from scaling.
+
+> ### ⚠ THE HEALTH COLUMN WAS DOUBLED AT THE TOP ON 2026-08-13 — AND WHY
+>
+> The user loaded an **endgame** save and watched Alduin die *fast* to a fraction of the colony's
+> defences: some summoned skeletons, two pawns, and one magic ultimate. **He was already carrying
+> the Alduin row's armour and health at the time** — so the ceiling was demonstrably too low, not
+> mis-assigned.
+>
+> Their instruction: *"increase the whole dragon tier's health (do not touch armor) by 0% for
+> dragons up to 100% for Alduin."* So the original 7.0 → 14.0 ladder became **7.0 → 28.0**: the
+> starter dragon is untouched, and Alduin's `baseHealthScale` **doubles**.
+>
+> **⚠ RAISED AGAIN THE SAME DAY: a further +50% at the top, 0% at the bottom** (*"another health
+> scale up to add to the dragon tiers: +50% for Alduin down to 0% for dragons"*), so the ladder is
+> now **7.0 -> 42.0** and Alduin is **THREE TIMES** his original 14.0. The starter dragon has still
+> never moved from 7.0 - **every raise has been at the top only**, which is the shape that keeps a
+> colony-start dragon survivable while making the World-Eater a wall.
+>
+> **⚠ ARMOUR WAS DELIBERATELY NOT TOUCHED**, on the user's explicit instruction. Health is the
+> honest lever here: armour is a *probability* of deflection, so raising it makes a fight swingy and
+> luck-driven, while health makes a boss take longer to kill in a way the player can feel and plan
+> around. **Do not "help" by raising armour as well.**
+>
+> This also restores the shape `SPEC.md §6.5` always assumed — *"their strength is a huge HP pool"*,
+> with **no unusual regeneration**. A dovah that is hard to kill because it is vast, not because it
+> is slippery.
+
+**⚠ THE TEST ALDUIN SITS AT 1.00, NOT 1.10.** He carries the FINAL reference values, because that
+is what every number in this table is measured against and what the 2026-08-13 playtests were run
+on. The real boss Alduin is **10% above the creature currently being tested**. Applying 1.10 to the
+test dragon is a one-line change if the user wants to feel the boss numbers directly.
+
+Three notes on the values, all of which are judgement calls the user gave a free hand on:
+
+- **Tier 1 really is 0.00 Sharp and Blunt**, as asked. A starting colony fights a dragon with no
+  physical armour at all, half damage and half the health — survivable with terrain and preparation,
+  which is what §8.1's awakening event needs. **Its fire resistance is full from the first tier**;
+  only steel and clubs get easier at the bottom of the ladder.
+- **Armour is a PROBABILITY, not a reduction** (`ArmorUtility.ApplyArmor`): effective armour splits
+  evenly into a full deflect and a halved-and-downgraded hit. 0.70 Sharp means 35% deflected and
+  35% halved — *not* "70% less damage". Read §5 of the notebook before retuning any of it.
+
+> **⚠⚠ "COLD ARMOUR" CANNOT BE DONE — THERE IS NO SUCH STAT IN 1.4.** Verified against
+> `Assembly-CSharp` and `Data\Core\Defs` on 2026-08-13: the only armour ratings that exist are
+> **`ArmorRating_Sharp`, `ArmorRating_Blunt` and `ArmorRating_Heat`.** There is no
+> `ArmorRating_Cold`. `Insulation_Cold` exists but is **temperature comfort — it does nothing
+> against frost DAMAGE.**
+>
+> **This is the same wall §15.7 already hit for the vampires** ("frost resistance has NO vanilla
+> stat"), and the answer there is the answer here: cold resistance has to be built, not configured
+> — a `StatPart` or hediff that reduces our own Frost Breath damage specifically. **Left unbuilt
+> and unpromised rather than silently substituting `Insulation_Cold`, which would look like the
+> feature exists while doing nothing in a fight.**
+
+> **⚠ THE +50% IN THE FIRST BRIEF WAS SUPERSEDED BY THE USER THE SAME DAY — DO NOT RESTORE IT.**
+> The original wording was *"-50% of it for dragon up to +50% of it for Alduin"*, which was put back
+> to them because it would have placed Alduin at 1.5× the creature that had just three-shot an
+> Aspected Dragonborn. Their correction set the top of the ladder at **+10%**, applied to the
+> post-cut FINAL value, and exempted armour penetration from scaling entirely. The table above is
+> that correction. **1.10, not 1.50.**
+
+**The real cause of the three-shot was not the damage number.** See §6.1c.
+
+### 6.1c EVERY CREATURE TOOL NEEDS AN EXPLICIT `armorPenetration`
+
+`Verse.Tool.armorPenetration` defaults to **-1**, and `VerbProperties.AdjustedArmorPenetration`
+then derives it as **`damage × 0.015`**. So an unspecified AP silently tracks the damage number.
+
+On 2026-08-05 the maw was given an explicit **0.30** for exactly this reason, and the note added
+then said: *"Wing bash and tail sweep are still on the derived default — revisit if the same
+complaint arrives about them."* **It did, on 2026-08-13.** Measured against Dragon Aspect at three
+words (+0.60 Sharp):
+
+| tool | AP before | armour worked on | AP now | armour works on |
+|---|---|---|---|---|
+| maw | 0.30 explicit | 30% of hits | **0.27075** | 32.9% |
+| wing bash | 0.45 **derived** | 15% | **0.18** | **42%** |
+| tail sweep | 0.51 **derived** | 9% | **0.22** | **38%** |
+
+**The signature bite was the LEAST dangerous of his three attacks**, and her armour was doing almost
+nothing against the two sweeps — which is what actually three-shot her. Cutting damage could never
+have fixed it, for the same reason the -15% was tried and reverted in August: *damage and
+penetration were one number.*
+
+**Rule for every creature this mod ever ships: state `armorPenetration` on every tool.** A tool
+without one has a damage figure that is secretly two numbers.
+
+> ### ⚠ AP IS A SMALL LEVER ONCE IT IS ALREADY BELOW THE TARGET'S ARMOUR — MEASURED
+>
+> The maw's AP was cut a second 5% on 2026-08-13 (0.285 → 0.27075) to stop it one-shotting a
+> Dragonborn. **Measured, that buys −1.4% expected damage against a three-word Dragon Aspect** and
+> **nothing at all** against one word or a naked pawn.
+>
+> The arithmetic is why: expected damage is `power × (1 − 0.75 × max(armour − AP, 0))`, so an AP
+> change moves the result by **0.75 × ΔAP × power** at most, and only for targets whose armour
+> already exceeds the AP. At ΔAP = 0.014 that is fractions of a point of damage.
+>
+> **THE LEVERS THAT ACTUALLY MOVE THE MAW, in descending order:**
+>
+> 1. **`power` (42.75).** Linear and unconditional — it is the only one that helps a naked pawn.
+> 2. **`chanceFactor` — and this is the big one.** Measured off the def: maw **1.6**, wing bash
+>    **0.8**, tail sweep **0.35**. So the maw is **58% of every swing he throws**, the wing 29%, the
+>    tail 13%. **The user's instinct that "the maw is what kept one-shotting them" is arithmetically
+>    correct** — it is both his hardest attack and the majority of his attacks.
+>    Dropping it to 1.0 takes the maw to ~44% and moves those swings onto the far weaker sweeps.
+>    **This is the cheapest way to make him less bite-centric without weakening the bite itself.**
+> 3. **The `Bite` damage def** carries `harmAllLayersUntilOutside` — it cuts through every armour
+>    layer to the outside, which is a large part of why bites feel lethal — and
+>    `overkillPctToDestroyPart`. Changing this affects every biting creature in the game, so it is
+>    a patch, not a tuning value.
+> 4. **AP** — smallest, as above.
+>
+> **Reach for 1 or 2 before 4.** Recorded because "reduce the armour penetration" is the intuitive
+> answer and is the weakest of the four.
+
 ### 6.2 Dragons hate the Dovahkiin
 
 **Any** dragon — hostile, neutral, allied faction, or the colony's own tamed one — turns on
@@ -698,6 +1027,471 @@ The one boss. **Exactly one exists per save**, owned by the registry.
   must be **unkillable and scripted to leave**, not a fight the player can win at hour zero.
 - Killing him permanently: massive colony-wide mood event, a large soul reward, and a unique
   permanent title upgrade for the Dovahkiin (`Dovahkiin, World-Eater's Bane`).
+
+### 6.5 Movement states — GROUNDED / SOAR / FLIGHT
+
+**Given by the user 2026-08-03 and specified 2026-08-04, after the three sprite sets were
+proved in game.** *"For more attack patterns and game dynamics."* This is the dragon's core
+combat identity, not a visual flourish — a dragon that cannot leave the ground is a big animal.
+
+**Dovah are timeless.** *"They do not age, they do not birth, they just are."* One life stage,
+no age-related decline, no breeding. See §12 and `CHANGELOG.md`; it is also what keeps the
+runtime sprite swap safe, since a life-stage change is the only thing that can undo it.
+
+| | GROUNDED | SOAR | FLIGHT |
+|---|---|---|---|
+| speed | baseline | **+20% over grounded** (×1.2) | **+50% over SOAR** (×1.5 of soar = **×1.8 of grounded**) |
+| crosses roofs / walls / obstacles | no | **yes** | **yes** |
+| crosses natural mountain rock | no | **NO** | **NO** |
+| **may be ON THE GROUND under a roof** | **NO** (§6.5a-2) | n/a | n/a |
+| can be hit by melee | yes | **no — ranged only** | **no — ranged only** |
+| can melee | yes | **no** | **no** |
+| can shout | yes | **yes** | **no** — except the strafing shout, below |
+| entered when | see §6.5c | see §6.5c | **only while actually MOVING** |
+
+#### 6.5a What "crosses obstacles" means, and the one exception
+
+Soaring and flying dragons pass over **roofs, walls, doors, fences and terrain** — the colony's
+perimeter is not a perimeter to them. **The single exception is naturally generated mountain
+rock**, the kind the player mines out. That is impassable in every state.
+
+This is deliberate and load-bearing: it means a mountain base is genuinely dragon-proof from
+above, and an open base is not. It gives the player a real architectural answer.
+
+#### 6.5a-2 A DOVAH NEVER LANDS OR WALKS UNDER A ROOF — declared by the user 2026-08-18
+
+The user, after finding him grounded inside a roofed building: *"He landed inside a roofed area
+and I think it's kind off messy and unfair, so I hereby declare that dovah's cannot land nor walk
+inside roofed area, only fly over it."*
+
+**A roofed cell is not somewhere a dovah can be on the ground.** He crosses it in soar or flight,
+as §6.5a already says, and that is the only way he interacts with it.
+
+⚠ **THIS IS A DIFFERENT RULE FROM THE MOUNTAIN EXCEPTION AND MUST NOT BE MERGED WITH IT.**
+§6.5a is about natural **rock** refusing to let him **fly through**; this is about a **roof**
+refusing to let him **land**. A roofed courtyard he may fly over and not land in; a mountain he
+may neither.
+
+**What it gates: CHOOSING the ground.**
+
+- the dive pounce may not pick a roofed cell to come down on
+- "standing in melee range" does not ground him when every cell beside the target is roofed
+- grounded attack patterns (dive-and-brawl, perch breath) leave the roll while his target is
+  indoors, which leaves the hover breath — he stays up and breathes down at them
+- found standing under a roof by any route, he lifts into a **soar**
+
+**What it does NOT gate: being FORCED down.** Downed, at or below the grounded health fraction
+(§6.5), or holding somebody in his jaws — all still ground him wherever he happens to be.
+
+⚠ **THAT PRECEDENCE IS LOAD-BEARING, NOT AN OVERSIGHT.** The half-health grounding rule is what
+converts an untouchable ranged duel into a winnable melee kill. If a roof could cancel it, a
+colony would only have to fight dragons indoors. It also stops the two rules becoming two authors
+of one decision: without it, melee range grounds him beside an indoor target every tick while the
+roof rule lifts him straight back out. **Force wins; choice does not.**
+
+**Consequence the player will feel, and it is intended:** a pawn who stays under a roof cannot be
+brawled, only breathed at. Indoors is now a partial answer to a dragon, as a mountain is a total
+one.
+
+Tuning: `dragonNeverGroundedUnderRoof` (default true) turns the whole rule off without a rebuild.
+
+#### 6.5b Untouchable by melee, and unable to melee
+
+Airborne dragons **cannot be hit by melee attacks at all** — only ranged weapons and (by
+extension) shouts reach them. In exchange they **cannot melee either**. A soaring dragon is a
+shouting platform; a flying one is in transit.
+
+**This is a two-way trade and both halves must ship together.** Only enforcing the immunity
+makes an unkillable monster; only enforcing the restriction makes flight pointless.
+
+#### 6.5c The state machine — REDESIGNED 2026-08-04 after the third playtest
+
+> ### A DOVAH DOES NOT IDLE. THIS IS THE GOVERNING STATEMENT AND IT REPLACES THE FIRST DESIGN.
+>
+> The user: *"a dovah doesn't just idle — it's not a creature like anything else, it's a shard
+> of a deity."* The first version modelled him as an animal with a wander loop and a combat
+> mode, and it produced exactly the awkwardness that was reported. **Dragons are encountered in
+> only three ways, and there is no fourth:**
+>
+> | encounter | what he does |
+> |---|---|
+> | **INVADING** | arrives in **manhunter**, already hostile |
+> | **PASSING BY** | **in flight, crossing.** Not wandering — going somewhere |
+> | **GUARDING** a mound, a site, a hoard | **grounded and MOTIONLESS** until you come close enough, which triggers manhunter |
+>
+> **So the only idle a player ever sees is a guardian sitting still on the ground.** Everything
+> else is flight or a fight. That deletes most of the old state logic rather than adding to it.
+
+| idle situation | state |
+|---|---|
+| **guarding** — has not been triggered yet | **Grounded, and does not move at all** |
+| anything else with no target | **Flight** — he is going somewhere, not loitering |
+
+**There is no wandering-on-the-ground state and no idle soar.** If he is not guarding, he flies.
+
+#### 6.5c-2 The chase — do not change state mid-pursuit
+
+**Reported after the third playtest, and it is the main fix:** *"they are flying, then soaring,
+then go down grounded mid-chase — they should always be flying if the targets are far enough."*
+
+The old machine rolled its rhythm every interval regardless of what he was doing, so a dragon
+crossing the map after a fleeing colonist kept dropping out of flight. That reads as
+indecision, which is the opposite of a shard of a deity.
+
+> **THE USER'S OWN FIX, ADOPTED: he LANDS ON his target — Flight straight to Grounded, skipping
+> soar entirely.**
+>
+> | distance to target | state |
+> |---|---|
+> | far | **Flight**, and it does not waver — no rhythm rolls while closing |
+> | arriving | **lands directly: Flight → Grounded.** Never Flight → Soar → Grounded |
+> | in close | the soar/grounded rhythm of §6.5c-3 |
+>
+> **This also gives the landing impact (§6.5e) a purpose it did not have.** A dragon that drops
+> out of the sky onto the pawn it has been chasing, throwing dust and staggering everything
+> around it, is an arrival. The same effect on a dragon merely settling down was decoration.
+
+#### 6.5c-4 ATTACK PATTERNS — the real model, given by the user 2026-08-04
+
+**This supersedes the per-interval "rhythm" in §6.5c-3.** A dovah does not roll dice about what
+state to be in; he picks an ATTACK and executes it. The patterns below are the user's, verbatim
+in structure.
+
+> **THE SHAPE THEY ALL SHARE: FLIGHT IS HOME.** Every pattern starts from flight and ends
+> *"circling around"* back in flight. Flight is the connective tissue between attacks, not an
+> attack itself — which is why it should never have been competing with soar and grounded for
+> "time spent". That framing was wrong and this replaces it.
+
+| # | pattern | sequence |
+|---|---|---|
+| **1** | **DIVE AND BRAWL** | flight (chase) → **grounded LANDING on the target**, using the landing stun → stay grounded a while, fight close quarters → flight, circle away |
+| **2** | **HOVER BREATH** | flight → **soar, static**, dragon breath → flight, circle |
+| **3** | **PERCH BREATH** | flight → **grounded, static**, dragon breath → **static soar 1–2 real seconds** → flight, circle |
+| **4** | **STRAFING RUN** | flight → **stay in flight, strafing breath** (§4.6a) → flight, circle |
+
+**Pattern 1 is the only one buildable today** — the other three need `Thing_DragonBreath`, which
+does not exist yet (§4.6a). Build the framework plus 1 now; 2, 3 and 4 drop in as data when the
+breath lands.
+
+**Why pattern 1 is the most important anyway:** it is the one that closes distance, and it is
+what makes the landing impact (§6.5e) matter. A dragon dropping out of the sky onto a fleeing
+colonist and staggering everything around the impact is the single most readable thing in the
+whole design.
+
+**Note pattern 3 deliberately ends in a short static soar before leaving.** That is a
+*take-off*: he breathes from the ground, lifts, then goes. It reads as effort, and it is a
+window where he is airborne but not yet fast — the one moment ranged fire gets a clean shot at
+a hovering dragon.
+
+#### 6.5c-5 Choosing a pattern — PROPOSED, not yet settled
+
+The user asked for further ideas. Nothing here is decided.
+
+**A selection heuristic, so the choice reads as intent rather than randomness:**
+
+| situation | pattern that suits it |
+|---|---|
+| one target, isolated or FLEEING | **1** — dive and brawl |
+| several targets clustered at range | **2** — hover breath |
+| defenders behind cover, static siege | **3** — perch breath |
+| targets strung out in a line | **4** — strafing run |
+
+Weight the roll toward the fitting pattern rather than picking it outright, so he stays
+unpredictable.
+
+**THREE FURTHER PATTERNS PROPOSED:**
+
+- **5. TAIL SWEEP** — grounded, no breath: a knockback burst around himself, then take off.
+  **Gives grounded a reason to exist beyond biting**, and it finally uses the tail as the weapon
+  §6.6 says it is. Cheap: it is Unrelenting Force's knockback with no damage def of its own.
+- **6. THE PASS-OVER** — flight across the colony **with no attack at all**. Purely a tension
+  beat: the shadow goes over, nothing happens, and the players scatter anyway. Costs almost
+  nothing to build and does more for "shard of a deity" than another damage source would.
+- **7. THE FLANK** — flight to the *opposite side* of the colony before attacking, forcing
+  defenders to redeploy. Movement as a weapon; no new mechanics at all.
+
+Of the three, **6 is the cheapest and adds the most character**, and **5 is the one that fixes a
+real gap** — without it, grounded is only ever "bite the thing in front of me".
+
+#### 6.5c-3 The close-range rhythm — SUPERSEDED by §6.5c-4
+
+Once he is *at* his target, the alternation still applies — bite on the ground, lift to soar to
+breathe (he cannot melee while airborne, and cannot be meleed either, §6.5b), come back down.
+Dwell times and chances as tuned in `DovahkiinTuningDef.xml`.
+
+> **⚠ MY READING, FLAG IT IF WRONG:** soar keeps its role as the *close-range shouting stance*,
+> not as something entered while travelling. "Always flying if the targets are far enough" is
+> read as being about the CHASE; soar still happens once he has arrived. If soar should
+> disappear from combat entirely, say so — it is a one-line change.
+
+**COMBAT — a rhythm, not a lookup.** The user's target is **SOAR ≥ GROUNDED > FLIGHT** by time
+spent, *"and he shouldn't be using grounded or soar state more than the other"*. Flight is used
+*"from time to time, to back away from the fight a bit then come back again — either normal
+fight or, with the lower chance, the dragon breath strafing"* (§4.6a).
+
+| in combat | behaviour |
+|---|---|
+| adjacent to a bite target | **Grounded**, not rolled — he *cannot* melee while airborne (§6.5b), so hovering beside a target is the one useless thing he could do |
+| from **Grounded** | rolls to take off into **Soar** |
+| from **Soar** | two exits — **Flight** (the user's "higher chance") or **Grounded** (the "lower chance") |
+| from **Flight** | **always returns to Soar.** In combat, flight is an excursion, never a stance |
+
+> #### ⚠ COOLDOWNS BETWEEN SWITCHES — REQUIRED, AND THEY FIX A REAL DEFECT
+>
+> The user asked for *"a system of cooldown between each switch"* in **real-time seconds**, per
+> state. That is not polish — it is the fix for what the first playtest showed.
+>
+> **What went wrong without it:** he *"barely switches to soar at all and is using flight a bit
+> too often"*. The cause was **flicker**, not weighting: idle-and-moving is Flight and
+> idle-and-stationary is Grounded, so every time he started or stopped wandering the state
+> flipped. A minimum dwell time in each state removes it.
+>
+> **Flight's dwell is the SHORTEST of the three on purpose.** Together with "flight always
+> returns to soar", that is what keeps flight the rarest state by time even though soar's
+> higher-chance exit leads to it.
+>
+> **The dwell times and the chances weight the outcome together**, which is why both are exposed
+> in `DovahkiinTuningDef.xml`. **Expect to tune them in game** — three dwell times against three
+> chances is not worth computing on paper. If he flies too much, lower
+> `dragonCombatSoarToFlightChance` *or* shorten `dragonMinSecondsFlight`.
+>
+> **TWO things bypass the cooldown**, and both are facts rather than rhythm choices:
+> - **The grounding rule.** Being too hurt to fly is not a decision; waiting out a dwell timer
+>   to honour it would read as the rule not working.
+> - **HE MUST NOT HOVER.** Reported 2026-08-04: *"he was still capable of being stationary while
+>   in flight."* The cause was the dwell timer itself — having entered flight while moving, he
+>   was **locked there by his own cooldown** after he stopped. So the fix cannot be a better
+>   choice next time round; it has to override the lock. After
+>   `dragonFlightStationaryGraceSeconds` motionless in flight, he lands regardless.
+>   **A grace period, not an instant drop:** a wandering pawn pauses between destinations, and
+>   landing him on every pause would reintroduce the flicker the dwell timer exists to cure.
+
+#### 6.5e The landing — dust and a stagger
+
+**User's request, 2026-08-04:** *"it would be quite nice if dovahs going from soar to grounded
+causes a little dust flying around them and causes a brief stun."*
+
+**Fires ONLY on soar → grounded**, because that is the only transition that is a landing. Flight
+never drops straight to grounded (in combat it always exits via soar), and leaving grounded is a
+take-off, not an impact. **Gate it on the SOURCE state, not on "is now grounded"** — otherwise a
+take-off throws dust too.
+
+Small on purpose: this is the thump of a heavy animal touching down, not a shout. All three
+numbers (`dragonLandingDustPuffs`, `dragonLandingStunRadius`, `dragonLandingStunTicks`) are in
+`DovahkiinTuningDef.xml`. The stun is deliberately brief so repeated landings cannot stunlock.
+
+It reuses `FleckMaker.ThrowDustPuffThick` and the same stun call the Ancient Dragonborn's
+arrival already uses, so the two impacts read as belonging to one mod.
+
+> **THE ONE HARD RULE, GIVEN BY THE USER: at or below HALF HP (or equivalent injury) the dragon
+> STAYS GROUNDED.** This is the player's reward for winning the first half of the fight — it
+> converts an untouchable ranged duel into a melee kill, and it is what stops a wounded dragon
+> kiting forever.
+>
+> **ANSWERED 2026-08-04, AND THE ANSWER IS BETTER THAN THE QUESTION.** It is **NOT a coded
+> latch**. The user: *"dovahs shouldn't have unusual regeneration — same natural slow
+> regeneration and wound mechanics used by the entities of the vanilla game. Their strength
+> should rely on having a lot of HP… once they fall into the perma-grounded category they are
+> basically doomed to stay that way, unless they are somehow not that much wounded and heal
+> naturally over time enough to fly off again."*
+>
+> So: **a plain threshold check, re-evaluated normally, plus VANILLA healing.** No latch
+> variable, no special case, nothing to save or reload.
+>
+> **Why this is the right design and not merely simpler:**
+> - **The latch emerges from the healing rate instead of being coded.** RimWorld's natural
+>   healing is slow, so within a single fight a grounded dragon stays grounded — which is
+>   exactly the behaviour the latch was meant to guarantee — while nothing has to remember a
+>   flag or restore it across a save.
+> - **It makes a dragon a recurring threat rather than a one-off.** One that breaks off, escapes
+>   and heals over days can return to the air. A hard latch would have made every survivor
+>   permanently crippled, which is a worse story.
+> - **Their strength is HP, not regeneration.** Dovah have far more of it than any vanilla
+>   creature (scaled per body part, §6.6) and heal like everything else. **No custom healing
+>   code of any kind** — if a dragon ever appears to regenerate unusually, that is a bug.
+
+#### 6.5d Diagonal facings — FLIGHT ONLY
+
+The user, 2026-08-04: entities move diagonally, so a flying dragon locked to four facings reads
+badly. **Generate four diagonal sprites for the FLIGHT state only, by re-orienting the existing
+flight art — no new image generation.** Flight is top-down, so this is a pure rotation, exactly
+as `MakeFlightRotations.ps1` already produces the four cardinals from one drawing.
+
+Soar and grounded keep four facings; they are eye-level projections and cannot be rotated
+(see `Tools/DRAGON_ART_PIPELINE.md`).
+
+> **THE CONSTRAINT IS REAL, AND THERE IS A ROUTE AROUND IT THAT NEEDS NO RENDER PATCH.**
+> Verified 2026-08-04 by decompiling:
+>
+> - **`Rot4.RotationCount` is 4.** North/East/South/West and nothing else. The engine has no
+>   diagonal facing for pawns, and `PawnGraphicSet` picks its material with a bare
+>   `nakedGraphic.MatAt(facing)`. So eight-way facing cannot be expressed the normal way.
+> - **But `Verse.AI.Pawn_PathFollower.nextCell` is a PUBLIC FIELD**, and `Moving` / `MovingNow`
+>   are public properties. So the dragon's true heading — diagonals included — is readable with
+>   no patch and no reflection.
+>
+> **THE ROUTE: eight flight graphic sets, one per compass octant, each a `Graphic_Multi` whose
+> FOUR SLOTS ALL HOLD THE SAME rotated image.** Then whichever `Rot4` the engine hands the pawn,
+> the correct octant sprite is what draws. Pick the set from `nextCell - Position` each time the
+> heading changes, using the **same `nakedGraphic` swap that is already proven in play** (Test 1,
+> 2026-08-04).
+>
+> That is why this is cheap: it reuses a mechanism that works rather than inventing one. It is
+> verified at the API level but **not yet tested in game** — do not record it as working until
+> it has been.
+>
+> Flight is top-down, so all eight come from rotating ONE drawing, exactly as
+> `MakeFlightRotations.ps1` already produces the four cardinals.
+
+> ### ⚠ OPEN — THE SUMMONS AND TARGETING. **DIAGNOSIS CONFOUNDED — DO NOT DECIDE YET.**
+>
+> Reported 2026-08-04: Alduin *"couldn't attack the ancient dragonborn… the ancient dragonborn
+> and the hero of valor are supposed to be targetable, [their] primary role is to help divide
+> enemy attack concentration, 'help tanking'."*
+>
+> > **🔴 CORRECTION, SAME DAY. THE INVISIBILITY WAS DIAGNOSED TOO FAST, AND THERE IS A SIMPLER
+> > CAUSE THAT WAS OURS.** The game log — which was not read until the user asked for it —
+> > carried six config errors: **three of Alduin's four melee tools named body part groups that
+> > vanilla `Bird` does not have** (`Teeth`, `FrontLeftLeg`, `FrontRightLeg`; Bird has only
+> > `Beak`, `Feet`, `HeadAttackTool`). Only the tail tool survived, at `chanceFactor` 0.4.
+> >
+> > **So the test dragon had almost no working attack at all**, which explains the observation
+> > without invisibility being involved. Fixed; **retest before treating any of the options
+> > below as necessary.**
+> >
+> > The lesson is the project's own, hit again: *a clean build and a "does every def parse"
+> > check both pass this.* Parsing proves the XML is well-formed, not that the names in it
+> > resolve. **READ THE LOG AFTER ADDING A DEF.**
+>
+> **The invisibility finding below is still TRUE as a fact about the engine** — it is simply no
+> longer established as the cause of what the user saw.
+>
+> The notebook had predicted that
+> `HediffComp_Invisibility` "makes the pawn hard to TARGET"; scanning all 12,819 types for
+> callers of `PawnUtility.IsInvisible` confirms it and names them:
+>
+> | caller | effect |
+> |---|---|
+> | **`Verse.Pawn.ThreatDisabled`** | **the decisive one — an invisible pawn is not a threat at all** |
+> | `JobGiver_AIFightEnemy.TryGiveJob` | AI will not pick them as a target |
+> | `JobGiver_ReactToCloseMeleeThreat` | AI will not react to them in melee |
+> | `JobGiver_Berserk.FindPawnTarget` | berserk pawns skip them |
+> | `Toils_Combat.FollowAndMeleeAttack`, `JobDriver_AttackStatic` | attacks in progress drop them |
+> | `Verse.GenUI.TargetsAt` | **the player cannot click them either** |
+>
+> So the summons' invisibility is not merely cosmetic — it removes them from the game's threat
+> model entirely, which is the exact opposite of the tanking role they were designed for.
+>
+> **This is a real trade and the user has to pick, because both options cost something:**
+>
+> **A. Drop `HediffComp_Invisibility` from the summons.** They become targetable immediately, no
+> patches, no new mechanism. **The cost is that their look changes**: the spectral appearance IS
+> that comp swapping the material to a pale cyan-white at 50% alpha, and the armour overlay's
+> palette was authored FOR a translucent body — the notebook measured the armour reading 12.6%
+> darker over an invisible pawn than an opaque one. So the armour would come out brighter than
+> the version that was signed off.
+>
+> **B. Keep the look, patch the targeting.** Harmony-patch `Pawn.ThreatDisabled` (and probably
+> two or three JobGivers) to exempt our summons. **The cost is several patches on the AI
+> targeting path**, which is a class of thing this mod has deliberately avoided, and each is a
+> place another mod can collide with us.
+>
+> **Recommendation: A.** It is one line, it cannot break under another mod, and the visual cost
+> is a palette re-tune of art we can regenerate — against B's permanent maintenance burden on
+> the AI path. But the art is signed off, so **it is the user's call, not mine.**
+
+### 6.6 Dragon anatomy, and what wounds actually do
+
+**Given by the user 2026-08-04.** A dragon needs its own `BodyDef` — vanilla `Bird` is the
+placeholder used by the test creature and is not the answer.
+
+**Parts: tail, left wing, right wing, maw, legs, torso.**
+
+> **BUILT 2026-08-04 — `Defs/Bodies/Dovah_Dovahkiin.xml` (`Dovahkiin_Dovah`).** It replaces
+> vanilla `Bird`, which was a stopgap and was wrong three ways at once:
+>
+> 1. **Its jaws part is literally called a BEAK**, so the combat log credited the dragon's bite
+>    to a beak — the user spotted it in a pawn's wounds. **Renaming the TOOL would not have
+>    fixed it: wound text comes from the BODY PART.**
+> 2. No wings to bash with.
+> 3. No wings to **cripple**, so the grounding rule below could not exist at all.
+>
+> Vanilla has no wing `BodyPartDef`, so `Dovahkiin_DovahWing` is defined. Everything else reuses
+> vanilla parts — a duplicate part def is just two things to keep in step. The wings carry
+> **generous coverage (0.11 each)**: they are what a shooter aims for, and the grounding rule is
+> only interesting if they are actually hittable. The maw is small — breaking a dragon's bite
+> should take aim. Wing wounds use `permanentInjuryChanceFactor 1.0`: a dragon that shrugs off a
+> shredded wing an hour later makes the whole rule pointless.
+
+#### 6.6a His melee rolls — not all bites
+
+**User, 2026-08-04.** Weighted so his attacks read as a repertoire rather than one animation:
+
+| attack | damage | frequency | extra |
+|---|---|---|---|
+| **maw** | **pierce** | **most likely** | the signature attack |
+| **wing bash** | blunt | middling | no stun |
+| **tail sweep** | blunt | **rarest** | **stuns briefly** |
+| claws | pierce | uncommon | — |
+
+The tail sweep hits hardest of the blunt two, to be worth landing. **Its stun is applied in
+code** — a vanilla `tool` has no stun field.
+
+**NO CLAW ATTACK.** Removed at the user's instruction: *"dovahs have no claw attacks"*. His feet
+carry him; they are not a weapon.
+
+#### 6.6b THE GRAB — "bite down, shake left-right, throw away"
+
+**The user's iconic move, 2026-08-04.** *"A very very small chance… the pawn or creature would be
+locked on the dragon while the dragon alternates between east and west view for a bit, then the
+victim is projected away."* They added: *"might be a real headache but also a nice surprise for
+the player."*
+
+**Triggered only by the MAW**, on a landed hit, at a deliberately tiny chance (2% by default).
+A wing bash or tail sweep obviously cannot grab.
+
+| step | what happens |
+|---|---|
+| seize | the victim is stunned, dragged to the dragon's cell, and held |
+| shake | the dragon's facing flips **east ↔ west** on a timer — the whole animation |
+| release | **slash AND pierce** damage, then **downed**, then **thrown** several cells |
+
+> **THE SHAKE USES THE TWO PROFILE SPRITES WE ALREADY SHIP.** RimWorld has no animation system
+> reachable from here, but flipping a facing back and forth reads exactly as a beast worrying
+> something in its jaws. That is why the user's suggestion works at all — it is an animation
+> made of the only thing the engine will let us move.
+>
+> **THE STATE LIVES ON THE VICTIM, AND THAT IS THE WHOLE SAFETY ARGUMENT.** A multi-second
+> scripted sequence binding two pawns is exactly the bespoke cross-save state `RISKS.md` §9 puts
+> at the top of the corruption risks. As a hediff on the victim: the game saves and restores it
+> for us, a mid-grab save simply continues on load, and **every exit path releases** — including
+> the one that fires when the dragon dies or despawns mid-shake. **A grapple must never leave a
+> pawn permanently frozen**, and this one structurally cannot.
+>
+> **Downing uses vanilla's `HealthUtility.DamageUntilDowned`** rather than hoping the damage
+> lands it. The user said *downed*, not *usually downed*, and a heavily armoured target would
+> otherwise shrug it off. That helper sets `forceDowned` around the wounds it inflicts, so it
+> cannot kill.
+>
+> **The throw reuses the shout knockback, NOT a `PawnFlyer`.** The notebook records a pawn being
+> **destroyed with no corpse** when a flyer was started from the wrong place — and a rare
+> surprise move is the worst possible place to risk that, because it would be almost impossible
+> to reproduce.
+
+| damage | consequence |
+|---|---|
+| **50% to EACH wing, or 80% to a SINGLE wing** | **forced to GROUNDED** |
+| enough wounds to the **legs** | **reduced move speed** |
+| enough damage to the **maw** | **reduced piercing damage** (the bite) |
+| enough damage to the **tail + wings** | **reduced blunt damage** |
+
+**Why this matters beyond flavour:** it makes shooting a dragon *tactical* rather than a damage
+race. Crippling the wings brings it down; breaking the maw defangs its bite; the legs stop it
+escaping. It also gives the half-HP grounding rule a second, more skilful route — a good shot
+can ground a dragon at full health by aiming at the wings.
+
+**The thresholds are deliberately unnamed here.** They go in `DovahkiinTuningDef.xml` so they
+can be retuned without a rebuild, per `CLAUDE.md`.
 
 ---
 
@@ -760,12 +1554,53 @@ Model on the 1.4 ancient-complex generation (`ComplexDef` / `GenStep_AncientComp
   `sketchResolverDef`, `selectionWeight`, `maxCount`, `minArea`, `maxArea`,
   `requiresSingleRectRoom` and `floorTypes`. **There is no depth, no ordering and no terminal
   room anywhere in the data model**, and `GenStep_AncientComplex.DefaultComplexSize` is
-  `(80, 80)` — about 10% of a 250×250 map, not "a large fraction" of it. The ordering, the
-  terminal word wall, and the sealed treasure room are therefore a **custom `GenStep`**, not a
-  `ComplexDef` configuration. This is the biggest single risk in the project — cost it in
-  `RISKS.md` and show the design before building.
+  `(80, 80)` — about 10% of a 250×250 map, not "a large fraction" of it.
+
+  > ### ⚠ THE CONCLUSION THAT USED TO FOLLOW HERE IS SUPERSEDED — CORRECTED 2026-08-13
+  >
+  > This paragraph used to end *"the ordering, the terminal word wall and the sealed treasure
+  > room are therefore a **custom `GenStep`** … the biggest single risk in the project"*, and
+  > `ROADMAP.md` Phase 5 still repeats it. **`RISKS.md §1` reversed that and the spec was never
+  > updated** — a stale conclusion sitting in the contract, which is exactly the trap this
+  > project keeps recording about numbers.
+  >
+  > **The facts above are all still true. The conclusion is not.** Vanilla's complex generator
+  > is the wrong tool, but the answer is not to write a better one: **VEF's KCSG lets the crypt
+  > be BUILT BY HAND IN-GAME in dev mode and exported as a `StructureLayoutDef`**
+  > (`Dialog_ExportWindow`, `KCSG.GenStep_CustomStructureGen`, `KCSG_UndergroundRoom`,
+  > `linkWithSite`). Dragon's Descent already ships a 110 KB hand-drawn dungeon this way in 1.4.
+  >
+  > Because the layout is authored, **every guarantee in this section holds by construction** —
+  > if the word wall is at the end of the map you drew, it is at the end. There is no algorithm
+  > to fight. Crypts stop being an ENGINEERING problem and become an AUTHORING one, which is
+  > both far more predictable and **work the user can do themselves**.
+  >
+  > **Author 3–4 layouts per tier and pick randomly**, so crypts vary without being procedural.
+  >
+  > **⚠ THE RESIDUAL RISK IS THE DEPENDENCY, AND IT COLLIDES WITH INVARIANT 5.** KCSG is VEF, so
+  > without VEF there are no crypts — and this section calls crypts "the primary way the player
+  > grows their shout library". No crypts → no words → no shouts → an empty shell on the
+  > baseline, which is *broken*, not dormant. **The resolution, on record in `RISKS.md §3`:
+  > DRAGON MOUNDS (§7.1) ARE THE GUARANTEED WORD SOURCE, crypts the rich one.** Build mounds
+  > first; declare VEF `MayRequire` and say plainly that crypts need it.
+
 - **Some crypts have a Dragon Priest** as the final guardian — the highest-tier non-dragon
   threat in the mod, mask included as unique loot.
+- **THE CRYPT AUDIO EXISTS ALREADY — `Sounds/DungeonBackgroundNoise.mp3`**, recorded by the user
+  2026-08-13, 15.408s. Recorded here so it is not lost; nothing to attach it to until this
+  section is built.
+
+  **⚠ IT PLAYS ONCE, ON FIRST ENTRY. IT IS NOT A LOOPING AMBIENCE.** The user's correction,
+  2026-08-13, given because this spec briefly said the opposite: *"plays only once when you first
+  enter into a Nordic crypt."*
+
+  **⚠ AND IT IS FOR CRYPTS ONLY — NOT §7.1 DRAGON MOUNDS, NOT §7.2 BURIAL SITES.** Those are
+  open-air and get nothing. The name says "dungeon"; the two open-air site types are not one.
+
+  **The design consequence, which is the part that will be missed:** *"first entry"* is
+  per-site state that has to survive a save and a re-visit — leaving and returning must not
+  replay it. That is a saved flag on the site or its map component, not a one-shot fired from
+  a map-enter hook.
 
 ### 7.4 Discovery
 
